@@ -1,46 +1,33 @@
-# TemplateLibrary
+# Peneus
 
-[![Backend Tests](https://github.com/DaphneWebFramework/TemplateLibraryTest/actions/workflows/test-backend.yml/badge.svg)](https://github.com/DaphneWebFramework/TemplateLibraryTest/actions/workflows/test-backend.yml)
+[![Backend Tests](https://github.com/DaphneWebFramework/PeneusTest/actions/workflows/test-backend.yml/badge.svg)](https://github.com/DaphneWebFramework/PeneusTest/actions/workflows/test-backend.yml)
 
 ![](assets/masthead.png)
 
-> <sub><sup>Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere ligula.</sup></sub>
+> <sub><sup>Peneus, a river god in Greek mythology, is the father of Daphne and embodies the fluidity and life-sustaining properties of freshwater.</sup></sub>
 
 ## Overview
 
-Duis vulputate vitae erat vel efficitur. Cras sed enim a erat tincidunt ornare sed a eros. Suspendisse vel venenatis nulla. Vivamus aliquam congue elit laoreet.
-
-## Configuration
-
-> You can remove this section after completing the instructions.
-
-When starting a new library based on this template, you must add a **Secret** token in your library repository so that the automated documentation workflow included in this template (`generate-documentation.yml`) can push updates to the central [**Documentation**](https://github.com/DaphneWebFramework/Documentation) repo. Follow the steps below:
-
-- Navigate to **Settings** for the newly derived repository.
-- Click **Secrets and variables** > **Actions**.
-- Click **New repository secret**.
-- For **Name**, enter `PERSONAL_ACCESS_TOKEN`.
-- For **Secret**, paste the required token.
-- Click **Add secret**.
+**Peneus** is the core library of the [Daphne](https://github.com/DaphneWebFramework/Daphne) framework, providing essential backend components such as database management, page handling, authentication, and a structured API system for application logic. While Daphne’s other libraries are designed for standalone use, Peneus is tightly integrated with the framework’s core architecture.
 
 ## Installation
 
 ### Adding
 
 ```
-git submodule add https://github.com/DaphneWebFramework/TemplateLibrary.git source/backend/TemplateLibrary
+git submodule add https://github.com/DaphneWebFramework/Peneus.git source/backend/Peneus
 ```
 
 ### Updating
 
 ```
-git submodule update --remote --merge source/backend/TemplateLibrary
+git submodule update --remote --merge source/backend/Peneus
 ```
 
 ## See Also
 
-- [Tests](https://github.com/DaphneWebFramework/TemplateLibraryTest)
-- [Documentation](https://github.com/DaphneWebFramework/Documentation/blob/main/TemplateLibrary/README.md)
+- [Tests](https://github.com/DaphneWebFramework/PeneusTest)
+- [Documentation](https://github.com/DaphneWebFramework/Documentation/blob/main/Peneus/README.md)
 
 ## License
 

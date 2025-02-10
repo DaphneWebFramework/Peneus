@@ -32,18 +32,21 @@ class HandlerRegistry extends Singleton
     {
         $handlerName = \trim($handlerName);
         if ($handlerName === '') {
-            throw new \InvalidArgumentException('Handler name cannot be empty.');
+            throw new \InvalidArgumentException(
+                'Handler name cannot be empty.');
         }
         $handlerName = \strtolower($handlerName);
         if ($this->handlers->Has($handlerName)) {
-            throw new \InvalidArgumentException('Handler already registered.');
+            throw new \InvalidArgumentException(
+                "Handler already registered: $handlerName");
         }
         if (!\class_exists($handlerClassName)) {
-            throw new \RuntimeException('Handler class not found.');
+            throw new \RuntimeException(
+                "Handler class not found: $handlerClassName");
         }
         if (!\is_subclass_of($handlerClassName, IHandler::class)) {
             throw new \InvalidArgumentException(
-                'Handler class must implement IHandler interface.');
+                "Handler class must implement IHandler interface: $handlerClassName");
         }
         $this->handlers->Set($handlerName, $handlerClassName);
     }

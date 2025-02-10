@@ -30,7 +30,10 @@ jobs:
           path: .tmp/Documentation
       - name: Reset
         shell: cmd
-        run: RMDIR /S /Q ".tmp/Documentation/${{github.event.repository.name}}" >NUL 2>&1
+        run: |
+          IF EXIST ".tmp/Documentation/${{github.event.repository.name}}" (
+            RMDIR /S /Q ".tmp/Documentation/${{github.event.repository.name}}"
+          )
       - name: Generate (Documentation)
         shell: cmd
         run: |

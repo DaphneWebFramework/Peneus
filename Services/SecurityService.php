@@ -12,7 +12,9 @@
 
 namespace Peneus\Services;
 
-class SecurityService
+use \Harmonia\Patterns\Singleton;
+
+class SecurityService extends Singleton
 {
     private const TOKEN_LENGTH = 64;
 

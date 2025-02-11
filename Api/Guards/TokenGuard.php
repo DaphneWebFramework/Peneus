@@ -13,7 +13,7 @@
 namespace Peneus\Api\Guards;
 
 use \Harmonia\Http\Request;
-use \Peneus\Services\CsrfToken;
+use \Peneus\Services\Model\CsrfToken;
 use \Peneus\Services\SecurityService;
 
 class TokenGuard implements IGuard

@@ -13,11 +13,10 @@
 namespace Peneus\Services;
 
 use \Harmonia\Patterns\Singleton;
+use \Peneus\Services\Model\CsrfToken;
 
 class SecurityService extends Singleton
 {
-    private const TOKEN_LENGTH = 64;
-
     #region public -------------------------------------------------------------
 
     public function HashPassword(string $password): string
@@ -32,7 +31,7 @@ class SecurityService extends Singleton
 
     public function GenerateToken(): string
     {
-        return \bin2hex(\random_bytes(self::TOKEN_LENGTH / 2));
+        return \bin2hex(\random_bytes(32));
     }
 
     public function GenerateCsrfToken(): CsrfToken

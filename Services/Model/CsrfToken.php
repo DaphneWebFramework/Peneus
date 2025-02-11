@@ -10,7 +10,7 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Services;
+namespace Peneus\Services\Model;
 
 class CsrfToken
 {

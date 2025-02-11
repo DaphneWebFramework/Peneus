@@ -19,7 +19,6 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Shutdown\ShutdownHandler;
-use \Peneus\Api\HandlerRegistry;
 
 class Dispatcher implements IShutdownListener
 {

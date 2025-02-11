@@ -33,24 +33,21 @@ class SecurityService
         return \bin2hex(\random_bytes(self::TOKEN_LENGTH / 2));
     }
 
-    public function GenerateCsrfToken(): \stdClass
+    public function GenerateCsrfToken(): CsrfToken
     {
-        $csrfToken = new \stdClass();
-        $csrfToken->token = $this->GenerateToken();
-        $csrfToken->cookieValue = $this->obfuscate(
-            $this->HashPassword(
-                $csrfToken->token
-            )
+        $token = $this->GenerateToken();
+        $cookieValue = $this->obfuscate(
+            $this->HashPassword($token)
         );
-        return $csrfToken;
+        return new CsrfToken($token, $cookieValue);
     }
 
-    public function VerifyCsrfToken(\stdClass $csrfToken): bool
+    public function VerifyCsrfToken(CsrfToken $csrfToken): bool
     {
         return $this->VerifyPassword(
-            $csrfToken->token,
+            $csrfToken->Token(),
             $this->deobfuscate(
-                $csrfToken->cookieValue
+                $csrfToken->CookieValue()
             )
         );
     }
@@ -66,6 +63,9 @@ class SecurityService
 
     private function deobfuscate(string $data): string
     {
+        // Suppress notices:
+        // - hex2bin(): Hexadecimal input string must have an even length
+        // - hex2bin(): Input string must be hexadecimal string
         $decoded = @\hex2bin($data);
         if ($decoded === false) {
             return '';

@@ -20,7 +20,7 @@ abstract class Action
 {
     private readonly CSequentialArray $guards;
 
-    abstract protected function perform(): mixed;
+    abstract protected function onExecute(): mixed;
 
     #region public -------------------------------------------------------------
 
@@ -35,17 +35,17 @@ abstract class Action
         return $this;
     }
 
-    public function Run(): mixed
+    public function Execute(): mixed
     {
         foreach ($this->guards as $guard) {
-            if (!$guard->Authorize()) {
+            if (!$guard->Verify()) {
                 throw new \Exception(
-                    'You do not have permission to perform this action.',
+                    'You do not have permission to execute this action.',
                     StatusCode::Unauthorized->value
                 );
             }
         }
-        return $this->perform();
+        return $this->onExecute();
     }
 
     #endregion public

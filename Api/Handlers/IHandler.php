@@ -14,5 +14,5 @@ namespace Peneus\Api\Handlers;
 
 interface IHandler
 {
-    public function ProcessAction(string $actionName): mixed;
+    public function HandleAction(string $actionName): mixed;
 }

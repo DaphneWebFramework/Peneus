@@ -32,7 +32,7 @@ class Dispatcher implements IShutdownListener
         ShutdownHandler::Instance()->AddListener($this);
     }
 
-    public function HandleRequest(): void
+    public function DispatchRequest(): void
     {
         $request = Request::Instance();
         $handlerName = $request->QueryParams()->Get('handler');
@@ -54,7 +54,7 @@ class Dispatcher implements IShutdownListener
             return;
         }
         try {
-            $result = $handler->ProcessAction($actionName);
+            $result = $handler->HandleAction($actionName);
             if ($result === null) {
                 $this->response->SetStatusCode(StatusCode::NoContent);
             } elseif ($result instanceof Response) {

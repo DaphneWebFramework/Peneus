@@ -27,7 +27,7 @@ class TokenGuard implements IGuard
         $this->cookieName = $cookieName;
     }
 
-    public function Authorize(): bool
+    public function Verify(): bool
     {
         $cookieValue = Request::Instance()->Cookies()->Get($this->cookieName);
         if ($cookieValue === null) {

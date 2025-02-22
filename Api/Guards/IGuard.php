@@ -14,5 +14,5 @@ namespace Peneus\Api\Guards;
 
 interface IGuard
 {
-    public function Authorize(): bool;
+    public function Verify(): bool;
 }

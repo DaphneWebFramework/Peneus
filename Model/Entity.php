@@ -305,6 +305,28 @@ abstract class Entity
     #region private ------------------------------------------------------------
 
     /**
+     * Checks if a value can be safely bound in a query.
+     *
+     * @param mixed $value
+     *   The value to check.
+     * @return bool
+     *   Returns `true` if the value is bindable, `false` otherwise.
+     */
+    private static function isBindable(mixed $value): bool
+    {
+        if (\is_array($value) || \is_resource($value)) {
+            return false;
+        }
+        if (\is_object($value)) {
+            if ($value instanceof \DateTimeInterface) {
+                return true;
+            }
+            return \method_exists($value, '__toString');
+        }
+        return true;
+    }
+
+    /**
      * Iterates over the public, non-static properties of the entity.
      *
      * This method uses reflection to retrieve the properties of the entity and
@@ -317,7 +339,7 @@ abstract class Entity
      *   1. It has an explicit type declaration.
      *   2. It is uninitialized (no default value assigned at the class level).
      *   3. It is not a primitive type (`bool`, `int`, `float`, `string`, `array`).
-     *   4. Its class type does not exist.
+     *   4. Its class type does not exist (e.g., `object`).
      *   5. It is not nullable.
      *
      * @return \Generator
@@ -379,12 +401,18 @@ abstract class Entity
             if ($key === 'id') {
                 continue;
             }
+            if (!self::isBindable($value)) {
+                continue;
+            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
-            if ($value instanceof \DateTime) {
+            if ($value instanceof \DateTimeInterface) {
                 $value = $value->format('Y-m-d H:i:s');
             }
             $bindings[$key] = $value;
+        }
+        if (empty($columns)) {
+            return false;
         }
         $query = (new InsertQuery)
             ->Table(static::tableName())
@@ -415,12 +443,18 @@ abstract class Entity
             if ($key === 'id') {
                 continue;
             }
+            if (!self::isBindable($value)) {
+                continue;
+            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
-            if ($value instanceof \DateTime) {
+            if ($value instanceof \DateTimeInterface) {
                 $value = $value->format('Y-m-d H:i:s');
             }
             $bindings[$key] = $value;
+        }
+        if (empty($columns)) {
+            return false;
         }
         $query = (new UpdateQuery)
             ->Table(static::tableName())

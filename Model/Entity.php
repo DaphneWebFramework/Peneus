@@ -41,18 +41,44 @@ abstract class Entity
     /**
      * Constructs an entity with the given data.
      *
+     * Date and time values in the provided data should be formatted as strings
+     * (e.g., `'2025-03-15 12:45:00'`, `'2025-03-15'`). If a corresponding
+     * property is an instance of `DateTime`, its value is updated using the
+     * given string. Any conversion errors are silently ignored.
+     *
+     * If a property assignment fails due to a type mismatch or other error,
+     * it is silently skipped.
+     *
      * @param ?array $data
      *   (Optional) An associative array of property values. Keys must match the
      *   entity's public properties. If `id` is specified, it is also assigned.
+     *
+     * @todo Log skipped fields, date-time conversion errors, invalid types.
      */
     public function __construct(?array $data = null)
     {
         if ($data === null) {
             return;
         }
-        foreach ($this->properties(true) as $key => $value) { // Including id
+        foreach ($this->properties() as $key => $_) {
             if (\array_key_exists($key, $data)) {
-                $this->$key = $data[$key];
+                if ($this->$key instanceof \DateTime) {
+                    try {
+                        if (false === @$this->$key->modify($data[$key])) {
+                            ;
+                        }
+                    } catch (\Throwable $e) {
+                        ;
+                    }
+                } else {
+                    try {
+                        $this->$key = $data[$key];
+                    } catch (\Throwable $e) {
+                        ;
+                    }
+                }
+            } else {
+                ;
             }
         }
     }
@@ -281,26 +307,60 @@ abstract class Entity
     /**
      * Iterates over the public, non-static properties of the entity.
      *
-     * @param bool $includingId
-     *   (Optional) Whether to include the `id` property. Defaults to `false`.
+     * This method uses reflection to retrieve the properties of the entity and
+     * initializes them if necessary. It ensures that uninitialized properties
+     * are assigned safe default values based on their type. Primitive types
+     * (`bool`, `int`, `float`, `string`, `array`) receive their standard PHP
+     * defaults, while class-type properties are instantiated if the class exists.
+     *
+     * A property is **skipped** if all of the following conditions are met:
+     *   1. It has an explicit type declaration.
+     *   2. It is uninitialized (no default value assigned at the class level).
+     *   3. It is not a primitive type (`bool`, `int`, `float`, `string`, `array`).
+     *   4. Its class type does not exist.
+     *   5. It is not nullable.
+     *
      * @return \Generator
      *   A generator yielding property names and their values.
      */
-    private function properties(bool $includingId = false): \Generator
+    private function properties(): \Generator
     {
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            $propertyName = $reflectionProperty->getName();
-            if (!$includingId && $propertyName === 'id') {
-                continue;
-            }
             if (!$reflectionProperty->isPublic()) {
                 continue;
             }
             if ($reflectionProperty->isStatic()) {
                 continue;
             }
-            yield $propertyName => $this->$propertyName;
+            $key = $reflectionProperty->getName();
+            $reflectionType = $reflectionProperty->getType();
+            if ($reflectionType !== null) {
+                if (!$reflectionProperty->isInitialized($this)) {
+                    $typeName = $reflectionType->getName();
+                    switch ($typeName)
+                    {
+                    case 'bool'  : $this->$key = false; break;
+                    case 'int'   : $this->$key = 0    ; break;
+                    case 'float' : $this->$key = 0.0  ; break;
+                    case 'string': $this->$key = ''   ; break;
+                    case 'array' : $this->$key = []   ; break;
+                    default:
+                        if (\class_exists($typeName, false)) {
+                            try {
+                                $this->$key = new $typeName();
+                            } catch (\Throwable $e) {
+                                continue 2; // foreach
+                            }
+                        } elseif ($reflectionType->allowsNull()) {
+                            $this->$key = null;
+                        } else {
+                            continue 2; // foreach
+                        }
+                    }
+                }
+            }
+            yield $key => $this->$key;
         }
     }
 
@@ -316,8 +376,14 @@ abstract class Entity
         $placeholders = [];
         $bindings = [];
         foreach ($this->properties() as $key => $value) {
+            if ($key === 'id') {
+                continue;
+            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
+            if ($value instanceof \DateTime) {
+                $value = $value->format('Y-m-d H:i:s');
+            }
             $bindings[$key] = $value;
         }
         $query = (new InsertQuery)
@@ -346,8 +412,14 @@ abstract class Entity
         $placeholders = [];
         $bindings = ['id' => $this->id];
         foreach ($this->properties() as $key => $value) {
+            if ($key === 'id') {
+                continue;
+            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
+            if ($value instanceof \DateTime) {
+                $value = $value->format('Y-m-d H:i:s');
+            }
             $bindings[$key] = $value;
         }
         $query = (new UpdateQuery)

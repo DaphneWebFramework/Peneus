@@ -355,6 +355,9 @@ abstract class Entity
             if ($reflectionProperty->isStatic()) {
                 continue;
             }
+            if ($reflectionProperty->isReadOnly()) {
+                continue;
+            }
             $key = $reflectionProperty->getName();
             $reflectionType = $reflectionProperty->getType();
             if ($reflectionType !== null) {

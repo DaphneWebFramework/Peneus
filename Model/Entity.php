@@ -96,7 +96,11 @@ abstract class Entity
      */
     public function Save(): bool
     {
-        return $this->id === 0 ? $this->insert() : $this->update();
+        if ($this->id === 0) {
+            return $this->insert();
+        } else {
+            return $this->update();
+        }
     }
 
     /**
@@ -300,102 +304,13 @@ abstract class Entity
         return \strtolower($reflectionClass->getShortName());
     }
 
-    #endregion protected
-
-    #region private ------------------------------------------------------------
-
-    /**
-     * Checks if a value can be safely bound in a query.
-     *
-     * @param mixed $value
-     *   The value to check.
-     * @return bool
-     *   Returns `true` if the value is bindable, `false` otherwise.
-     */
-    private static function isBindable(mixed $value): bool
-    {
-        if (\is_array($value) || \is_resource($value)) {
-            return false;
-        }
-        if (\is_object($value)) {
-            if ($value instanceof \DateTimeInterface) {
-                return true;
-            }
-            return \method_exists($value, '__toString');
-        }
-        return true;
-    }
-
-    /**
-     * Iterates over the public, non-static properties of the entity.
-     *
-     * This method uses reflection to retrieve the properties of the entity and
-     * initializes them if necessary. It ensures that uninitialized properties
-     * are assigned safe default values based on their type. Primitive types
-     * (`bool`, `int`, `float`, `string`, `array`) receive their standard PHP
-     * defaults, while class-type properties are instantiated if the class exists.
-     *
-     * A property is **skipped** if all of the following conditions are met:
-     *   1. It has an explicit type declaration.
-     *   2. It is uninitialized (no default value assigned at the class level).
-     *   3. It is not a primitive type (`bool`, `int`, `float`, `string`, `array`).
-     *   4. Its class type does not exist (e.g., `object`).
-     *   5. It is not nullable.
-     *
-     * @return \Generator
-     *   A generator yielding property names and their values.
-     */
-    private function properties(): \Generator
-    {
-        $reflectionClass = new \ReflectionClass($this);
-        foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            if (!$reflectionProperty->isPublic()) {
-                continue;
-            }
-            if ($reflectionProperty->isStatic()) {
-                continue;
-            }
-            if ($reflectionProperty->isReadOnly()) {
-                continue;
-            }
-            $key = $reflectionProperty->getName();
-            $reflectionType = $reflectionProperty->getType();
-            if ($reflectionType !== null) {
-                if (!$reflectionProperty->isInitialized($this)) {
-                    $typeName = $reflectionType->getName();
-                    switch ($typeName)
-                    {
-                    case 'bool'  : $this->$key = false; break;
-                    case 'int'   : $this->$key = 0    ; break;
-                    case 'float' : $this->$key = 0.0  ; break;
-                    case 'string': $this->$key = ''   ; break;
-                    case 'array' : $this->$key = []   ; break;
-                    default:
-                        if (\class_exists($typeName, false)) {
-                            try {
-                                $this->$key = new $typeName();
-                            } catch (\Throwable $e) {
-                                continue 2; // foreach
-                            }
-                        } elseif ($reflectionType->allowsNull()) {
-                            $this->$key = null;
-                        } else {
-                            continue 2; // foreach
-                        }
-                    }
-                }
-            }
-            yield $key => $this->$key;
-        }
-    }
-
     /**
      * Inserts a new record into the database.
      *
      * @return bool
      *   Returns `true` if insertion succeeds, `false` otherwise.
      */
-    private function insert(): bool
+    protected function insert(): bool
     {
         $columns = [];
         $placeholders = [];
@@ -437,7 +352,7 @@ abstract class Entity
      * @return bool
      *   Returns `true` if the update succeeds, `false` otherwise.
      */
-    private function update(): bool
+    protected function update(): bool
     {
         $columns = [];
         $placeholders = [];
@@ -474,6 +389,104 @@ abstract class Entity
             return false;
         }
         return true;
+    }
+
+    #endregion protected
+
+    #region private ------------------------------------------------------------
+
+    /**
+     * Checks if a value can be safely bound in a query.
+     *
+     * @param mixed $value
+     *   The value to check.
+     * @return bool
+     *   Returns `true` if the value is bindable, `false` otherwise.
+     */
+    private static function isBindable(mixed $value): bool
+    {
+        if (\is_array($value) || \is_resource($value)) {
+            return false;
+        }
+        if (\is_object($value)) {
+            if ($value instanceof \DateTimeInterface) {
+                return true;
+            }
+            return \method_exists($value, '__toString');
+        }
+        return true;
+    }
+
+    /**
+     * Iterates over the public, non-static properties of the entity.
+     *
+     * This method uses reflection to retrieve the properties of the entity and
+     * initializes them if necessary. It ensures that uninitialized properties
+     * are assigned safe default values based on their type. Primitive types
+     * (`bool`, `int`, `float`, `string`, `array`) receive their standard PHP
+     * defaults, while `mixed` properties are always initialized to `null`.
+     * Class-type properties are instantiated if the class exists.
+     *
+     * Properties are skipped if they are non-public, static, readonly, union,
+     * intersection, or a class type that does not exist and is not nullable.
+     * Instantiation of class-type properties is skipped if their constructor
+     * requires arguments or is inaccessible. The primitive types `object`,
+     * `resource`, `callable`, and `iterable` are skipped, unless nullable, in
+     * which case they are assigned `null`.
+     *
+     * @return \Generator
+     *   A generator yielding property names and their values.
+     */
+    private function properties(): \Generator
+    {
+        $reflectionClass = new \ReflectionClass($this);
+        foreach ($reflectionClass->getProperties() as $reflectionProperty) {
+            if (!$reflectionProperty->isPublic()) {
+                continue;
+            }
+            if ($reflectionProperty->isStatic()) {
+                continue;
+            }
+            if ($reflectionProperty->isReadOnly()) {
+                continue;
+            }
+            $key = $reflectionProperty->getName();
+            if ($reflectionProperty->isInitialized($this)) {
+                // If the property is already initialized, yield it immediately.
+                // This includes untyped properties, which are always implicitly
+                // initialized to null.
+                yield $key => $this->$key;
+                continue;
+            }
+            $reflectionType = $reflectionProperty->getType();
+            if (!$reflectionType instanceof \ReflectionNamedType) {
+                // Skip properties with union or intersection types.
+                continue;
+            }
+            $typeName = $reflectionType->getName();
+            switch ($typeName)
+            {
+            case 'bool'  : $this->$key = false; break;
+            case 'int'   : $this->$key = 0    ; break;
+            case 'float' : $this->$key = 0.0  ; break;
+            case 'string': $this->$key = ''   ; break;
+            case 'array' : $this->$key = []   ; break;
+            case 'mixed' : $this->$key = null ; break;
+            default:
+                if (\class_exists($typeName, false)) {
+                    try {
+                        $this->$key = new $typeName();
+                    } catch (\Throwable $e) {
+                        continue 2; // foreach
+                    }
+                } elseif ($reflectionType->allowsNull()) {
+                    $this->$key = null;
+                } else {
+                    continue 2; // foreach
+                }
+            }
+            yield $key => $this->$key;
+        }
     }
 
     #endregion private

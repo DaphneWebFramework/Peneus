@@ -20,18 +20,37 @@ use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Shutdown\ShutdownHandler;
 
+/**
+ * Dispatches API requests to the appropriate handler.
+ */
 class Dispatcher implements IShutdownListener
 {
     private Response $response;
 
     #region public -------------------------------------------------------------
 
+    /**
+     * Constructs a new instance.
+     */
     public function __construct()
     {
         $this->response = new Response();
         ShutdownHandler::Instance()->AddListener($this);
     }
 
+    /**
+     * Dispatches the request to the appropriate handler.
+     *
+     * The request must include `handler` and `action` query parameters.
+     * If a handler cannot be found or an error occurs, the response will
+     * contain a JSON object with an `error` property. Otherwise, the response
+     * will contain the action result as a JSON object.
+     *
+     * This method does not send the response. The final response is sent
+     * in `OnShutdown`.
+     *
+     * @see OnShutdown
+     */
     public function DispatchRequest(): void
     {
         $request = Request::Instance();
@@ -72,6 +91,16 @@ class Dispatcher implements IShutdownListener
         }
     }
 
+    /**
+     * Handles system shutdown events and ensures a response is sent.
+     *
+     * If an error occurs during execution, the response collected by
+     * `DispatchRequest` is replaced with an error response. Otherwise,
+     * the existing response is sent as is.
+     *
+     * @param ?string $errorMessage
+     *   The error message if an error occurred, or `null` otherwise.
+     */
     public function OnShutdown(?string $errorMessage): void
     {
         if ($errorMessage !== null) {
@@ -89,6 +118,14 @@ class Dispatcher implements IShutdownListener
 
     #region private ------------------------------------------------------------
 
+    /**
+     * Generates a JSON error response.
+     *
+     * @param string $errorMessage
+     *   The error message to include in the response.
+     * @return string
+     *   A JSON-encoded error message in the format: `{"error": "<error message>"}`
+     */
     private static function errorJson(string $errorMessage): string
     {
         return \json_encode(['error' => $errorMessage]);

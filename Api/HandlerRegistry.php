@@ -17,10 +17,16 @@ use \Harmonia\Patterns\Singleton;
 use \Harmonia\Core\CArray;
 use \Peneus\Api\Handlers\IHandler;
 
+/**
+ * Manages the registration and retrieval of API handlers.
+ */
 class HandlerRegistry extends Singleton
 {
     private readonly CArray $handlers;
 
+    /**
+     * Constructs a new instance.
+     */
     protected function __construct()
     {
         $this->handlers = new CArray();
@@ -28,6 +34,19 @@ class HandlerRegistry extends Singleton
 
     #region public -------------------------------------------------------------
 
+    /**
+     * Registers a handler class by name.
+     *
+     * @param string $handlerName
+     *   The unique name of the handler.
+     * @param string $handlerClassName
+     *   The fully qualified class name of the handler.
+     * @throws \InvalidArgumentException
+     *   If the handler name is empty, already registered, or the class does not
+     *   implement `IHandler`.
+     * @throws \RuntimeException
+     *   If the specified handler class does not exist.
+     */
     public function RegisterHandler(string $handlerName, string $handlerClassName): void
     {
         $handlerName = \trim($handlerName);
@@ -51,6 +70,14 @@ class HandlerRegistry extends Singleton
         $this->handlers->Set($handlerName, $handlerClassName);
     }
 
+    /**
+     * Finds and returns an instance of the requested handler.
+     *
+     * @param string $handlerName
+     *   The name of the handler.
+     * @return ?IHandler
+     *   The handler instance if found, otherwise `null`.
+     */
     public function FindHandler(string $handlerName): ?IHandler
     {
         $handlerName = \strtolower(\trim($handlerName));

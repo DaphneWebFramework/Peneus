@@ -23,8 +23,6 @@ abstract class Action
 {
     private readonly CSequentialArray $guards;
 
-    #region protected ----------------------------------------------------------
-
     /**
      * Defines the logic to be executed when the action runs.
      *
@@ -37,8 +35,6 @@ abstract class Action
      *   If any runtime error occurs during the execution of the action.
      */
     abstract protected function onExecute(): mixed;
-
-    #endregion protected
 
     #region public -------------------------------------------------------------
 

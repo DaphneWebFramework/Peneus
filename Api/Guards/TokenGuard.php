@@ -16,24 +16,44 @@ use \Harmonia\Http\Request;
 use \Peneus\Services\Model\CsrfToken;
 use \Peneus\Services\SecurityService;
 
+/**
+ * A guard that verifies a token against its hashed counterpart stored in a
+ * cookie, ensuring protection against session hijacking and CSRF attacks.
+ */
 class TokenGuard implements IGuard
 {
     private readonly string $token;
     private readonly string $cookieName;
 
+    /**
+     * Constructs a new instance.
+     *
+     * @param string $token
+     *   The token value to verify.
+     * @param string $cookieName
+     *   The name of the cookie storing the expected token hash.
+     */
     public function __construct(string $token, string $cookieName)
     {
         $this->token = $token;
         $this->cookieName = $cookieName;
     }
 
+    /**
+     * Verifies whether the provided token matches its hashed version stored
+     * in the specified cookie.
+     *
+     * @return bool
+     *   Returns `true` if the cookie exists and its value matches the expected
+     *   token, otherwise `false`.
+     */
     public function Verify(): bool
     {
         $cookieValue = Request::Instance()->Cookies()->Get($this->cookieName);
         if ($cookieValue === null) {
             return false;
         }
-        $csrfToken = new CsrfToken($this->token, $cookieValue);
-        return SecurityService::Instance()->VerifyCsrfToken($csrfToken);
+        return SecurityService::Instance()->VerifyCsrfToken(
+            new CsrfToken($this->token, $cookieValue));
     }
 }

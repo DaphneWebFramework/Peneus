@@ -28,7 +28,8 @@ abstract class Handler
      * guards, before returning the action.
      *
      * @param string $actionName
-     *   The name of the action to create.
+     *   The name of the action to create. The action name is provided trimmed
+     *   and in lowercase.
      * @return ?Action
      *   The created action instance, or `null` if the action is unknown.
      */

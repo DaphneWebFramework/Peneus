@@ -12,7 +12,19 @@
 
 namespace Peneus\Api\Guards;
 
+/**
+ * Defines a contract for security guards.
+ *
+ * Guards enforce security conditions by determining whether access should
+ * be granted or an action should proceed.
+ */
 interface IGuard
 {
+    /**
+     * Verifies whether the guard's condition is satisfied.
+     *
+     * @return bool
+     *   Returns `true` if verification succeeds, otherwise `false`.
+     */
     public function Verify(): bool;
 }

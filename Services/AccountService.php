@@ -20,7 +20,7 @@ use \Peneus\Api\Guards\TokenGuard;
 use \Peneus\Model\Account;
 
 /**
- * Provides account-related services.
+ * Provides account-related utilities.
  */
 class AccountService extends Singleton
 {

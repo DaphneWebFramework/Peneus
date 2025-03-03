@@ -12,7 +12,25 @@
 
 namespace Peneus\Api\Handlers;
 
+/**
+ * Defines a contract for API action handlers.
+ *
+ * Implementing classes must define logic for executing actions based on the
+ * provided action name. Additional configuration, such as adding guards,
+ * may be performed before execution.
+ */
 interface IHandler
 {
+    /**
+     * Executes an action based on the provided action name.
+     *
+     * @param string $actionName
+     *   The name of the action to execute.
+     * @return mixed
+     *   The result of the executed action.
+     * @throws \RuntimeException
+     *   If the action cannot be executed due to an unknown action name or
+     *   another failure.
+     */
     public function HandleAction(string $actionName): mixed;
 }

@@ -41,10 +41,11 @@ class Dispatcher implements IShutdownListener
     /**
      * Dispatches the request to the appropriate handler.
      *
-     * The request must include `handler` and `action` query parameters.
-     * If a handler cannot be found or an error occurs, the response will
-     * contain a JSON object with an `error` property. Otherwise, the response
-     * will contain the action result as a JSON object.
+     * The request must include `handler` and `action` query parameters. If a
+     * handler cannot be found, the action is unknown, or another error occurs
+     * during execution, the response body will contain a JSON-formatted string
+     * with an `error` property. Otherwise, the response body will contain the
+     * action result as a JSON-formatted string.
      *
      * This method does not send the response. The final response is sent
      * in `OnShutdown`.
@@ -100,6 +101,8 @@ class Dispatcher implements IShutdownListener
      *
      * @param ?string $errorMessage
      *   The error message if an error occurred, or `null` otherwise.
+     *
+     * @see DispatchRequest
      */
     public function OnShutdown(?string $errorMessage): void
     {
@@ -124,7 +127,7 @@ class Dispatcher implements IShutdownListener
      * @param string $errorMessage
      *   The error message to include in the response.
      * @return string
-     *   A JSON-encoded error message in the format: `{"error": "<error message>"}`
+     *   A JSON-encoded error message in the format: `{"error": "<message>"}`
      */
     private static function errorJson(string $errorMessage): string
     {

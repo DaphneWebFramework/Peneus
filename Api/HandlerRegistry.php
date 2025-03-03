@@ -15,7 +15,7 @@ namespace Peneus\Api;
 use \Harmonia\Patterns\Singleton;
 
 use \Harmonia\Core\CArray;
-use \Peneus\Api\Handlers\IHandler;
+use \Peneus\Api\Handlers\Handler;
 
 /**
  * Manages the registration and retrieval of API handlers.
@@ -43,7 +43,7 @@ class HandlerRegistry extends Singleton
      *   The fully qualified class name of the handler.
      * @throws \InvalidArgumentException
      *   If the handler name is empty, already registered, or the class does not
-     *   implement `IHandler`.
+     *   extend the `Handler` class.
      * @throws \RuntimeException
      *   If the specified handler class does not exist.
      */
@@ -63,9 +63,9 @@ class HandlerRegistry extends Singleton
             throw new \RuntimeException(
                 "Handler class not found: $handlerClassName");
         }
-        if (!\is_subclass_of($handlerClassName, IHandler::class)) {
+        if (!\is_subclass_of($handlerClassName, Handler::class)) {
             throw new \InvalidArgumentException(
-                "Handler class must implement IHandler interface: $handlerClassName");
+                "Class must extend Handler class: $handlerClassName");
         }
         $this->handlers->Set($handlerName, $handlerClassName);
     }
@@ -75,10 +75,10 @@ class HandlerRegistry extends Singleton
      *
      * @param string $handlerName
      *   The name of the handler.
-     * @return ?IHandler
+     * @return ?Handler
      *   The handler instance if found, otherwise `null`.
      */
-    public function FindHandler(string $handlerName): ?IHandler
+    public function FindHandler(string $handlerName): ?Handler
     {
         $handlerName = \strtolower(\trim($handlerName));
         if (!$this->handlers->Has($handlerName)) {

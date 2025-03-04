@@ -54,25 +54,32 @@ class Dispatcher implements IShutdownListener
      */
     public function DispatchRequest(): void
     {
-        $request = Request::Instance();
-        $handlerName = $request->QueryParams()->Get('handler');
+        $queryParams = Request::Instance()->QueryParams();
+
+        $handlerName = $queryParams->Get('handler');
         if ($handlerName === null) {
-            $this->response->SetStatusCode(StatusCode::BadRequest)
-                           ->SetBody(self::errorJson('Handler not specified.'));
+            $this->response
+                ->SetStatusCode(StatusCode::BadRequest)
+                ->SetBody(self::errorJson('Handler not specified.'));
             return;
         }
-        $actionName = $request->QueryParams()->Get('action');
+
+        $actionName = $queryParams->Get('action');
         if ($actionName === null) {
-            $this->response->SetStatusCode(StatusCode::BadRequest)
-                           ->SetBody(self::errorJson('Action not specified.'));
+            $this->response
+                ->SetStatusCode(StatusCode::BadRequest)
+                ->SetBody(self::errorJson('Action not specified.'));
             return;
         }
+
         $handler = HandlerRegistry::Instance()->FindHandler($handlerName);
         if ($handler === null) {
-            $this->response->SetStatusCode(StatusCode::NotFound)
-                           ->SetBody(self::errorJson("Handler not found: $handlerName"));
+            $this->response
+                ->SetStatusCode(StatusCode::NotFound)
+                ->SetBody(self::errorJson("Handler not found: $handlerName"));
             return;
         }
+
         try {
             $result = $handler->HandleAction($actionName);
             if ($result === null) {
@@ -80,15 +87,18 @@ class Dispatcher implements IShutdownListener
             } elseif ($result instanceof Response) {
                 $this->response = $result;
             } else {
-                $this->response->SetHeader('Content-Type', 'application/json')
-                               ->SetBody(\json_encode($result));
+                $this->response
+                    ->SetHeader('Content-Type', 'application/json')
+                    ->SetBody(\json_encode($result));
             }
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             $statusCode = StatusCode::tryFrom($e->getCode())
                           ?? StatusCode::InternalServerError;
-            $this->response->SetStatusCode($statusCode)
-                           ->SetHeader('Content-Type', 'application/json')
-                           ->SetBody(self::errorJson($e->getMessage()));
+            $this->response
+                ->SetStatusCode($statusCode)
+                ->SetHeader('Content-Type', 'application/json')
+                ->SetBody(self::errorJson($e->getMessage()));
         }
     }
 
@@ -110,9 +120,10 @@ class Dispatcher implements IShutdownListener
             if (!Config::Instance()->Option('IsDebug')) {
                 $errorMessage = 'An unexpected error occurred.';
             }
-            $this->response->SetStatusCode(StatusCode::InternalServerError)
-                           ->SetHeader('Content-Type', 'application/json')
-                           ->SetBody(self::errorJson($errorMessage));
+            $this->response
+                ->SetStatusCode(StatusCode::InternalServerError)
+                ->SetHeader('Content-Type', 'application/json')
+                ->SetBody(self::errorJson($errorMessage));
         }
         $this->response->Send();
     }

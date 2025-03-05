@@ -13,8 +13,8 @@
 namespace Peneus\Api\Guards;
 
 use \Harmonia\Http\Request;
-use \Peneus\Services\Model\CsrfToken;
-use \Peneus\Services\SecurityService;
+use \Harmonia\Services\Security\CsrfToken;
+use \Harmonia\Services\SecurityService;
 
 /**
  * A guard that verifies a token against its hashed counterpart stored in a

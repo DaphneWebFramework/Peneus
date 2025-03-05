@@ -56,7 +56,7 @@ class AccountService extends Singleton
      */
     public function IntegrityCookieName(): string
     {
-        return CookieService::Instance()->GenerateCookieName('INTEGRITY');
+        return CookieService::Instance()->AppSpecificCookieName('INTEGRITY');
     }
 
     /**

@@ -14,6 +14,17 @@ namespace Peneus\Model;
 
 /**
  * Represents a user account.
+ *
+ * ```sql
+ * CREATE TABLE `account` (
+ *   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ *   `email` TEXT,
+ *   `username` TEXT,
+ *   `passwordHash` TEXT,
+ *   `timeActivated` DATETIME,
+ *   `timeLastLogin` DATETIME
+ * ) ENGINE = InnoDB;
+ * ```
  */
 class Account extends Entity
 {

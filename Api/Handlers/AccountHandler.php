@@ -12,9 +12,10 @@
 
 namespace Peneus\Api\Handlers;
 
-use \Harmonia\Http\StatusCode;
 use \Peneus\Api\Actions\Action;
+use \Peneus\Api\Actions\LoginAction;
 use \Peneus\Api\Actions\LogoutAction;
+use \Peneus\Api\Guards\FormTokenGuard;
 use \Peneus\Api\Guards\SessionGuard;
 
 /**
@@ -25,10 +26,11 @@ class AccountHandler extends Handler
     protected function createAction(string $actionName): ?Action
     {
         return match ($actionName) {
+            'login' => (new LoginAction)
+                ->AddGuard(new FormTokenGuard),
             'logout' => (new LogoutAction)
                 ->AddGuard(new SessionGuard),
             default => null
         };
     }
-
 }

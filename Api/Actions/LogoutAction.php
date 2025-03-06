@@ -33,10 +33,8 @@ class LogoutAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $integrityCookieName = AccountService::Instance()->IntegrityCookieName();
-        if (!CookieService::Instance()->DeleteCookie($integrityCookieName)) {
-            throw new \RuntimeException('Failed to delete integrity cookie.');
-        }
+        CookieService::Instance()->DeleteCookie(
+            AccountService::Instance()->IntegrityCookieName());
         Session::Instance()->Start()->Destroy();
         return null;
     }

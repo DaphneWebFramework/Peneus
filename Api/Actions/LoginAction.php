@@ -17,6 +17,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
+use \Harmonia\Validation\Validator;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
@@ -37,23 +38,31 @@ class LoginAction extends Action
      * @return mixed
      *   Always returns `null`.
      * @throws \RuntimeException
-     *   If username or password is missing, if credentials are invalid, if the
-     *   account's last login time cannot be updated, or if session integrity
-     *   cannot be established.
-     *
-     * @todo Integrate validation.
+     *   If the user is already logged in, if the username or password is
+     *   missing or invalid, if the account's last login time cannot be updated,
+     *   or if session integrity cannot be established.
      */
     protected function onExecute(): mixed
     {
-        $formParams = Request::Instance()->FormParams();
-        $username = $formParams->Get('username');
-        if ($username === null) {
-            throw new \RuntimeException('Username is required.');
+        if (AccountService::Instance()->GetAuthenticatedAccount() !== null) {
+            throw new \RuntimeException('Already logged in.');
         }
-        $password = $formParams->Get('password');
-        if ($password === null) {
-            throw new \RuntimeException('Password is required.');
-        }
+        $validator = new Validator([
+            'username' => [
+                'required',
+                'string',
+                'regex: ^[A-Za-z_][\w\-\.]{1,31}$'
+            ],
+            'password' => [
+                'required',
+                'string',
+                'minLength: 6',
+                'maxLength: 72'
+            ]
+        ]);
+        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
+        $username = $dataAccessor->GetField('username');
+        $password = $dataAccessor->GetField('password');
         $account = $this->findAccount($username);
         if ($account === null || !$this->verifyPassword($account, $password)) {
             throw new \RuntimeException('Invalid username or password.');
@@ -106,8 +115,10 @@ class LoginAction extends Action
             Session::Instance()
                 ->Start()
                 ->Clear()
-                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
-                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY, $account->id)
+                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY,
+                      $integrity->Token())
+                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY,
+                      $account->id)
                 ->Close();
             CookieService::Instance()->SetCookie(
                 AccountService::Instance()->IntegrityCookieName(),

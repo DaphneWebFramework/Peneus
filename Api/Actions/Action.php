@@ -15,6 +15,7 @@ namespace Peneus\Api\Actions;
 use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Http\StatusCode;
 use \Peneus\Api\Guards\IGuard;
+use \Peneus\Translation;
 
 /**
  * Base class for API actions with security enforcement.
@@ -74,7 +75,7 @@ abstract class Action
         foreach ($this->guards as $guard) {
             if (!$guard->Verify()) {
                 throw new \RuntimeException(
-                    'You do not have permission to execute this action.',
+                    Translation::Instance()->Get('error_no_permission_for_action'),
                     StatusCode::Unauthorized->value
                 );
             }

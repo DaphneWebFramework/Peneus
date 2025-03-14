@@ -1,0 +1,38 @@
+{
+  "error_handler_not_specified": {
+    "en": "Handler not specified.",
+    "tr": "İşleyici belirtilmedi."
+  },
+  "error_handler_not_found": {
+    "en": "Handler not found: %s",
+    "tr": "İşleyici bulunamadı: %s"
+  },
+  "error_action_not_specified": {
+    "en": "Action not specified.",
+    "tr": "İşlem belirtilmedi."
+  },
+  "error_action_not_found": {
+    "en": "Action not found: %s",
+    "tr": "İşlem bulunamadı: %s"
+  },
+  "error_no_permission_for_action": {
+    "en": "You do not have permission to perform this action.",
+    "tr": "Bu işlemi gerçekleştirmek için yetkiniz yok."
+  },
+  "error_already_logged_in": {
+    "en": "You are already logged in.",
+    "tr": "Zaten oturum açmış durumdasınız."
+  },
+  "error_incorrect_username_or_password": {
+    "en": "Incorrect username or password.",
+    "tr": "Kullanıcı adı veya şifre hatalı."
+  },
+  "error_login_failed": {
+    "en": "Login failed.",
+    "tr": "Oturum açma başarısız oldu."
+  },
+  "error_unexpected": {
+    "en": "An unexpected error occurred.",
+    "tr": "Beklenmeyen bir hata oluştu."
+  }
+}

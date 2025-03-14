@@ -14,6 +14,7 @@ namespace Peneus\Api\Actions;
 
 use \Harmonia\Database\Database;
 use \Harmonia\Http\Request;
+use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
@@ -21,6 +22,7 @@ use \Harmonia\Validation\Validator;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
+use \Peneus\Translation;
 
 /**
  * Logs in a user with provided credentials.
@@ -45,7 +47,10 @@ class LoginAction extends Action
     protected function onExecute(): mixed
     {
         if (AccountService::Instance()->GetAuthenticatedAccount() !== null) {
-            throw new \RuntimeException('Already logged in.');
+            throw new \RuntimeException(
+                Translation::Instance()->Get('error_already_logged_in'),
+                StatusCode::Conflict->value
+            );
         }
         $validator = new Validator([
             'username' => [
@@ -65,7 +70,10 @@ class LoginAction extends Action
         $password = $dataAccessor->GetField('password');
         $account = $this->findAccount($username);
         if ($account === null || !$this->verifyPassword($account, $password)) {
-            throw new \RuntimeException('Invalid username or password.');
+            throw new \RuntimeException(
+                Translation::Instance()->Get('error_incorrect_username_or_password'),
+                StatusCode::Unauthorized->value
+            );
         }
         $result = Database::Instance()->WithTransaction(function() use($account) {
             if (!$this->updateLastLoginTime($account)) {
@@ -79,7 +87,10 @@ class LoginAction extends Action
         });
         if ($result !== true) {
             $this->createLogoutAction()->Execute();
-            throw new \RuntimeException('Failed to log in.');
+            throw new \RuntimeException(
+                Translation::Instance()->Get('error_login_failed'),
+                StatusCode::InternalServerError->value
+            );
         }
         return null;
     }

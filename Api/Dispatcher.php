@@ -19,6 +19,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Shutdown\ShutdownHandler;
+use \Peneus\Translation;
 
 /**
  * Dispatches API requests to the appropriate handler.
@@ -60,7 +61,8 @@ class Dispatcher implements IShutdownListener
         if ($handlerName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::errorJson('Handler not specified.'));
+                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                    'error_handler_not_specified')));
             return;
         }
 
@@ -68,7 +70,8 @@ class Dispatcher implements IShutdownListener
         if ($actionName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::errorJson('Action not specified.'));
+                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                    'error_action_not_specified')));
             return;
         }
 
@@ -76,7 +79,8 @@ class Dispatcher implements IShutdownListener
         if ($handler === null) {
             $this->response
                 ->SetStatusCode(StatusCode::NotFound)
-                ->SetBody(self::errorJson("Handler not found: $handlerName"));
+                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                    'error_handler_not_found', $handlerName)));
             return;
         }
 
@@ -89,12 +93,12 @@ class Dispatcher implements IShutdownListener
             } else {
                 $this->response
                     ->SetHeader('Content-Type', 'application/json')
-                    ->SetBody(\json_encode($result));
+                    ->SetBody(\json_encode($result, \JSON_UNESCAPED_UNICODE));
             }
         }
         catch (\Exception $e) {
-            $statusCode = StatusCode::tryFrom($e->getCode())
-                          ?? StatusCode::InternalServerError;
+            $statusCode =
+                StatusCode::tryFrom($e->getCode()) ?? StatusCode::BadRequest;
             $this->response
                 ->SetStatusCode($statusCode)
                 ->SetHeader('Content-Type', 'application/json')
@@ -118,7 +122,7 @@ class Dispatcher implements IShutdownListener
     {
         if ($errorMessage !== null) {
             if (!Config::Instance()->Option('IsDebug')) {
-                $errorMessage = 'An unexpected error occurred.';
+                $errorMessage = Translation::Instance()->Get('error_unexpected');
             }
             $this->response
                 ->SetStatusCode(StatusCode::InternalServerError)
@@ -142,7 +146,7 @@ class Dispatcher implements IShutdownListener
      */
     private static function errorJson(string $errorMessage): string
     {
-        return \json_encode(['error' => $errorMessage]);
+        return \json_encode(['error' => $errorMessage], \JSON_UNESCAPED_UNICODE);
     }
 
     #endregion private

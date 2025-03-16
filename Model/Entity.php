@@ -17,6 +17,7 @@ use \Harmonia\Database\Queries\DeleteQuery;
 use \Harmonia\Database\Queries\InsertQuery;
 use \Harmonia\Database\Queries\SelectQuery;
 use \Harmonia\Database\Queries\UpdateQuery;
+use \Harmonia\Logger;
 
 /**
  * Base class for Active Record entities.
@@ -52,33 +53,32 @@ abstract class Entity
      * @param ?array $data
      *   (Optional) An associative array of property values. Keys must match the
      *   entity's public properties. If `id` is specified, it is also assigned.
-     *
-     * @todo Log skipped fields, date-time conversion errors, invalid types.
      */
     public function __construct(?array $data = null)
     {
         if ($data === null) {
             return;
         }
+        $logger = Logger::Instance();
         foreach ($this->properties() as $key => $_) {
             if (\array_key_exists($key, $data)) {
                 if ($this->$key instanceof \DateTime) {
                     try {
                         if (false === @$this->$key->modify($data[$key])) {
-                            ;
+                            $logger->Warning("Invalid date-time format: {$data[$key]}");
                         }
                     } catch (\Throwable $e) {
-                        ;
+                        $logger->Warning("Invalid date-time format: {$data[$key]}");
                     }
                 } else {
                     try {
                         $this->$key = $data[$key];
                     } catch (\Throwable $e) {
-                        ;
+                        $logger->Warning("Failed to assign value: {$data[$key]}");
                     }
                 }
             } else {
-                ;
+                $logger->Warning("Missing data field: {$key}");
             }
         }
     }

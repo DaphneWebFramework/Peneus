@@ -19,11 +19,11 @@ use \Harmonia\Config;
  *
  * #### Example
  * ```php
+ * <?php
  * require '../../bootstrap.php';
  *
  * use \Peneus\Systems\PageSystem\Page;
  *
- * <?php
  * $page = (new Page)
  *     ->SetTitle('Home')
  *     ->SetMasterPage('basic');
@@ -65,7 +65,7 @@ class Page
      *
      * @param string $title
      *   The title of the page. It will be substituted into the title template
-     *   when the final title is retrieved.
+     *   when the final page title is generated.
      * @return self
      *   The current instance.
      *
@@ -124,11 +124,11 @@ class Page
      * `SetTitle`) and the application name (retrieved from configuration)
      * into the title template (set via `SetTitleTemplate`).
      *
-     * If the application name is empty, only the title is returned.
-     * If the title is empty, only the application name is returned.
+     * If the application name is empty, only the title is returned. If the
+     * title is empty, only the application name is returned.
      *
      * @return string
-     *   The generated title string.
+     *   The generated page title.
      *
      * @see SetTitle
      * @see SetTitleTemplate

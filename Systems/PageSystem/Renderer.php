@@ -27,7 +27,7 @@ class Renderer
     /**
      * Renders the complete page output.
      *
-     * Loads the base page template, replaces placeholders, and includes the
+     * Loads the page template, replaces placeholders, and includes the
      * masterpage if one is configured. The final result is sent to output.
      *
      * @param Page $page

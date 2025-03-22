@@ -12,13 +12,59 @@
 
 namespace Peneus;
 
+use \Harmonia\Patterns\Singleton;
+
 use \Harmonia\Core\CPath;
 
 /**
  * Provides additional resources specific to the Peneus library.
+ *
+ * This class uses composition to wrap `Harmonia\Resource`, allowing Peneus to
+ * extend resource functionality without inheriting from it. This design avoids
+ * the "singleton inheritance trap", which can lead to initialization conflicts
+ * when both base and subclass maintain separate singleton instances.
  */
-class Resource extends \Harmonia\Resource
+class Resource extends Singleton
 {
+    /**
+     * The underlying Harmonia resource instance.
+     *
+     * @var \Harmonia\Resource
+     */
+    private readonly \Harmonia\Resource $base;
+
+    /**
+     * Constructs a new instance by initializing the base resource.
+     */
+    protected function __construct()
+    {
+        $this->base = \Harmonia\Resource::Instance();
+    }
+
+    /**
+     * Delegates unknown method calls to the base resource.
+     *
+     * This enables consumers of `Peneus\Resource` to transparently access all
+     * public methods of `Harmonia\Resource`, simulating inheritance through
+     * composition without requiring explicit method forwarding.
+     *
+     * @param string $method
+     *   The method name being called.
+     * @param array $arguments
+     *   The arguments passed to the method.
+     * @return mixed
+     *   The result of the delegated method call.
+     * @throws \BadMethodCallException
+     *   If the method does not exist on the base resource.
+     */
+    public function __call(string $method, array $arguments)
+    {
+        if (!\method_exists($this->base, $method)) {
+            throw new \BadMethodCallException("Method `{$method}` does not exist.");
+        }
+        return $this->base->$method(...$arguments);
+    }
+
     /**
      * Returns the absolute path to the specified template file.
      *
@@ -30,7 +76,7 @@ class Resource extends \Harmonia\Resource
     public function TemplateFilePath($templateName): CPath
     {
         return CPath::Join(
-            $this->appSubdirectoryPath('templates'),
+            $this->base->AppSubdirectoryPath('templates'),
             "{$templateName}.html"
         );
     }
@@ -46,32 +92,8 @@ class Resource extends \Harmonia\Resource
     public function MasterpageFilePath($masterpageName): CPath
     {
         return CPath::Join(
-            $this->appSubdirectoryPath('masterpages'),
+            $this->base->AppSubdirectoryPath('masterpages'),
             "{$masterpageName}.php"
         );
     }
-
-    #region protected ----------------------------------------------------------
-
-    /**
-     * Returns the absolute path to the specified subdirectory within the app
-     * directory.
-     *
-     * @param string $subdirectory
-     *   The name of the subdirectory.
-     * @return CPath
-     *   The absolute path to the subdirectory.
-     */
-    protected function appSubdirectoryPath($subdirectory): CPath
-    {
-        $cacheKey = __FUNCTION__ . "($subdirectory)";
-        if ($this->cache->Has($cacheKey)) {
-            return $this->cache->Get($cacheKey);
-        }
-        $result = CPath::Join($this->AppPath(), $subdirectory);
-        $this->cache->Set($cacheKey, $result);
-        return $result;
-    }
-
-    #endregion protected
 }

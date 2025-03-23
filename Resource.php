@@ -96,4 +96,26 @@ class Resource extends Singleton
             "{$masterpageName}.php"
         );
     }
+
+    /**
+     * Returns the absolute path to the frontend directory.
+     *
+     * @return CPath
+     *   The absolute path to the frontend directory.
+     */
+    public function FrontendDirectoryPath(): CPath
+    {
+        return $this->base->AppSubdirectoryPath('frontend');
+    }
+
+    /**
+     * Returns the absolute path to the frontend libraries manifest file.
+     *
+     * @return CPath
+     *   The absolute path to the frontend libraries manifest file.
+     */
+    public function FrontendLibrariesManifestFilePath(): CPath
+    {
+        return CPath::Join($this->FrontendDirectoryPath(), 'libraries.json');
+    }
 }

@@ -109,13 +109,13 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the absolute path to the frontend libraries manifest file.
+     * Returns the absolute path to the frontend manifest file.
      *
      * @return CPath
-     *   The absolute path to the frontend libraries manifest file.
+     *   The absolute path to the frontend manifest file.
      */
-    public function FrontendLibrariesManifestFilePath(): CPath
+    public function FrontendManifestFilePath(): CPath
     {
-        return CPath::Join($this->FrontendDirectoryPath(), 'libraries.json');
+        return CPath::Join($this->FrontendDirectoryPath(), 'manifest.json');
     }
 }

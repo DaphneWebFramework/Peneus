@@ -49,7 +49,7 @@ class Renderer
         $html = \strtr($template, [
             '{{Language}}' => Config::Instance()->OptionOrDefault('Language', ''),
             '{{Title}}' => $page->Title(),
-            "\t{{Contents}}" => $this->masterContents($page),
+            "\t{{Contents}}" => $this->contents($page),
         ]);
         $this->_echo($html);
     }
@@ -68,7 +68,7 @@ class Renderer
      * @return string
      *   The generated contents section to be inserted into the template.
      */
-    protected function masterContents(Page $page): string
+    protected function contents(Page $page): string
     {
         $this->_ob_start();
         $masterpage = $page->Masterpage();
@@ -79,9 +79,6 @@ class Renderer
             if (!$masterpagePath->IsFile()) {
                 Logger::Instance()->Error("Masterpage not found: {$masterpage}");
             } else {
-                // Render the masterpage within the context of the Page instance,
-                // so that `$this` inside the masterpage refers to Page and its
-                // methods can be accessed.
                 (function() use($masterpagePath) {
                     include $masterpagePath;
                 })->call($page);

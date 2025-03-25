@@ -152,13 +152,77 @@ class LibraryManifest
             if (!\is_array($data)) {
                 throw new \RuntimeException('Library data must be an object.');
             }
-            $css = $data['css'] ?? null;
-            $js = $data['js'] ?? null;
-            $extras = $data['*'] ?? null;
-            $isDefault = \filter_var($data['default'] ?? false, \FILTER_VALIDATE_BOOL);
+            $css = $this->validateAssetField($data, 'css');
+            $js = $this->validateAssetField($data, 'js');
+            $extras = $this->validateAssetField($data, '*');
+            $isDefault = $this->validateBooleanField($data, 'default');
             $items->Set($name, new LibraryItem($name, $css, $js, $extras, $isDefault));
         }
         return $items;
+    }
+
+    /**
+     * Validates and retrieves a specific asset field from a manifest entry.
+     *
+     * @param array $data
+     *   The associative array representing a single library entry.
+     * @param string $key
+     *   The field name to validate and retrieve (`css`, `js`, or `*`).
+     * @return string|array<int, string>|null
+     *   The validated value if the key exists, or `null` if it is not set.
+     * @throws \RuntimeException
+     *   If the field exists but is not a string or an array of strings.
+     */
+    protected function validateAssetField(array $data, string $key): string|array|null
+    {
+        if (!\array_key_exists($key, $data)) {
+            return null;
+        }
+        return $this->validateAssetValue($data[$key]);
+    }
+
+    /**
+     * Validates and retrieves a boolean field from a manifest entry.
+     *
+     * @param array $data
+     *   The associative array representing a single library entry.
+     * @param string $key
+     *   The field name to validate and retrieve, i.e., `default`.
+     * @return bool
+     *   The validated boolean value or `false` if the key is not set or the
+     *   value is not a boolean.
+     */
+    protected function validateBooleanField(array $data, string $key): bool
+    {
+        return \filter_var($data[$key] ?? false, \FILTER_VALIDATE_BOOL);
+    }
+
+    /**
+     * Validates that a value is either a string or an array of strings.
+     *
+     * @param mixed $value
+     *   The value to validate.
+     * @return string|array<int, string>
+     *   The original value if valid.
+     * @throws \RuntimeException
+     *   If the value is not a string or an array of strings.
+     */
+    protected function validateAssetValue(mixed $value): string|array
+    {
+        if (\is_string($value)) {
+            return $value;
+        }
+        if (\is_array($value)) {
+            foreach ($value as $element) {
+                if (!\is_string($element)) {
+                    throw new \RuntimeException(
+                        'Library asset value must be a string.');
+                }
+            }
+            return $value;
+        }
+        throw new \RuntimeException(
+            'Library asset value must be a string or an array of strings.');
     }
 
     /** @codeCoverageIgnore */

@@ -18,11 +18,12 @@ use \Peneus\Systems\PageSystem\LibraryItem;
 use \Peneus\Systems\PageSystem\LibraryManifest;
 
 /**
- * Manages the frontend libraries to be included in a web page.
+ * Manages inclusion and exclusion of frontend libraries.
  *
- * This class tracks which libraries are active (either marked as default in
- * the manifest or added manually by the page). It can add, remove, clear,
- * and determine which libraries are included in the final list.
+ * This class maintains a set of library names to be included in a web page and
+ * ensures they are returned in the order defined by the manifest. Libraries may
+ * be added or removed dynamically. Libraries marked as default in the manifest
+ * are included automatically upon instantiation.
  */
 class LibraryManager
 {
@@ -82,6 +83,10 @@ class LibraryManager
     /**
      * Removes a library from the set of included libraries.
      *
+     * This method can be used to exclude libraries that were automatically
+     * included by default, or to undo a manual addition. If the library is not
+     * currently included, the method does nothing.
+     *
      * @param string $name
      *   The name of the library to remove.
      */
@@ -92,6 +97,9 @@ class LibraryManager
 
     /**
      * Clears all libraries from the set of included libraries.
+     *
+     * This method can be used to exclude all libraries that were automatically
+     * included by default, as well as any that were added manually.
      */
     public function Clear(): void
     {
@@ -99,15 +107,15 @@ class LibraryManager
     }
 
     /**
-     * Returns the list of libraries currently included in the page.
+     * Returns the list of libraries to be included in a web page.
      *
-     * This list includes all libraries that are either marked as default in the
+     * This list consists of all libraries that were marked as default in the
      * manifest or explicitly added using `Add`, and not removed using `Remove`.
-     * The libraries are returned in the order they appear in the manifest file.
+     * The libraries are returned in the order they appear in the manifest.
      *
      * @return CSequentialArray
-     *   A list of `LibraryItem` instances that should be rendered in the page,
-     *   in the same order as declared in the manifest.
+     *   A list of `LibraryItem` instances to be included in the page, in the same
+     *   order as declared in the manifest.
      */
     public function Included(): CSequentialArray
     {

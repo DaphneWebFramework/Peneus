@@ -15,6 +15,7 @@ namespace Peneus\Systems\PageSystem;
 use \Harmonia\Core\CArray;
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
+use \Harmonia\Core\CSequentialArray;
 use \Peneus\Resource;
 
 /**
@@ -58,8 +59,10 @@ use \Peneus\Resource;
 class LibraryManifest
 {
     /**
-     * Stores metadata for frontend libraries. The keys are the library names
-     * and the values are the `LibraryItem` instances.
+     * Stores metadata for libraries.
+     *
+     * The keys are the library names and the values are the `LibraryItem`
+     * instances.
      *
      * @var CArray
      */
@@ -71,7 +74,7 @@ class LibraryManifest
      * Constructs a new instance by loading the JSON file.
      *
      * @throws \RuntimeException
-     *   If the file cannot be read or contains invalid structure.
+     *   If the file cannot be opened, read, decoded, or validated.
      */
     public function __construct()
     {
@@ -79,33 +82,32 @@ class LibraryManifest
     }
 
     /**
-     * Retrieves a library item by name.
+     * Returns all libraries defined in the manifest.
      *
-     * @param string $name
-     *   The name of the library.
-     * @return ?LibraryItem
-     *   The matching `LibraryItem`, or `null` if not found.
+     * @return CArray
+     *   An array of library names mapped to `LibraryItem` instances. The items
+     *   are ordered according to their declaration in the manifest file.
      */
-    public function Get(string $name): ?LibraryItem
+    public function Items(): CArray
     {
-        return $this->items->Get($name);
+        return $this->items;
     }
 
     /**
-     * Retrieves all library items marked as default.
+     * Returns the names of libraries marked as default in the manifest.
      *
-     * @return CArray<string, LibraryItem>
-     *   A new `CArray` containing `LibraryItem` instances which are marked as
-     *   default in the manifest.
+     * @return CSequentialArray
+     *   A sequential array of library names.
      */
-    public function Defaults(): CArray
+    public function Defaults(): CSequentialArray
     {
-        return $this->items->Apply(
-            '\array_filter',
-            function (LibraryItem $item): bool {
-                return $item->IsDefault();
+        $defaults = new CSequentialArray();
+        foreach ($this->items as $name => $item) {
+            if ($item->IsDefault()) {
+                $defaults->PushBack($name);
             }
-        );
+        }
+        return $defaults;
     }
 
     #endregion public

@@ -84,8 +84,8 @@ class LibraryManager
      * Removes a library from the set of included libraries.
      *
      * This method can be used to exclude libraries that were automatically
-     * included by default, or to undo a manual addition. If the library is not
-     * currently included, the method does nothing.
+     * included by default, or to undo a manual addition. If the library is
+     * not currently included, the method does nothing.
      *
      * @param string $name
      *   The name of the library to remove.
@@ -96,36 +96,35 @@ class LibraryManager
     }
 
     /**
-     * Clears all libraries from the set of included libraries.
+     * Removes all included libraries.
      *
      * This method can be used to exclude all libraries that were automatically
      * included by default, as well as any that were added manually.
      */
-    public function Clear(): void
+    public function RemoveAll(): void
     {
         $this->includedNames->Clear();
     }
 
     /**
-     * Returns the list of libraries to be included in a web page.
+     * Returns the list of libraries to be included in the page.
      *
      * This list consists of all libraries that were marked as default in the
      * manifest or explicitly added using `Add`, and not removed using `Remove`.
      * The libraries are returned in the order they appear in the manifest.
      *
      * @return CSequentialArray
-     *   A list of `LibraryItem` instances to be included in the page, in the same
-     *   order as declared in the manifest.
+     *   A list of `LibraryItem` instances.
      */
     public function Included(): CSequentialArray
     {
-        $result = new CSequentialArray();
+        $included = new CSequentialArray();
         foreach ($this->manifest->Items() as $name => $item) {
             if ($this->includedNames->Has($name)) {
-                $result->PushBack($item);
+                $included->PushBack($item);
             }
         }
-        return $result;
+        return $included;
     }
 
     #endregion public

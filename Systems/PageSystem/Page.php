@@ -13,6 +13,7 @@
 namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Config;
+use \Harmonia\Core\CSequentialArray;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -26,7 +27,8 @@ use \Harmonia\Config;
  *
  * $page = (new Page)
  *     ->SetTitle('Home')
- *     ->SetMasterPage('basic');
+ *     ->SetMasterPage('basic')
+ *     ->AddLibrary('dataTables');
  * ?>
  *
  * <?php $page->Begin()?>
@@ -38,6 +40,7 @@ use \Harmonia\Config;
 class Page
 {
     private readonly Renderer $renderer;
+    private readonly LibraryManager $libraryManager;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -52,10 +55,16 @@ class Page
      * @param ?Renderer $renderer
      *   (Optional) The renderer to use. If not specified, a default instance is
      *   created.
+     * @param ?LibraryManager $libraryManager
+     *   (Optional) The library manager to use. If not specified, a default
+     *   instance is created.
      */
-    public function __construct(?Renderer $renderer = null)
-    {
+    public function __construct(
+        ?Renderer $renderer = null,
+        ?LibraryManager $libraryManager = null
+    ) {
         $this->renderer = $renderer ?? new Renderer();
+        $this->libraryManager = $libraryManager ?? new LibraryManager();
     }
 
     #region setters ------------------------------------------------------------
@@ -192,6 +201,71 @@ class Page
     {
         $this->contents = $this->_ob_get_clean();
         $this->renderer->Render($this);
+    }
+
+    /**
+     * Adds a library to the list of libraries to be included in the page.
+     *
+     * @param string $libraryName
+     *   The name of the library to add.
+     * @return self
+     *   The current instance.
+     * @throws \InvalidArgumentException
+     *   If the library name does not exist in the manifest.
+     */
+    public function AddLibrary(string $libraryName): self
+    {
+        $this->libraryManager->Add($libraryName);
+        return $this;
+    }
+
+    /**
+     * Removes a library from the set of included libraries.
+     *
+     * This method can be used to exclude libraries that were automatically
+     * included by default, or to undo a manual addition. If the library is
+     * not currently included, the method does nothing.
+     *
+     * @param string $libraryName
+     *   The name of the library to remove.
+     * @return self
+     *   The current instance.
+     */
+    public function RemoveLibrary(string $libraryName): self
+    {
+        $this->libraryManager->Remove($libraryName);
+        return $this;
+    }
+
+    /**
+     * Removes all included libraries.
+     *
+     * This method can be used to exclude all libraries that were automatically
+     * included by default, as well as any that were added manually.
+     *
+     * @return self
+     *   The current instance.
+     */
+    public function RemoveAllLibraries(): self
+    {
+        $this->libraryManager->RemoveAll();
+        return $this;
+    }
+
+    /**
+     * Returns the list of libraries to be included in the page.
+     *
+     * This list consists of all libraries that were marked as default in the
+     * manifest or explicitly added using `AddLibrary`, and not removed using
+     * `RemoveLibrary`. The libraries are returned in the order they appear in
+     * the manifest.
+     *
+     * @return CSequentialArray
+     *   A list of `LibraryItem` instances.
+     */
+    public function IncludedLibraries(): CSequentialArray
+    {
+        return $this->libraryManager->Included();
     }
 
     #endregion operations

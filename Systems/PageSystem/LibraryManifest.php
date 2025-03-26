@@ -169,7 +169,7 @@ class LibraryManifest
      * @param string $key
      *   The field name to validate and retrieve (`css`, `js`, or `*`).
      * @return string|array<int, string>|null
-     *   The validated value if the key exists, or `null` if it is not set.
+     *   The validated asset value if the key exists, or `null` if it is not set.
      * @throws \RuntimeException
      *   If the field exists but is not a string or an array of strings.
      */
@@ -182,7 +182,7 @@ class LibraryManifest
     }
 
     /**
-     * Validates and retrieves a boolean field from a manifest entry.
+     * Validates and retrieves a specific boolean field from a manifest entry.
      *
      * @param array $data
      *   The associative array representing a single library entry.

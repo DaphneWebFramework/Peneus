@@ -14,7 +14,9 @@ namespace Peneus;
 
 use \Harmonia\Patterns\Singleton;
 
+use \Harmonia\Core\CFileSystem;
 use \Harmonia\Core\CPath;
+use \Harmonia\Core\CUrl;
 
 /**
  * Provides additional resources specific to the Peneus library.
@@ -95,17 +97,6 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the absolute path to the frontend directory.
-     *
-     * @return CPath
-     *   The absolute path to the frontend directory.
-     */
-    public function FrontendDirectoryPath(): CPath
-    {
-        return $this->base->AppSubdirectoryPath('frontend');
-    }
-
-    /**
      * Returns the absolute path to the frontend manifest file.
      *
      * @return CPath
@@ -113,6 +104,35 @@ class Resource extends Singleton
      */
     public function FrontendManifestFilePath(): CPath
     {
-        return CPath::Join($this->FrontendDirectoryPath(), 'manifest.json');
+        return CPath::Join(
+            $this->base->AppSubdirectoryPath('frontend'),
+            'manifest.json'
+        );
+    }
+
+    /**
+     * Returns the URL to a frontend library file, with a cache buster query
+     * parameter based on the file's modification time.
+     *
+     * @param string $relativePath
+     *   The path relative to the frontend directory (e.g. 'bootstrap/css/bootstrap').
+     * @return string
+     *   The absolute URL to the asset, with cache-busting query if the file exists.
+     */
+    public function FrontendLibraryFileUrl(string $relativePath): CUrl
+    {
+        $filePath = CPath::Join(
+            $this->base->AppSubdirectoryPath('frontend'),
+            $relativePath
+        );
+        $fileUrl = CUrl::Join(
+            $this->base->AppSubdirectoryUrl('frontend'),
+            $relativePath
+        );
+        $modTime = CFileSystem::Instance()->ModificationTime($filePath);
+        if ($modTime !== 0) {
+            $fileUrl->AppendInPlace('?' . $modTime);
+        }
+        return $fileUrl;
     }
 }

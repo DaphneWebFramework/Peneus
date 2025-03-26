@@ -8,7 +8,7 @@
 
 ## Overview
 
-**Peneus** is the core library of the [Daphne](https://github.com/DaphneWebFramework/Daphne) framework, providing essential backend components such as database management, page handling, authentication, and a structured API system for application logic. While Daphne’s other libraries are designed for standalone use, Peneus is tightly integrated with the framework’s core architecture.
+**Peneus** is the core library of the [Daphne](https://github.com/DaphneWebFramework/Daphne) framework, providing essential backend components such as database management, page handling, authentication, and a structured API system for application logic. While Daphne's other libraries are designed for standalone use, Peneus is tightly integrated with the framework's core architecture.
 
 ## Installation
 

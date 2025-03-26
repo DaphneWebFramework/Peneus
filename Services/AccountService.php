@@ -37,7 +37,7 @@ class AccountService extends Singleton
     /**
      * The session storage key for the authenticated user's account ID.
      *
-     * This key stores the user’s account ID after successful login and is
+     * This key stores the user's account ID after successful login and is
      * used to retrieve the associated account details.
      */
     public const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';

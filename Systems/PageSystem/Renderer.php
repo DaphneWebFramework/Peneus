@@ -15,6 +15,7 @@ namespace Peneus\Systems\PageSystem;
 use \Harmonia\Config;
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
+use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Logger;
 use \Peneus\Resource;
 
@@ -24,6 +25,21 @@ use \Peneus\Resource;
  */
 class Renderer
 {
+    private readonly Config $config;
+    private readonly Resource $resource;
+    private readonly Logger $logger;
+
+    /**
+     * Constructs a new instance by initializing the configuration, resource,
+     * and logger.
+     */
+    public function __construct()
+    {
+        $this->config = Config::Instance();
+        $this->resource = Resource::Instance();
+        $this->logger = Logger::Instance();
+    }
+
     /**
      * Renders the complete page output.
      *
@@ -35,21 +51,29 @@ class Renderer
      */
     public function Render(Page $page): void
     {
-        $file = $this->openFile(Resource::Instance()->TemplateFilePath('page'));
+        $file = $this->openFile($this->resource->TemplateFilePath('page'));
         if ($file === null) {
-            Logger::Instance()->Error('Page template not found.');
+            $this->logger->Error('Page template not found.');
             return;
         }
         $template = $file->Read();
         $file->Close();
         if ($template === null) {
-            Logger::Instance()->Error('Page template could not be read.');
+            $this->logger->Error('Page template could not be read.');
             return;
         }
+        $libraries = $page->IncludedLibraries();
         $html = \strtr($template, [
-            '{{Language}}' => Config::Instance()->OptionOrDefault('Language', ''),
-            '{{Title}}' => $page->Title(),
-            "\t{{Contents}}" => $this->contents($page),
+            '{{Language}}'
+                => $this->config->OptionOrDefault('Language', ''),
+            '{{Title}}'
+                => $page->Title(),
+            "\t{{LibraryStylesheetLinks}}"
+                => $this->libraryStylesheetLinks($libraries),
+            "\t{{Contents}}"
+                => $this->contents($page),
+            "\t{{LibraryJavascriptLinks}}"
+                => $this->libraryJavascriptLinks($libraries),
         ]);
         $this->_echo($html);
     }
@@ -75,9 +99,9 @@ class Renderer
         if ($masterpage === '') {
             $this->_echo($page->Contents());
         } else {
-            $masterpagePath = Resource::Instance()->MasterpageFilePath($masterpage);
+            $masterpagePath = $this->resource->MasterpageFilePath($masterpage);
             if (!$masterpagePath->IsFile()) {
-                Logger::Instance()->Error("Masterpage not found: {$masterpage}");
+                $this->logger->Error("Masterpage not found: {$masterpage}");
             } else {
                 (function() use($masterpagePath) {
                     include $masterpagePath;
@@ -85,6 +109,92 @@ class Renderer
             }
         }
         return $this->_ob_get_clean();
+    }
+
+    /**
+     * Generates `<link>` tags for all CSS files of the specified frontend
+     * libraries.
+     *
+     * @param CSequentialArray $libraries
+     *   The libraries to render.
+     * @return string
+     *   A newline-separated string of `<link>` tags.
+     */
+    protected function libraryStylesheetLinks(CSequentialArray $libraries): string
+    {
+        $result = '';
+        $isDebug = $this->config->OptionOrDefault('IsDebug', false);
+        foreach ($libraries as $library) {
+            foreach ($library->Css() as $path) {
+                $url = $this->resolveAssetUrl($path, 'css', $isDebug);
+                $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
+            }
+        }
+        return \rtrim($result, "\n");
+    }
+
+    /**
+     * Generates `<script>` tags for all JS files of the specified frontend
+     * libraries.
+     *
+     * @param CSequentialArray $libraries
+     *   The libraries to render.
+     * @return string
+     *   A newline-separated string of `<script>` tags.
+     */
+    protected function libraryJavascriptLinks(CSequentialArray $libraries): string
+    {
+        $result = '';
+        $isDebug = $this->config->OptionOrDefault('IsDebug', false);
+        foreach ($libraries as $library) {
+            foreach ($library->Js() as $path) {
+                $url = $this->resolveAssetUrl($path, 'js', $isDebug);
+                $result .= "\t<script src=\"{$url}\"></script>\n";
+            }
+        }
+        return \rtrim($result, "\n");
+    }
+
+    /**
+     * Resolves the URL for a given frontend asset path.
+     *
+     * If the path is a URL (beginning with `http://` or `https://`), it is
+     * returned as-is.
+     *
+     * For paths relative to the `frontend` directory, if a valid extension is
+     * not present, the appropriate file extension is appended. In production
+     * mode, a `.min` suffix is applied before the extension to target minified
+     * versions.
+     *
+     * The resulting path is then converted into a URL including a cache-busting
+     * query parameter derived from the file's modification time, if available.
+     *
+     * @param string $path
+     *   A URL or a path relative to the application's `frontend` directory.
+     * @param string $extension
+     *   The expected file type, either `'css'` or `'js'`. This parameter must
+     *   be in lowercase.
+     * @param bool $isDebug
+     *   Whether the application is in debug mode.
+     * @return string
+     *   The resolved asset URL.
+     */
+    protected function resolveAssetUrl(
+        string $path,
+        string $extension,
+        bool $isDebug
+    ): string
+    {
+        if (\preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+        if ($extension !== \strtolower(\pathinfo($path, \PATHINFO_EXTENSION))) {
+            if (!$isDebug) {
+                $path .= '.min';
+            }
+            $path .= ".{$extension}";
+        }
+        return (string)$this->resource->FrontendLibraryFileUrl($path);
     }
 
     /** @codeCoverageIgnore */

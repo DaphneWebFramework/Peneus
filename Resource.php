@@ -54,14 +54,11 @@ class Resource extends Singleton
      *   The arguments passed to the method.
      * @return mixed
      *   The result of the delegated method call.
-     * @throws \BadMethodCallException
+     * @throws \Error
      *   If the method does not exist on the base resource.
      */
     public function __call(string $method, array $arguments)
     {
-        if (!\method_exists($this->base, $method)) {
-            throw new \BadMethodCallException("Method `{$method}` does not exist.");
-        }
         return $this->base->$method(...$arguments);
     }
 

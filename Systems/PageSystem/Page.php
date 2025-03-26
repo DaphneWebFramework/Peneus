@@ -260,6 +260,9 @@ class Page
      * `RemoveLibrary`. The libraries are returned in the order they appear in
      * the manifest.
      *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
      * @return CSequentialArray
      *   A list of `LibraryItem` instances.
      */

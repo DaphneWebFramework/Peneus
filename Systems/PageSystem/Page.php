@@ -21,7 +21,7 @@ use \Harmonia\Core\CSequentialArray;
  * #### Example
  * ```php
  * <?php
- * require '../../bootstrap.php';
+ * require '../../autoload.php';
  *
  * use \Peneus\Systems\PageSystem\Page;
  *

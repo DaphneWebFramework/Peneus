@@ -135,4 +135,20 @@ class Resource extends Singleton
         }
         return $fileUrl;
     }
+
+    /**
+     * Returns the URL to a page directory.
+     *
+     * @param string $pageName
+     *   The name of the page directory.
+     * @return CUrl
+     *   The URL to the page directory with a trailing slash.
+     */
+    public function PageUrl(string $pageName): CUrl
+    {
+        return CUrl::Join(
+            $this->base->AppSubdirectoryUrl('pages'),
+            $pageName
+        )->EnsureTrailingSlash();
+    }
 }

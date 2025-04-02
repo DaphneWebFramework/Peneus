@@ -92,8 +92,10 @@ class LibraryItem
     /**
      * Returns an array of extra resources associated with this library.
      *
-     * These may include fonts, source maps, localization files, or other
-     * supplementary files needed at runtime or during deployment.
+     * These may include fonts, source maps, or other supplementary assets
+     * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that
+     * are required at runtime by the production version of the application
+     * and must be copied alongside the main assets during deployment.
      *
      * @return string[]
      *   The list of extra asset paths (relative or absolute).

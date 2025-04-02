@@ -45,7 +45,7 @@ class Page
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
     private string $masterpage = '';
-    private string $contents = '';
+    private string $content = '';
 
     #region public -------------------------------------------------------------
 
@@ -176,9 +176,9 @@ class Page
      * @return string
      *   The content between calls to `Begin()` and `End()`.
      */
-    public function Contents(): string
+    public function Content(): string
     {
-        return $this->contents;
+        return $this->content;
     }
 
     #endregion getters
@@ -190,7 +190,7 @@ class Page
      */
     public function Begin(): void
     {
-        $this->contents = '';
+        $this->content = '';
         $this->_ob_start();
     }
 
@@ -199,7 +199,7 @@ class Page
      */
     public function End(): void
     {
-        $this->contents = $this->_ob_get_clean();
+        $this->content = $this->_ob_get_clean();
         $this->renderer->Render($this);
     }
 
@@ -286,8 +286,8 @@ class Page
     /** @codeCoverageIgnore */
     protected function _ob_get_clean(): string
     {
-        $contents = \ob_get_clean();
-        return $contents === false ? '' : $contents;
+        $output = \ob_get_clean();
+        return $output === false ? '' : $output;
     }
 
     #endregion protected

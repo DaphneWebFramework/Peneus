@@ -70,8 +70,8 @@ class Renderer
                 => $page->Title(),
             "\t{{LibraryStylesheetLinks}}"
                 => $this->libraryStylesheetLinks($libraries),
-            "\t{{Contents}}"
-                => $this->contents($page),
+            "\t{{Content}}"
+                => $this->content($page),
             "\t{{LibraryJavascriptLinks}}"
                 => $this->libraryJavascriptLinks($libraries),
         ]);
@@ -81,7 +81,7 @@ class Renderer
     #region protected ----------------------------------------------------------
 
     /**
-     * Generates the contents section by executing the selected masterpage.
+     * Generates the content section by executing the selected masterpage.
      *
      * If a masterpage is defined, it is included with `$this` bound to the
      * page instance, allowing access to its methods and properties. Otherwise,
@@ -90,14 +90,14 @@ class Renderer
      * @param Page $page
      *   The page instance providing the content and masterpage name.
      * @return string
-     *   The generated contents section to be inserted into the template.
+     *   The generated content section to be inserted into the template.
      */
-    protected function contents(Page $page): string
+    protected function content(Page $page): string
     {
         $this->_ob_start();
         $masterpage = $page->Masterpage();
         if ($masterpage === '') {
-            $this->_echo($page->Contents());
+            $this->_echo($page->Content());
         } else {
             $masterpagePath = $this->resource->MasterpageFilePath($masterpage);
             if (!$masterpagePath->IsFile()) {
@@ -206,8 +206,8 @@ class Renderer
     /** @codeCoverageIgnore */
     protected function _ob_get_clean(): string
     {
-        $contents = \ob_get_clean();
-        return $contents === false ? '' : $contents;
+        $output = \ob_get_clean();
+        return $output === false ? '' : $output;
     }
 
     /** @codeCoverageIgnore */

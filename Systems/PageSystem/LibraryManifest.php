@@ -156,7 +156,7 @@ class LibraryManifest
             $js = $this->validateAssetField($data, 'js');
             $extras = $this->validateAssetField($data, '*');
             $isDefault = $this->validateBooleanField($data, 'default');
-            $items->Set($name, new LibraryItem($name, $css, $js, $extras, $isDefault));
+            $items->Set($name, new LibraryItem($css, $js, $extras, $isDefault));
         }
         return $items;
     }

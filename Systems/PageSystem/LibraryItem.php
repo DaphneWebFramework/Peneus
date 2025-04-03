@@ -21,7 +21,6 @@ namespace Peneus\Systems\PageSystem;
  */
 class LibraryItem
 {
-    private readonly string $name;
     private readonly array $css;
     private readonly array $js;
     private readonly array $extras;
@@ -30,8 +29,6 @@ class LibraryItem
     /**
      * Constructs a new instance.
      *
-     * @param string $name
-     *   The unique name of the library.
      * @param string|array|null $css
      *   One or more relative paths to CSS files, or `null` if none.
      * @param string|array|null $js
@@ -43,28 +40,15 @@ class LibraryItem
      *   Indicates whether this library is marked to be included by default.
      */
     public function __construct(
-        string $name,
         string|array|null $css,
         string|array|null $js,
         string|array|null $extras,
         bool $isDefault
     ) {
-        $this->name = $name;
         $this->css = $this->normalize($css);
         $this->js = $this->normalize($js);
         $this->extras = $this->normalize($extras);
         $this->isDefault = $isDefault;
-    }
-
-    /**
-     * Returns the unique name of the library.
-     *
-     * @return string
-     *   The name of the library.
-     */
-    public function Name(): string
-    {
-        return $this->name;
     }
 
     /**
@@ -97,8 +81,12 @@ class LibraryItem
      * are required at runtime by the production version of the application
      * and must be copied alongside the main assets during deployment.
      *
+     * File paths may contain wildcard characters (e.g., `*`, `?`), which are
+     * matched against the filesystem during deployment.
+     *
      * @return string[]
-     *   The list of extra asset paths (relative or absolute).
+     *   The list of extra asset paths (relative or absolute). Paths may include
+     *   wildcard patterns (e.g., `*`, `?`).
      */
     public function Extras(): array
     {

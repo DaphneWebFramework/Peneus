@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * LibraryItem.php
+ * Assets.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -13,16 +13,17 @@
 namespace Peneus\Systems\PageSystem;
 
 /**
- * Represents the metadata for a frontend library declared in `manifest.json`.
+ * Encapsulates asset file paths such as CSS, JavaScript, and extra resources.
  *
- * This class holds normalized data for a single frontend library (e.g.,
- * Bootstrap, jQuery), including its associated CSS and JavaScript file paths,
- * any additional supporting assets, and default inclusion status.
+ * This class is used to represent normalized asset definitions for both
+ * frontend libraries and individual pages. Paths may be specified as a string,
+ * an array of strings, or `null`.
  */
-class LibraryItem
+class Assets
 {
-    private readonly Assets $assets;
-    private readonly bool $isDefault;
+    private readonly array $css;
+    private readonly array $js;
+    private readonly array $extras;
 
     /**
      * Constructs a new instance.
@@ -34,43 +35,41 @@ class LibraryItem
      * @param string|array|null $extras
      *   One or more additional asset paths (e.g., fonts, maps, localization
      *   files), or `null` if none.
-     * @param bool $isDefault
-     *   Indicates whether this library is marked to be included by default.
      */
     public function __construct(
         string|array|null $css,
         string|array|null $js,
-        string|array|null $extras,
-        bool $isDefault
+        string|array|null $extras
     ) {
-        $this->assets = new Assets($css, $js, $extras);
-        $this->isDefault = $isDefault;
+        $this->css = $this->normalize($css);
+        $this->js = $this->normalize($js);
+        $this->extras = $this->normalize($extras);
     }
 
     /**
-     * Returns an array of CSS file paths associated with this library.
+     * Returns an array of CSS file paths.
      *
      * @return string[]
      *   The list of CSS file paths (relative or absolute).
      */
     public function Css(): array
     {
-        return $this->assets->Css();
+        return $this->css;
     }
 
     /**
-     * Returns an array of JavaScript file paths associated with this library.
+     * Returns an array of JavaScript file paths.
      *
      * @return string[]
      *   The list of JavaScript file paths (relative or absolute).
      */
     public function Js(): array
     {
-        return $this->assets->Js();
+        return $this->js;
     }
 
     /**
-     * Returns an array of extra resources associated with this library.
+     * Returns an array of extra resources associated with this asset group.
      *
      * These may include fonts, source maps, or other supplementary assets
      * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that
@@ -86,18 +85,32 @@ class LibraryItem
      */
     public function Extras(): array
     {
-        return $this->assets->Extras();
+        return $this->extras;
     }
 
+    #region protected ----------------------------------------------------------
+
     /**
-     * Indicates whether the library is included by default.
+     * Normalizes the given value into an array of strings.
      *
-     * @return bool
-     *   Returns `true` if the library is marked as default in the manifest,
-     *   `false` otherwise.
+     * Used internally to support flexible input (string, array, or null) when
+     * initializing file path properties.
+     *
+     * @param string|array|null $value
+     *   The raw value from the manifest.
+     * @return string[]
+     *   A normalized array of strings.
      */
-    public function IsDefault(): bool
+    protected function normalize(string|array|null $value): array
     {
-        return $this->isDefault;
+        if (\is_string($value)) {
+            return [$value];
+        }
+        if (\is_array($value)) {
+            return $value;
+        }
+        return [];
     }
+
+    #endregion protected
 }

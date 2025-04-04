@@ -26,12 +26,12 @@ use \Peneus\Resource;
  * ```json
  * {
  *   "jquery": {
- *     "default": true,
  *     "css": "jquery-ui-1.12.1.custom/jquery-ui",
  *     "js": [
  *       "jquery-3.5.1/jquery",
  *       "jquery-ui-1.12.1.custom/jquery-ui"
- *     ]
+ *     ],
+ *     "default": true
  *   },
  *   "selectize": {
  *     "css": "selectize-0.13.6/css/selectize.bootstrap4.css",
@@ -182,22 +182,6 @@ class LibraryManifest
     }
 
     /**
-     * Validates and retrieves a specific boolean field from a manifest entry.
-     *
-     * @param array $data
-     *   The associative array representing a single library entry.
-     * @param string $key
-     *   The field name to validate and retrieve, i.e., `default`.
-     * @return bool
-     *   The validated boolean value or `false` if the key is not set or the
-     *   value is not a boolean.
-     */
-    protected function validateBooleanField(array $data, string $key): bool
-    {
-        return \filter_var($data[$key] ?? false, \FILTER_VALIDATE_BOOL);
-    }
-
-    /**
      * Validates that a value is either a string or an array of strings.
      *
      * @param mixed $value
@@ -223,6 +207,22 @@ class LibraryManifest
         }
         throw new \RuntimeException(
             'Library asset value must be a string or an array of strings.');
+    }
+
+    /**
+     * Validates and retrieves a specific boolean field from a manifest entry.
+     *
+     * @param array $data
+     *   The associative array representing a single library entry.
+     * @param string $key
+     *   The field name to validate and retrieve, i.e., `default`.
+     * @return bool
+     *   The validated boolean value or `false` if the key is not set or the
+     *   value is not a boolean.
+     */
+    protected function validateBooleanField(array $data, string $key): bool
+    {
+        return \filter_var($data[$key] ?? false, \FILTER_VALIDATE_BOOL);
     }
 
     /** @codeCoverageIgnore */

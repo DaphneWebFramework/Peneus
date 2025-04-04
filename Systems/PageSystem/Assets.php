@@ -29,17 +29,18 @@ class Assets
      * Constructs a new instance.
      *
      * @param string|array|null $css
-     *   One or more relative paths to CSS files, or `null` if none.
+     *   (Optional) One or more relative paths to CSS files, or `null` if none.
      * @param string|array|null $js
-     *   One or more relative paths to JavaScript files, or `null` if none.
+     *   (Optional) One or more relative paths to JavaScript files, or `null` if
+     *   none.
      * @param string|array|null $extras
-     *   One or more additional asset paths (e.g., fonts, maps, localization
-     *   files), or `null` if none.
+     *   (Optional) One or more additional asset paths (e.g., fonts, map files),
+     *   or `null` if none.
      */
     public function __construct(
-        string|array|null $css,
-        string|array|null $js,
-        string|array|null $extras
+        string|array|null $css = null,
+        string|array|null $js = null,
+        string|array|null $extras = null
     ) {
         $this->css = $this->normalize($css);
         $this->js = $this->normalize($js);
@@ -69,7 +70,7 @@ class Assets
     }
 
     /**
-     * Returns an array of extra resources associated with this asset group.
+     * Returns an array of extra resources.
      *
      * These may include fonts, source maps, or other supplementary assets
      * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that

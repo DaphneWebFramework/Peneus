@@ -32,8 +32,8 @@ class LibraryItem
      * @param string|array|null $js
      *   One or more relative paths to JavaScript files, or `null` if none.
      * @param string|array|null $extras
-     *   One or more additional asset paths (e.g., fonts, maps, localization
-     *   files), or `null` if none.
+     *   One or more additional asset paths (e.g., fonts, map files), or `null`
+     *   if none.
      * @param bool $isDefault
      *   Indicates whether this library is marked to be included by default.
      */
@@ -48,7 +48,7 @@ class LibraryItem
     }
 
     /**
-     * Returns an array of CSS file paths associated with this library.
+     * Returns an array of CSS file paths.
      *
      * @return string[]
      *   The list of CSS file paths (relative or absolute).
@@ -59,7 +59,7 @@ class LibraryItem
     }
 
     /**
-     * Returns an array of JavaScript file paths associated with this library.
+     * Returns an array of JavaScript file paths.
      *
      * @return string[]
      *   The list of JavaScript file paths (relative or absolute).
@@ -70,7 +70,7 @@ class LibraryItem
     }
 
     /**
-     * Returns an array of extra resources associated with this library.
+     * Returns an array of extra resources.
      *
      * These may include fonts, source maps, or other supplementary assets
      * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that

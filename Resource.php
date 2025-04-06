@@ -117,16 +117,16 @@ class Resource extends Singleton
      * @param string $relativePath
      *   The path relative to the frontend directory (e.g. 'bootstrap/css/bootstrap').
      * @return string
-     *   The absolute URL to the asset, with cache-busting query if the file exists.
+     *   The URL to the asset, with cache-busting query if the file exists.
      */
     public function FrontendLibraryFileUrl(string $relativePath): CUrl
     {
-        $filePath = CPath::Join(
-            $this->base->AppSubdirectoryPath('frontend'),
-            $relativePath
-        );
         $fileUrl = CUrl::Join(
             $this->base->AppSubdirectoryUrl('frontend'),
+            $relativePath
+        );
+        $filePath = CPath::Join(
+            $this->base->AppSubdirectoryPath('frontend'),
             $relativePath
         );
         $modTime = CFileSystem::Instance()->ModificationTime($filePath);
@@ -137,18 +137,71 @@ class Resource extends Singleton
     }
 
     /**
+     * Returns the absolute path to a page directory.
+     *
+     * @param string $pageId
+     *   The identifier (folder name) of the page, e.g. `home`.
+     * @return CPath
+     *   The absolute path to the page directory.
+     */
+    public function PageDirectoryPath(string $pageId): CPath
+    {
+        return CPath::Join(
+            $this->base->AppSubdirectoryPath('pages'),
+            $pageId
+        );
+    }
+
+    /**
      * Returns the URL to a page directory.
      *
-     * @param string $pageName
-     *   The name of the page directory.
+     * @param string $pageId
+     *   The identifier (folder name) of the page, e.g. `home`.
      * @return CUrl
      *   The URL to the page directory with a trailing slash.
      */
-    public function PageUrl(string $pageName): CUrl
+    public function PageDirectoryUrl(string $pageId): CUrl
     {
         return CUrl::Join(
             $this->base->AppSubdirectoryUrl('pages'),
-            $pageName
+            $pageId
         )->EnsureTrailingSlash();
+    }
+
+    /**
+     * Returns the absolute path to a file within a page directory.
+     *
+     * @param string $pageId
+     *   The identifier (folder name) of the page, e.g. `home`.
+     * @param string $relativePath
+     *   The path relative to the page directory, e.g., 'style.css'.
+     * @return CPath
+     *   The absolute path to the file.
+     */
+    public function PageFilePath(string $pageId, string $relativePath): CPath
+    {
+        return CPath::Join($this->PageDirectoryPath($pageId), $relativePath);
+    }
+
+    /**
+     * Returns the URL to a page-specific asset file with a cache buster query
+     * parameter based on the file's modification time.
+     *
+     * @param string $pageId
+     *   The identifier (folder name) of the page, e.g. `home`.
+     * @param string $relativePath
+     *   The path relative to the page directory, e.g., 'style.css'.
+     * @return CUrl
+     *   The URL to the asset, with cache-busting query if the file exists.
+     */
+    public function PageFileUrl(string $pageId, string $relativePath): CUrl
+    {
+        $fileUrl = CUrl::Join($this->PageDirectoryUrl($pageId), $relativePath);
+        $filePath = $this->PageFilePath($pageId, $relativePath);
+        $modTime = CFileSystem::Instance()->ModificationTime($filePath);
+        if ($modTime !== 0) {
+            $fileUrl->AppendInPlace('?' . $modTime);
+        }
+        return $fileUrl;
     }
 }

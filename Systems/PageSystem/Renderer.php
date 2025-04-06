@@ -16,6 +16,7 @@ use \Harmonia\Config;
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
 use \Harmonia\Core\CSequentialArray;
+use \Harmonia\Core\CUrl;
 use \Harmonia\Logger;
 use \Peneus\Resource;
 
@@ -70,10 +71,14 @@ class Renderer
                 => $page->Title(),
             "\t{{LibraryStylesheetLinks}}"
                 => $this->libraryStylesheetLinks($libraries),
+            "\t{{PageStylesheetLinks}}"
+                => $this->pageStylesheetLinks($page),
             "\t{{Content}}"
                 => $this->content($page),
             "\t{{LibraryJavascriptLinks}}"
                 => $this->libraryJavascriptLinks($libraries),
+            "\t{{PageJavascriptLinks}}"
+                => $this->pageJavascriptLinks($page),
         ]);
         $this->_echo($html);
     }
@@ -123,10 +128,9 @@ class Renderer
     protected function libraryStylesheetLinks(CSequentialArray $libraries): string
     {
         $result = '';
-        $isDebug = $this->config->OptionOrDefault('IsDebug', false);
         foreach ($libraries as $library) {
             foreach ($library->Css() as $path) {
-                $url = $this->resolveAssetUrl($path, 'css', $isDebug);
+                $url = $this->resolveLibraryAssetUrl($path, 'css');
                 $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
             }
         }
@@ -145,10 +149,86 @@ class Renderer
     protected function libraryJavascriptLinks(CSequentialArray $libraries): string
     {
         $result = '';
-        $isDebug = $this->config->OptionOrDefault('IsDebug', false);
         foreach ($libraries as $library) {
             foreach ($library->Js() as $path) {
-                $url = $this->resolveAssetUrl($path, 'js', $isDebug);
+                $url = $this->resolveLibraryAssetUrl($path, 'js');
+                $result .= "\t<script src=\"{$url}\"></script>\n";
+            }
+        }
+        return \rtrim($result, "\n");
+    }
+
+    /**
+     * Generates `<link>` tags for all CSS files defined by the page manifest.
+     *
+     * In debug mode, all local and remote stylesheet paths are rendered
+     * individually. For local paths, a `.css` extension is added if missing.
+     *
+     * In production mode, only remote paths are rendered individually. Local
+     * stylesheets are expected to be bundled into `page.min.css`, which is
+     * included if it exists in the page directory.
+     *
+     * @param Page $page
+     *   The page whose manifest-defined stylesheets will be rendered.
+     * @return string
+     *   A newline-separated string of `<link>` tags.
+     */
+    protected function pageStylesheetLinks(Page $page): string
+    {
+        $result = '';
+        $pageId = $page->Id();
+        if ($this->config->OptionOrDefault('IsDebug', false)) {
+            foreach ($page->Manifest()->Css() as $path) {
+                $url = $this->resolvePageAssetUrl($pageId, $path, 'css');
+                $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
+            }
+        } else {
+            foreach ($page->Manifest()->Css() as $path) {
+                if ($this->isRemoteAsset($path)) {
+                    $result .= "\t<link rel=\"stylesheet\" href=\"{$path}\">\n";
+                }
+            }
+            if ($this->pageMinifiedAssetExists($pageId, 'css')) {
+                $url = $this->resource->PageFileUrl($pageId, 'page.min.css');
+                $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
+            }
+        }
+        return \rtrim($result, "\n");
+    }
+
+    /**
+     * Generates `<script>` tags for all JavaScript files defined by the page
+     * manifest.
+     *
+     * In debug mode, all local and remote script paths are rendered
+     * individually. For local paths, a `.js` extension is added if missing.
+     *
+     * In production mode, only remote paths are rendered individually. Local
+     * scripts are expected to be bundled into `page.min.js`, which is included
+     * if it exists in the page directory.
+     *
+     * @param Page $page
+     *   The page whose manifest-defined scripts will be rendered.
+     * @return string
+     *   A newline-separated string of `<script>` tags.
+     */
+    protected function pageJavascriptLinks(Page $page): string
+    {
+        $result = '';
+        $pageId = $page->Id();
+        if ($this->config->OptionOrDefault('IsDebug', false)) {
+            foreach ($page->Manifest()->Js() as $path) {
+                $url = $this->resolvePageAssetUrl($pageId, $path, 'js');
+                $result .= "\t<script src=\"{$url}\"></script>\n";
+            }
+        } else {
+            foreach ($page->Manifest()->Js() as $path) {
+                if ($this->isRemoteAsset($path)) {
+                    $result .= "\t<script src=\"{$path}\"></script>\n";
+                }
+            }
+            if ($this->pageMinifiedAssetExists($pageId, 'js')) {
+                $url = $this->resource->PageFileUrl($pageId, 'page.min.js');
                 $result .= "\t<script src=\"{$url}\"></script>\n";
             }
         }
@@ -167,34 +247,122 @@ class Renderer
      * versions.
      *
      * The resulting path is then converted into a URL including a cache-busting
-     * query parameter derived from the file's modification time, if available.
+     * query parameter derived from the file's modification time.
      *
      * @param string $path
-     *   A URL or a path relative to the application's `frontend` directory.
+     *   A path relative to the application's `frontend` directory, or a URL.
      * @param string $extension
      *   The expected file type, either `'css'` or `'js'`. This parameter must
      *   be in lowercase.
-     * @param bool $isDebug
-     *   Whether the application is in debug mode.
      * @return string
      *   The resolved asset URL.
      */
-    protected function resolveAssetUrl(
+    protected function resolveLibraryAssetUrl(
         string $path,
         string $extension,
-        bool $isDebug
     ): string
     {
-        if (\preg_match('#^https?://#i', $path)) {
+        if ($this->isRemoteAsset($path)) {
             return $path;
         }
-        if ($extension !== \strtolower(\pathinfo($path, \PATHINFO_EXTENSION))) {
-            if (!$isDebug) {
+        if ($extension !== $this->lowercaseExtension($path)) {
+            if (!$this->config->OptionOrDefault('IsDebug', false)) {
                 $path .= '.min';
             }
             $path .= ".{$extension}";
         }
         return (string)$this->resource->FrontendLibraryFileUrl($path);
+    }
+
+    /**
+     * Resolves the URL for a given page-level asset path.
+     *
+     * If the path is a URL (beginning with `http://` or `https://`), it is
+     * returned as-is.
+     *
+     * For paths relative to a page directory, if a valid extension is not
+     * present, the appropriate file extension is appended. Unlike library
+     * assets, no `.min` suffix is added in production mode.
+     *
+     * The resulting path is then converted into a URL using `PageFileUrl`,
+     * which includes a cache-busting query parameter derived from the file's
+     * modification time, if available.
+     *
+     * @param string $pageId
+     *   The identifier (folder name) of the page (e.g., `'home'`).
+     * @param string $path
+     *   A path relative to the page's directory, or a URL (e.g., `'index'`,
+     *   `'theme.css'`, `'https://cdn.example.com/style.css'`).
+     * @param string $extension
+     *   The expected file type, either `'css'` or `'js'`. This parameter must
+     *   be in lowercase.
+     * @return string
+     *   The resolved asset URL.
+     */
+    protected function resolvePageAssetUrl(
+        string $pageId,
+        string $path,
+        string $extension
+    ): string
+    {
+        if ($this->isRemoteAsset($path)) {
+            return $path;
+        }
+        if ($extension !== $this->lowercaseExtension($path)) {
+            $path .= ".{$extension}";
+        }
+        return (string)$this->resource->PageFileUrl($pageId, $path);
+    }
+
+    /**
+     * Determines whether a given asset path refers to a remote resource.
+     *
+     * A remote resource is identified by a URI that begins with `http://` or
+     * `https://`, case-insensitively.
+     *
+     * @param string $path
+     *   The asset path to check.
+     * @return bool
+     *   Returns `true` if the path refers to a remote URL, `false` otherwise.
+     */
+    protected function isRemoteAsset(string $path): bool
+    {
+        return \preg_match('#^https?://#i', $path) === 1;
+    }
+
+    /**
+     * Extracts the file extension from a given path and converts it to
+     * lowercase.
+     *
+     * @param string $path
+     *   The file path from which to extract the extension.
+     * @return string
+     *   The lowercase file extension, or an empty string if no extension is
+     *   found.
+     */
+    protected function lowercaseExtension(string $path): string
+    {
+        return \strtolower(\pathinfo($path, \PATHINFO_EXTENSION));
+    }
+
+    /**
+     * Checks whether the page has a bundled minified asset file.
+     *
+     * This method looks for `page.min.css` or `page.min.js` within the
+     * specified page directory, based on the requested file type.
+     *
+     * @param string $pageId
+     *   The identifier (folder name) of the page (e.g., `'home'`).
+     * @param string $type
+     *   The file extension to check for, either `'css'` or `'js'`.
+     * @return bool
+     *   Returns `true` if the corresponding minified file exists, `false`
+     *   otherwise.
+     */
+    protected function pageMinifiedAssetExists(string $pageId, string $type): bool
+    {
+        $path = $this->resource->PageFilePath($pageId, "page.min.{$type}");
+        return $path->IsFile();
     }
 
     /** @codeCoverageIgnore */

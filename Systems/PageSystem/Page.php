@@ -25,7 +25,7 @@ use \Harmonia\Core\CSequentialArray;
  *
  * use \Peneus\Systems\PageSystem\Page;
  *
- * $page = (new Page)
+ * $page = (new Page(__DIR__))
  *     ->SetTitle('Home')
  *     ->SetMasterPage('basic')
  *     ->AddLibrary('dataTables');
@@ -39,8 +39,10 @@ use \Harmonia\Core\CSequentialArray;
  */
 class Page
 {
+    private readonly string $id;
     private readonly Renderer $renderer;
     private readonly LibraryManager $libraryManager;
+    private readonly PageManifest $pageManifest;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -52,19 +54,30 @@ class Page
     /**
      * Constructs a new instance.
      *
+     * @param string $directory
+     *   The absolute path to the directory where the page's `index.php` file
+     *   is located. Typically, the `__DIR__` constant is used to specify this
+     *   path.
      * @param ?Renderer $renderer
      *   (Optional) The renderer to use. If not specified, a default instance is
      *   created.
      * @param ?LibraryManager $libraryManager
      *   (Optional) The library manager to use. If not specified, a default
      *   instance is created.
+     * @param ?PageManifest $pageManifest
+     *   (Optional) The page manifest to use. If not specified, a default
+     *   instance is created.
      */
     public function __construct(
+        string $directory,
         ?Renderer $renderer = null,
-        ?LibraryManager $libraryManager = null
+        ?LibraryManager $libraryManager = null,
+        ?PageManifest $pageManifest = null
     ) {
+        $this->id = \basename($directory);
         $this->renderer = $renderer ?? new Renderer();
         $this->libraryManager = $libraryManager ?? new LibraryManager();
+        $this->pageManifest = $pageManifest ?? new PageManifest($this->id);
     }
 
     #region setters ------------------------------------------------------------
@@ -127,6 +140,20 @@ class Page
     #region getters ------------------------------------------------------------
 
     /**
+     * Returns the unique identifier of the page.
+     *
+     * This corresponds to the name of the subdirectory under `pages/` where the
+     * page's `index.php`, `manifest.json`, and related files reside.
+     *
+     * @return string
+     *   The page identifier (e.g., `'home'`, `'login'`, `'about'`).
+     */
+    public function Id(): string
+    {
+        return $this->id;
+    }
+
+    /**
      * Returns the generated page title.
      *
      * The returned string is produced by substituting the title (set via
@@ -179,6 +206,42 @@ class Page
     public function Content(): string
     {
         return $this->content;
+    }
+
+    /**
+     * Returns the list of libraries to be included in the page.
+     *
+     * This list consists of all libraries that were marked as default in the
+     * manifest or explicitly added using `AddLibrary`, and not removed using
+     * `RemoveLibrary`. The libraries are returned in the order they appear in
+     * the manifest.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return CSequentialArray
+     *   A list of `LibraryItem` instances.
+     */
+    public function IncludedLibraries(): CSequentialArray
+    {
+        return $this->libraryManager->Included();
+    }
+
+    /**
+     * Returns the page-level manifest.
+     *
+     * This provides access to any page-specific CSS, JS, or extra assets
+     * defined in the page's local `manifest.json` file.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return PageManifest
+     *   The associated page manifest instance.
+     */
+    public function Manifest(): PageManifest
+    {
+        return $this->pageManifest;
     }
 
     #endregion getters
@@ -250,25 +313,6 @@ class Page
     {
         $this->libraryManager->RemoveAll();
         return $this;
-    }
-
-    /**
-     * Returns the list of libraries to be included in the page.
-     *
-     * This list consists of all libraries that were marked as default in the
-     * manifest or explicitly added using `AddLibrary`, and not removed using
-     * `RemoveLibrary`. The libraries are returned in the order they appear in
-     * the manifest.
-     *
-     * > This method is intended to support the renderer and is typically not
-     * required in page-level code.
-     *
-     * @return CSequentialArray
-     *   A list of `LibraryItem` instances.
-     */
-    public function IncludedLibraries(): CSequentialArray
-    {
-        return $this->libraryManager->Included();
     }
 
     #endregion operations

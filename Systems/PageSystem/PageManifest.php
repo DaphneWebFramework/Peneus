@@ -14,6 +14,7 @@ namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
+use \Peneus\Resource;
 
 /**
  * Loads and provides access to metadata for assets defined in a page-level
@@ -52,12 +53,12 @@ class PageManifest
      * Constructs a new instance by loading the manifest file from the page
      * directory.
      *
-     * @param string|\Stringable $pageDir
-     *   The absolute path of the page directory.
+     * @param string $pageId
+     *   The unique identifier of the page.
      */
-    public function __construct(string|\Stringable $pageDir)
+    public function __construct(string $pageId)
     {
-        $this->assets = $this->loadFile($pageDir);
+        $this->assets = $this->loadFile($pageId);
     }
 
     /**
@@ -112,14 +113,14 @@ class PageManifest
      * This method handles file I/O, JSON decoding, structural validation, and
      * conversion into an `Assets` instance.
      *
-     * @param string|\Stringable $pageDir
-     *   The absolute path of the page directory.
+     * @param string $pageId
+     *   The unique identifier of the page.
      * @return Assets
      *   The parsed asset definitions.
      */
-    protected function loadFile(string|\Stringable $pageDir): Assets
+    protected function loadFile(string $pageId): Assets
     {
-        $filePath = CPath::Join($pageDir, 'manifest.json');
+        $filePath = Resource::Instance()->PageFilePath($pageId, 'manifest.json');
         $file = $this->openFile($filePath);
         if ($file === null) {
             return new Assets();

@@ -140,7 +140,7 @@ class Resource extends Singleton
      * Returns the absolute path to a page directory.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `home`.
+     *   The identifier (folder name) of the page, e.g. `'home'`.
      * @return CPath
      *   The absolute path to the page directory.
      */
@@ -156,7 +156,7 @@ class Resource extends Singleton
      * Returns the URL to a page directory.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `home`.
+     *   The identifier (folder name) of the page, e.g. `'home'`.
      * @return CUrl
      *   The URL to the page directory with a trailing slash.
      */
@@ -172,9 +172,9 @@ class Resource extends Singleton
      * Returns the absolute path to a file within a page directory.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `home`.
+     *   The identifier (folder name) of the page, e.g. `'home'`.
      * @param string $relativePath
-     *   The path relative to the page directory, e.g., 'style.css'.
+     *   The path relative to the page directory, e.g., `'style.css'`.
      * @return CPath
      *   The absolute path to the file.
      */
@@ -188,9 +188,9 @@ class Resource extends Singleton
      * parameter based on the file's modification time.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `home`.
+     *   The identifier (folder name) of the page, e.g. `'home'`.
      * @param string $relativePath
-     *   The path relative to the page directory, e.g., 'style.css'.
+     *   The path relative to the page directory, e.g., `'style.css'`.
      * @return CUrl
      *   The URL to the asset, with cache-busting query if the file exists.
      */

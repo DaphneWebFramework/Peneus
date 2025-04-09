@@ -40,7 +40,7 @@ class MetaCollection
     public function __construct()
     {
         $this->items = new CArray();
-        $this->addDefaults();
+        $this->setDefaults();
     }
 
     /**
@@ -75,7 +75,7 @@ class MetaCollection
      *   (Optional) The attribute type (e.g., `name`, `property`, `itemprop`).
      *   Defaults to `name`.
      */
-    public function Add(string $name, string $content, string $type = 'name'): void
+    public function Set(string $name, string $content, string $type = 'name'): void
     {
         if (!$this->items->Has($type)) {
             $this->items->Set($type, new CArray());
@@ -134,27 +134,27 @@ class MetaCollection
      * Only adds values that are explicitly set in configuration. In other words,
      * no hardcoded defaults are added.
      */
-    protected function addDefaults(): void
+    protected function setDefaults(): void
     {
         $config = Config::Instance();
 
         $value = $config->Option('Description');
         if ($value !== null) {
-            $this->Add('description', $value);
-            $this->Add('og:description', $value, 'property');
+            $this->Set('description', $value, 'name');
+            $this->Set('og:description', $value, 'property');
         }
 
         $value = $config->Option('Viewport');
         if ($value !== null) {
-            $this->Add('viewport', $value);
+            $this->Set('viewport', $value, 'name');
         }
 
         $value = $config->Option('Locale');
         if ($value !== null) {
-            $this->Add('og:locale', $value, 'property');
+            $this->Set('og:locale', $value, 'property');
         }
 
-        $this->Add('og:type', 'website', 'property');
+        $this->Set('og:type', 'website', 'property');
     }
 
     #endregion protected

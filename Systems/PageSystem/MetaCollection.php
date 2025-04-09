@@ -51,8 +51,8 @@ class MetaCollection
      * @param string $content
      *   The content of the meta tag.
      * @param string $type
-     *   (Optional) The attribute type, which can be `name`, `property`, or
-     *   `itemprop`. Defaults to `name`.
+     *   (Optional) The attribute type (e.g., `name`, `property`, `itemprop`).
+     *   Defaults to `name`.
      */
     public function Add(string $name, string $content, string $type = 'name'): void
     {
@@ -71,7 +71,7 @@ class MetaCollection
      * @param string $name
      *   The name of the tag to remove.
      * @param string $type
-     *   The attribute type, which can be `name`, `property`, or `itemprop`.
+     *   The attribute type (e.g., `name`, `property`, `itemprop`).
      */
     public function Remove(string $name, string $type): void
     {
@@ -87,7 +87,7 @@ class MetaCollection
     /**
      * Removes all stored meta tags.
      */
-    public function Clear(): void
+    public function RemoveAll(): void
     {
         $this->items->Clear();
     }
@@ -96,9 +96,9 @@ class MetaCollection
      * Returns all stored meta tags grouped by attribute type.
      *
      * @return CArray
-     *   A `CArray` of meta tag groups. Each key is the type (`name`, `property`,
-     *   or `itemprop`) and each value is a `CArray` of tag names mapped to their
-     *   contents.
+     *   A `CArray` of meta tag groups. Each key is the type (e.g., `name`,
+     *   `property`, `itemprop`) and each value is a `CArray` of tag names
+     *   mapped to their contents.
      */
     public function Items(): CArray
     {

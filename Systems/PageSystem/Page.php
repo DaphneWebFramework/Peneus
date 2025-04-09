@@ -14,6 +14,7 @@ namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Config;
 use \Harmonia\Core\CSequentialArray;
+use \Harmonia\Core\CArray;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -43,6 +44,7 @@ class Page
     private readonly Renderer $renderer;
     private readonly LibraryManager $libraryManager;
     private readonly PageManifest $pageManifest;
+    private readonly MetaCollection $metaCollection;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -67,17 +69,22 @@ class Page
      * @param ?PageManifest $pageManifest
      *   (Optional) The page manifest to use. If not specified, a default
      *   instance is created.
+     * @param ?MetaCollection $metaCollection
+     *   (Optional) The meta collection to use. If not specified, a default
+     *   instance is created.
      */
     public function __construct(
         string $directory,
         ?Renderer $renderer = null,
         ?LibraryManager $libraryManager = null,
-        ?PageManifest $pageManifest = null
+        ?PageManifest $pageManifest = null,
+        ?MetaCollection $metaCollection = null
     ) {
         $this->id = \basename($directory);
         $this->renderer = $renderer ?? new Renderer();
         $this->libraryManager = $libraryManager ?? new LibraryManager();
         $this->pageManifest = $pageManifest ?? new PageManifest($this->id);
+        $this->metaCollection = $metaCollection ?? new MetaCollection();
     }
 
     #region setters ------------------------------------------------------------
@@ -244,6 +251,22 @@ class Page
         return $this->pageManifest;
     }
 
+    /**
+     * Returns the meta tag definitions.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return CArray
+     *   A `CArray` of meta tag groups. Each key is the type (e.g., `name`,
+     *   `property`, `itemprop`) and each value is a `CArray` of tag names
+     *   mapped to their contents.
+     */
+    public function MetaItems(): CArray
+    {
+        return $this->metaCollection->Items();
+    }
+
     #endregion getters
 
     #region operations ---------------------------------------------------------
@@ -312,6 +335,55 @@ class Page
     public function RemoveAllLibraries(): self
     {
         $this->libraryManager->RemoveAll();
+        return $this;
+    }
+
+    /**
+     * Adds or replaces a meta tag.
+     *
+     * @param string $name
+     *   The name of the meta tag (e.g., `description`, `viewport`, `og:title`).
+     * @param string $content
+     *   The content of the meta tag.
+     * @param string $type
+     *   (Optional) The attribute type (e.g., `name`, `property`, `itemprop`).
+     *   Defaults to `name`.
+     * @return self
+     *   The current instance.
+     */
+    public function AddMeta(string $name, string $content, string $type = 'name'): self
+    {
+        $this->metaCollection->Add($name, $content, $type);
+        return $this;
+    }
+
+    /**
+     * Removes a specific meta tag.
+     *
+     * If the tag does not exist, the method does nothing.
+     *
+     * @param string $name
+     *   The name of the meta tag to remove (e.g., `description`, `og:title`).
+     * @param string $type
+     *   The attribute type of the tag (e.g., `name`, `property`, `itemprop`).
+     * @return self
+     *   The current instance.
+     */
+    public function RemoveMeta(string $name, string $type): self
+    {
+        $this->metaCollection->Remove($name, $type);
+        return $this;
+    }
+
+    /**
+     * Removes all meta tags.
+     *
+     * @return self
+     *   The current instance.
+     */
+    public function RemoveAllMetas(): self
+    {
+        $this->metaCollection->RemoveAll();
         return $this;
     }
 

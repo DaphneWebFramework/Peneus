@@ -13,6 +13,7 @@
 namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Config;
+use \Harmonia\Core\CArray;
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
 use \Harmonia\Core\CSequentialArray;
@@ -69,6 +70,8 @@ class Renderer
                 => $this->config->OptionOrDefault('Language', ''),
             '{{Title}}'
                 => $page->Title(),
+            "\t{{MetaTags}}"
+                => $this->renderMetaTags($page->MetaItems()),
             "\t{{LibraryStylesheetLinks}}"
                 => $this->libraryStylesheetLinks($libraries),
             "\t{{PageStylesheetLinks}}"
@@ -114,6 +117,30 @@ class Renderer
             }
         }
         return $this->_ob_get_clean();
+    }
+
+    /**
+     * Generates <meta> tags.
+     *
+     * @param CArray $metaItems
+     *   A `CArray` of meta tag groups. Each key is the type (e.g., `name`,
+     *   `property`, `itemprop`) and each value is a `CArray` of tag names
+     *   mapped to their contents.
+     * @return string
+     *   A newline-separated string of <meta> tags.
+     */
+    protected function renderMetaTags(CArray $metaItems): string
+    {
+        $result = '';
+        foreach ($metaItems as $type => $group) {
+            foreach ($group as $name => $content) {
+                $_type = \htmlspecialchars($type, \ENT_QUOTES);
+                $_name = \htmlspecialchars($name, \ENT_QUOTES);
+                $_content = \htmlspecialchars($content, \ENT_QUOTES);
+                $result .= "\t<meta {$_type}=\"{$_name}\" content=\"{$_content}\">\n";
+            }
+        }
+        return \rtrim($result, "\n");
     }
 
     /**

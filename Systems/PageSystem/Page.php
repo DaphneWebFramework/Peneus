@@ -254,6 +254,9 @@ class Page
     /**
      * Returns the meta tag definitions.
      *
+     * This method guarantees that the `og:title` tag is present based on the
+     * page's current title, unless it has been explicitly defined elsewhere.
+     *
      * > This method is intended to support the renderer and is typically not
      * required in page-level code.
      *
@@ -264,6 +267,9 @@ class Page
      */
     public function MetaItems(): CArray
     {
+        if (!$this->metaCollection->Has('og:title', 'property')) {
+            $this->metaCollection->Add('og:title', $this->Title(), 'property');
+        }
         return $this->metaCollection->Items();
     }
 
@@ -342,7 +348,7 @@ class Page
      * Adds or replaces a meta tag.
      *
      * @param string $name
-     *   The name of the meta tag (e.g., `description`, `viewport`, `og:title`).
+     *   The name of the meta tag (e.g., `description`, `og:title`).
      * @param string $content
      *   The content of the meta tag.
      * @param string $type

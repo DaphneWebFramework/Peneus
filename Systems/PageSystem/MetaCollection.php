@@ -44,10 +44,31 @@ class MetaCollection
     }
 
     /**
+     * Determines whether a meta tag with the given name and type exists.
+     *
+     * @param string $name
+     *   The name of the meta tag (e.g., `description`, `og:title`).
+     * @param string $type
+     *   The meta tag type (e.g., `name`, `property`, `itemprop`).
+     * @return bool
+     *   Returns `true` if the meta tag exists, `false` otherwise.
+     */
+    public function Has(string $name, string $type): bool
+    {
+        if (!$this->items->Has($type)) {
+            return false;
+        }
+        if (!$this->items->Get($type)->Has($name)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Adds or replaces a meta tag.
      *
      * @param string $name
-     *   The name of the meta tag (e.g., `description`, `viewport`, `og:title`).
+     *   The name of the meta tag (e.g., `description`, `og:title`).
      * @param string $content
      *   The content of the meta tag.
      * @param string $type
@@ -120,6 +141,7 @@ class MetaCollection
         $value = $config->Option('Description');
         if ($value !== null) {
             $this->Add('description', $value);
+            $this->Add('og:description', $value, 'property');
         }
 
         $value = $config->Option('Viewport');

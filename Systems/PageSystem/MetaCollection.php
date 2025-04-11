@@ -14,6 +14,7 @@ namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Config;
 use \Harmonia\Core\CArray;
+use \Harmonia\Resource;
 
 /**
  * Stores and manages page-level meta tags.
@@ -129,32 +130,35 @@ class MetaCollection
     #region protected ----------------------------------------------------------
 
     /**
-     * Adds default meta tags from configuration.
+     * Adds default meta tags from configuration and core system context.
      *
-     * Only adds values that are explicitly set in configuration. In other words,
-     * no hardcoded defaults are added.
+     * Configuration values are added only if explicitly set. Certain
+     * runtime defaults like the application API URL are always injected.
+     *
+     * The `app:api-url` value is based on the assumption that the web server
+     * routes URLs of the form `api/{handler}/{action}` to `api.php` via a
+     * rewrite rule (e.g., as defined in the default `.htaccess` file).
      */
     protected function setDefaults(): void
     {
         $config = Config::Instance();
+        $resource = Resource::Instance();
 
         $value = $config->Option('Description');
         if ($value !== null) {
-            $this->Set('description', $value, 'name');
+            $this->Set('description', $value);
             $this->Set('og:description', $value, 'property');
         }
-
         $value = $config->Option('Viewport');
         if ($value !== null) {
-            $this->Set('viewport', $value, 'name');
+            $this->Set('viewport', $value);
         }
-
         $value = $config->Option('Locale');
         if ($value !== null) {
             $this->Set('og:locale', $value, 'property');
         }
-
         $this->Set('og:type', 'website', 'property');
+        $this->Set('app:api-url', (string)$resource->AppSubdirectoryUrl('api'));
     }
 
     #endregion protected

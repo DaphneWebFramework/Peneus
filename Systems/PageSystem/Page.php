@@ -13,8 +13,8 @@
 namespace Peneus\Systems\PageSystem;
 
 use \Harmonia\Config;
-use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Core\CArray;
+use \Harmonia\Core\CSequentialArray;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.

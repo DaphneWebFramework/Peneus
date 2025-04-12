@@ -87,7 +87,22 @@ class Page
         $this->metaCollection = $metaCollection ?? new MetaCollection();
     }
 
-    #region setters ------------------------------------------------------------
+    /**
+     * Returns the unique identifier of the page.
+     *
+     * This corresponds to the name of the subdirectory under `pages/` where the
+     * page's `index.php`, `manifest.json`, and related files reside.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return string
+     *   The page identifier (e.g., `'home'`, `'login'`, `'about'`).
+     */
+    public function Id(): string
+    {
+        return $this->id;
+    }
 
     /**
      * Sets the page title.
@@ -128,39 +143,6 @@ class Page
     }
 
     /**
-     * Sets the masterpage used to layout the page content.
-     *
-     * @param string $masterpage
-     *   The file name (without extension) of a masterpage under the
-     *   `masterpages` directory (e.g. `basic`, `starter`).
-     * @return self
-     *   The current instance.
-     */
-    public function SetMasterpage(string $masterpage): self
-    {
-        $this->masterpage = $masterpage;
-        return $this;
-    }
-
-    #endregion setters
-
-    #region getters ------------------------------------------------------------
-
-    /**
-     * Returns the unique identifier of the page.
-     *
-     * This corresponds to the name of the subdirectory under `pages/` where the
-     * page's `index.php`, `manifest.json`, and related files reside.
-     *
-     * @return string
-     *   The page identifier (e.g., `'home'`, `'login'`, `'about'`).
-     */
-    public function Id(): string
-    {
-        return $this->id;
-    }
-
-    /**
      * Returns the generated page title.
      *
      * The returned string is produced by substituting the title (set via
@@ -169,6 +151,9 @@ class Page
      *
      * If the application name is empty, only the title is returned. If the
      * title is empty, only the application name is returned.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
      *
      * @return string
      *   The generated page title.
@@ -192,7 +177,25 @@ class Page
     }
 
     /**
+     * Sets the masterpage used to layout the page content.
+     *
+     * @param string $masterpage
+     *   The file name (without extension) of a masterpage under the
+     *   `masterpages` directory (e.g. `basic`, `starter`).
+     * @return self
+     *   The current instance.
+     */
+    public function SetMasterpage(string $masterpage): self
+    {
+        $this->masterpage = $masterpage;
+        return $this;
+    }
+
+    /**
      * Returns the selected masterpage name.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
      *
      * @return string
      *   The masterpage name.
@@ -207,6 +210,9 @@ class Page
     /**
      * Returns the captured page content.
      *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
      * @return string
      *   The content between calls to `Begin()` and `End()`.
      */
@@ -214,68 +220,6 @@ class Page
     {
         return $this->content;
     }
-
-    /**
-     * Returns the list of libraries to be included in the page.
-     *
-     * This list consists of all libraries that were marked as default in the
-     * manifest or explicitly added using `AddLibrary`, and not removed using
-     * `RemoveLibrary`. The libraries are returned in the order they appear in
-     * the manifest.
-     *
-     * > This method is intended to support the renderer and is typically not
-     * required in page-level code.
-     *
-     * @return CSequentialArray
-     *   A list of `LibraryItem` instances.
-     */
-    public function IncludedLibraries(): CSequentialArray
-    {
-        return $this->libraryManager->Included();
-    }
-
-    /**
-     * Returns the page-level manifest.
-     *
-     * This provides access to any page-specific CSS, JS, or extra assets
-     * defined in the page's local `manifest.json` file.
-     *
-     * > This method is intended to support the renderer and is typically not
-     * required in page-level code.
-     *
-     * @return PageManifest
-     *   The associated page manifest instance.
-     */
-    public function Manifest(): PageManifest
-    {
-        return $this->pageManifest;
-    }
-
-    /**
-     * Returns the meta tag definitions.
-     *
-     * This method guarantees that the `og:title` tag is present based on the
-     * page's current title, unless it has been explicitly set elsewhere.
-     *
-     * > This method is intended to support the renderer and is typically not
-     * required in page-level code.
-     *
-     * @return CArray
-     *   A `CArray` of meta tag groups. Each key is the type (e.g., `name`,
-     *   `property`, `itemprop`) and each value is a `CArray` of tag names
-     *   mapped to their contents.
-     */
-    public function MetaItems(): CArray
-    {
-        if (!$this->metaCollection->Has('og:title', 'property')) {
-            $this->metaCollection->Set('og:title', $this->Title(), 'property');
-        }
-        return $this->metaCollection->Items();
-    }
-
-    #endregion getters
-
-    #region operations ---------------------------------------------------------
 
     /**
      * Begins capturing the page content using output buffering.
@@ -294,6 +238,8 @@ class Page
         $this->content = $this->_ob_get_clean();
         $this->renderer->Render($this);
     }
+
+    #region Library
 
     /**
      * Adds a library to the list of libraries to be included in the page.
@@ -345,6 +291,50 @@ class Page
     }
 
     /**
+     * Returns the list of libraries to be included in the page.
+     *
+     * This list consists of all libraries that were marked as default in the
+     * manifest or explicitly added using `AddLibrary`, and not removed using
+     * `RemoveLibrary`. The libraries are returned in the order they appear in
+     * the manifest.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return CSequentialArray
+     *   A list of `LibraryItem` instances.
+     */
+    public function IncludedLibraries(): CSequentialArray
+    {
+        return $this->libraryManager->Included();
+    }
+
+    #endregion Library
+
+    #region Manifest
+
+    /**
+     * Returns the page-level manifest.
+     *
+     * This provides access to any page-specific CSS, JS, or extra assets
+     * defined in the page's local `manifest.json` file.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return PageManifest
+     *   The associated page manifest instance.
+     */
+    public function Manifest(): PageManifest
+    {
+        return $this->pageManifest;
+    }
+
+    #endregion Manifest
+
+    #region Meta
+
+    /**
      * Adds or replaces a meta tag.
      *
      * @param string $name
@@ -393,7 +383,29 @@ class Page
         return $this;
     }
 
-    #endregion operations
+    /**
+     * Returns the meta tag definitions.
+     *
+     * This method guarantees that the `og:title` tag is present based on the
+     * page's current title, unless it has been explicitly set elsewhere.
+     *
+     * > This method is intended to support the renderer and is typically not
+     * required in page-level code.
+     *
+     * @return CArray
+     *   A `CArray` of meta tag groups. Each key is the type (e.g., `name`,
+     *   `property`, `itemprop`) and each value is a `CArray` of tag names
+     *   mapped to their contents.
+     */
+    public function MetaItems(): CArray
+    {
+        if (!$this->metaCollection->Has('og:title', 'property')) {
+            $this->metaCollection->Set('og:title', $this->Title(), 'property');
+        }
+        return $this->metaCollection->Items();
+    }
+
+    #endregion Meta
 
     #endregion public
 

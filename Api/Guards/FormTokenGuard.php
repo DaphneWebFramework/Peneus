@@ -28,7 +28,7 @@ class FormTokenGuard extends TokenGuard
     /**
      * The form field name containing the CSRF token.
      */
-    private const TOKEN_FIELD = 'csrfToken';
+    public const TOKEN_FIELD = 'csrfToken';
 
     /**
      * Constructs a new instance using the form-submitted CSRF token and the

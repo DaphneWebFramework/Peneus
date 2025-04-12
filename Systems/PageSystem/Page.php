@@ -15,6 +15,9 @@ namespace Peneus\Systems\PageSystem;
 use \Harmonia\Config;
 use \Harmonia\Core\CArray;
 use \Harmonia\Core\CSequentialArray;
+use \Harmonia\Services\CookieService;
+use \Harmonia\Services\SecurityService;
+use \Peneus\Api\Guards\FormTokenGuard;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -406,6 +409,40 @@ class Page
     }
 
     #endregion Meta
+
+    #region CSRF
+
+    /**
+     * Returns the CSRF token name.
+     *
+     * This is the name of the form field that will contain the CSRF token
+     * when submitted.
+     *
+     * @return string
+     *   The CSRF token name.
+     */
+    public function CsrfTokenName(): string
+    {
+        return FormTokenGuard::TOKEN_FIELD;
+    }
+
+    /**
+     * Returns a uniquely generated CSRF token value.
+     *
+     * Aside from token generation, this method also sets the CSRF cookie, which
+     * is used to verify the token when the form is submitted.
+     *
+     * @return string
+     *   The CSRF token value.
+     */
+    public function CsrfTokenValue(): string
+    {
+        $csrfToken = SecurityService::Instance()->GenerateCsrfToken();
+        CookieService::Instance()->SetCsrfCookie($csrfToken->CookieValue());
+        return $csrfToken->Token();
+    }
+
+    #endregion CSRF
 
     #endregion public
 

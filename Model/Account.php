@@ -19,8 +19,8 @@ namespace Peneus\Model;
  * CREATE TABLE `account` (
  *   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
  *   `email` TEXT,
- *   `username` TEXT,
  *   `passwordHash` TEXT,
+ *   `displayName` TEXT,
  *   `timeActivated` DATETIME,
  *   `timeLastLogin` DATETIME
  * ) ENGINE = InnoDB;
@@ -29,8 +29,8 @@ namespace Peneus\Model;
 class Account extends Entity
 {
     public string $email;
-    public string $username;
     public string $passwordHash;
+    public string $displayName;
     public \DateTime $timeActivated;
     public \DateTime $timeLastLogin;
 }

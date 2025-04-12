@@ -23,9 +23,9 @@
     "en": "You are already logged in.",
     "tr": "Zaten oturum açmış durumdasınız."
   },
-  "error_incorrect_username_or_password": {
-    "en": "Incorrect username or password.",
-    "tr": "Kullanıcı adı veya şifre hatalı."
+  "error_incorrect_email_or_password": {
+    "en": "Incorrect email address or password.",
+    "tr": "E-posta adresi veya şifre hatalı."
   },
   "error_login_failed": {
     "en": "Login failed.",

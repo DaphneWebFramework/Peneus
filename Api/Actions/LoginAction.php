@@ -41,7 +41,7 @@ class LoginAction extends Action
      * @return mixed
      *   Always returns `null`.
      * @throws \RuntimeException
-     *   If the user is already logged in, if the username or password is
+     *   If the user is already logged in, if the email address or password is
      *   missing or invalid, if the account's last login time cannot be updated,
      *   or if session integrity cannot be established.
      */
@@ -54,25 +54,24 @@ class LoginAction extends Action
             );
         }
         $validator = new Validator([
-            'username' => [
+            'email' => [
                 'required',
-                'string',
-                'regex: ^[A-Za-z_][\w\-\.]{1,31}$'
+                'email'
             ],
             'password' => [
                 'required',
                 'string',
-                'minLength: 6',
+                'minLength: 8',
                 'maxLength: 72'
             ]
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $username = $dataAccessor->GetField('username');
+        $email = $dataAccessor->GetField('email');
         $password = $dataAccessor->GetField('password');
-        $account = $this->findAccount($username);
+        $account = $this->findAccount($email);
         if ($account === null || !$this->verifyPassword($account, $password)) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_incorrect_username_or_password'),
+                Translation::Instance()->Get('error_incorrect_email_or_password'),
                 StatusCode::Unauthorized->value
             );
         }
@@ -98,11 +97,11 @@ class LoginAction extends Action
 
     #region protected ----------------------------------------------------------
 
-    protected function findAccount(string $username): ?Account
+    protected function findAccount(string $email): ?Account
     {
         return Account::FindFirst(
-            condition: 'username = :username',
-            bindings: ['username' => $username]
+            condition: 'email = :email',
+            bindings: ['email' => $email]
         );
     }
 

@@ -74,7 +74,7 @@ class AccountService extends Singleton
      * @throws \RuntimeException
      *   If the session cannot be started or destroyed.
      */
-    public function GetAuthenticatedAccount(): ?Account
+    public function AuthenticatedAccount(): ?Account
     {
         $session = Session::Instance()->Start();
         if (!$this->verifySessionIntegrity()) {

@@ -28,6 +28,6 @@ class SessionGuard implements IGuard
      */
     public function Verify(): bool
     {
-        return AccountService::Instance()->GetAuthenticatedAccount() !== null;
+        return AccountService::Instance()->AuthenticatedAccount() !== null;
     }
 }

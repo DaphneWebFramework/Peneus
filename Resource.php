@@ -112,13 +112,15 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the URL to a frontend library file, with a cache buster query
-     * parameter based on the file's modification time.
+     * Returns the URL to a frontend library file.
+     *
+     * This method appends a cache-busting query parameter to the URL, based on
+     * the file's modification time.
      *
      * @param string $relativePath
-     *   The path relative to the frontend directory (e.g. 'bootstrap/css/bootstrap').
-     * @return string
-     *   The URL to the asset, with cache-busting query if the file exists.
+     *   The path relative to the frontend directory, e.g., `'bootstrap/css/bootstrap'`.
+     * @return CUrl
+     *   The URL to the file with a cache-busting query parameter.
      */
     public function FrontendLibraryFileUrl(string $relativePath): CUrl
     {
@@ -141,7 +143,7 @@ class Resource extends Singleton
      * Returns the absolute path to a page directory.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `'home'`.
+     *   The identifier (folder name) of the page, e.g., `'home'`.
      * @return CPath
      *   The absolute path to the page directory.
      */
@@ -156,10 +158,13 @@ class Resource extends Singleton
     /**
      * Returns the URL to a page directory.
      *
+     * This method ensures that the resulting URL ends with a trailing slash,
+     * which helps avoid unnecessary 301 redirects in web browsers.
+     *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `'home'`.
+     *   The identifier (folder name) of the page, e.g., `'home'`.
      * @return CUrl
-     *   The URL to the page directory with a trailing slash.
+     *   The URL to the page directory.
      */
     public function PageUrl(string $pageId): CUrl
     {
@@ -170,8 +175,10 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the URL to the login page, including a "redirect" query parameter
-     * that points to the current request URI.
+     * Returns the URL to the login page.
+     *
+     * This method appends a "redirect" query parameter to the URL, pointing
+     * to the current request URI.
      *
      * @return CUrl
      *   The URL to the login page with a "redirect" query parameter.
@@ -191,7 +198,7 @@ class Resource extends Singleton
      * Returns the absolute path to a file within a page directory.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `'home'`.
+     *   The identifier (folder name) of the page, e.g., `'home'`.
      * @param string $relativePath
      *   The path relative to the page directory, e.g., `'style.css'`.
      * @return CPath
@@ -203,15 +210,17 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the URL to a page-specific asset file with a cache buster query
-     * parameter based on the file's modification time.
+     * Returns the URL to a file within a page directory.
+     *
+     * This method appends a cache-busting query parameter to the URL, based on
+     * the file's modification time.
      *
      * @param string $pageId
-     *   The identifier (folder name) of the page, e.g. `'home'`.
+     *   The identifier (folder name) of the page, e.g., `'home'`.
      * @param string $relativePath
      *   The path relative to the page directory, e.g., `'style.css'`.
      * @return CUrl
-     *   The URL to the asset, with cache-busting query if the file exists.
+     *   The URL to the file with a cache-busting query parameter.
      */
     public function PageFileUrl(string $pageId, string $relativePath): CUrl
     {

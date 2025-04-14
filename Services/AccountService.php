@@ -18,6 +18,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Session;
 use \Peneus\Api\Guards\TokenGuard;
 use \Peneus\Model\Account;
+use \Peneus\Model\Role;
 
 /**
  * Provides account-related utilities.
@@ -41,6 +42,15 @@ class AccountService extends Singleton
      * used to retrieve the associated account details.
      */
     public const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';
+
+    /**
+     * The session storage key for the authenticated user's account role.
+     *
+     * This key stores the user's account role after successful login and is
+     * used to determine the user's permissions and access levels within the
+     * application.
+     */
+    public const ACCOUNT_ROLE_SESSION_KEY = 'ACCOUNT_ROLE';
 
     /**
      * Returns the name of the session integrity cookie.
@@ -72,7 +82,7 @@ class AccountService extends Singleton
      * @return ?Account
      *   The authenticated account, or `null` if authentication fails.
      * @throws \RuntimeException
-     *   If the session cannot be started or destroyed.
+     *   If the session cannot be started, closed, or destroyed.
      */
     public function AuthenticatedAccount(): ?Account
     {
@@ -86,7 +96,28 @@ class AccountService extends Singleton
             $session->Destroy();
             return null;
         }
+        $session->Close();
         return $account;
+    }
+
+    /**
+     * Retrieves the role of the authenticated account.
+     *
+     * @return ?Role
+     *   The role of the authenticated account, or `null` if not set in the
+     *   session.
+     * @throws \RuntimeException
+     *   If the session cannot be started or closed.
+     */
+    public function RoleOfAuthenticatedAccount(): ?Role
+    {
+        $session = Session::Instance()->Start();
+        $value = $session->Get(self::ACCOUNT_ROLE_SESSION_KEY);
+        $session->Close();
+        if ($value === null) {
+            return null;
+        }
+        return Role::tryFrom($value);
     }
 
     #endregion public

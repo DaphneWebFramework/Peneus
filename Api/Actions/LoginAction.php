@@ -22,6 +22,8 @@ use \Harmonia\Session;
 use \Harmonia\Validation\Validator;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Model\Account;
+use \Peneus\Model\AccountRole;
+use \Peneus\Model\Role;
 use \Peneus\Services\AccountService;
 use \Peneus\Translation;
 
@@ -105,6 +107,18 @@ class LoginAction extends Action
         );
     }
 
+    protected function findAccountRole(int $accountId): ?Role
+    {
+        $accountRole = AccountRole::FindFirst(
+            condition: 'accountId = :accountId',
+            bindings: ['accountId' => $accountId]
+        );
+        if ($accountRole === null) {
+            return null;
+        }
+        return Role::tryFrom($accountRole->role);
+    }
+
     protected function verifyPassword(Account $account, string $password): bool
     {
         return SecurityService::Instance()->VerifyPassword(
@@ -123,14 +137,16 @@ class LoginAction extends Action
     {
         $integrity = SecurityService::Instance()->GenerateCsrfToken();
         try {
-            Session::Instance()
+            $session = Session::Instance()
                 ->Start()
                 ->Clear()
-                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY,
-                      $integrity->Token())
-                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY,
-                      $account->id)
-                ->Close();
+                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
+                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY, $account->id);
+            $role = $this->findAccountRole($account->id);
+            if ($role !== null) {
+                $session->Set(AccountService::ACCOUNT_ROLE_SESSION_KEY, $role->value);
+            }
+            $session->Close();
             CookieService::Instance()->SetCookie(
                 AccountService::Instance()->IntegrityCookieName(),
                 $integrity->CookieValue()

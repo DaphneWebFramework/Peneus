@@ -17,6 +17,7 @@ use \Harmonia\Patterns\Singleton;
 use \Harmonia\Core\CFileSystem;
 use \Harmonia\Core\CPath;
 use \Harmonia\Core\CUrl;
+use \Harmonia\Server;
 
 /**
  * Provides additional resources specific to the Peneus library.
@@ -144,7 +145,7 @@ class Resource extends Singleton
      * @return CPath
      *   The absolute path to the page directory.
      */
-    public function PageDirectoryPath(string $pageId): CPath
+    public function PagePath(string $pageId): CPath
     {
         return CPath::Join(
             $this->base->AppSubdirectoryPath('pages'),
@@ -160,12 +161,30 @@ class Resource extends Singleton
      * @return CUrl
      *   The URL to the page directory with a trailing slash.
      */
-    public function PageDirectoryUrl(string $pageId): CUrl
+    public function PageUrl(string $pageId): CUrl
     {
         return CUrl::Join(
             $this->base->AppSubdirectoryUrl('pages'),
             $pageId
         )->EnsureTrailingSlash();
+    }
+
+    /**
+     * Returns the URL to the login page, including a "redirect" query parameter
+     * that points to the current request URI.
+     *
+     * @return CUrl
+     *   The URL to the login page with a "redirect" query parameter.
+     */
+    public function LoginPageUrl(): CUrl
+    {
+        $url = $this->PageUrl('login');
+        $requestUri = Server::Instance()->RequestUri();
+        if ($requestUri !== null) {
+            $requestUri->ApplyInPlace('\rawurlencode');
+            $url->AppendInPlace('?redirect=' . $requestUri);
+        }
+        return $url;
     }
 
     /**
@@ -180,7 +199,7 @@ class Resource extends Singleton
      */
     public function PageFilePath(string $pageId, string $relativePath): CPath
     {
-        return CPath::Join($this->PageDirectoryPath($pageId), $relativePath);
+        return CPath::Join($this->PagePath($pageId), $relativePath);
     }
 
     /**
@@ -196,7 +215,7 @@ class Resource extends Singleton
      */
     public function PageFileUrl(string $pageId, string $relativePath): CUrl
     {
-        $fileUrl = CUrl::Join($this->PageDirectoryUrl($pageId), $relativePath);
+        $fileUrl = CUrl::Join($this->PageUrl($pageId), $relativePath);
         $filePath = $this->PageFilePath($pageId, $relativePath);
         $modTime = CFileSystem::Instance()->ModificationTime($filePath);
         if ($modTime !== 0) {

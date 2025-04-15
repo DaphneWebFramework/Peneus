@@ -17,6 +17,7 @@ use \Harmonia\Patterns\Singleton;
 use \Harmonia\Core\CFileSystem;
 use \Harmonia\Core\CPath;
 use \Harmonia\Core\CUrl;
+use \Harmonia\Http\StatusCode;
 use \Harmonia\Server;
 
 /**
@@ -192,6 +193,28 @@ class Resource extends Singleton
             $url->AppendInPlace('?redirect=' . $requestUri);
         }
         return $url;
+    }
+
+    /**
+     * Returns the URL to the error page.
+     *
+     * This method appends the given HTTP status code as a path segment
+     * to the error page URL, for example: `pages/error/404`.
+     *
+     * This format assumes the presence of a corresponding rewrite rule in the
+     * web application's `.htaccess` file:
+     * ```
+     * RewriteRule ^pages/error/([0-9]+)/?$ pages/error/?statusCode=$1 [L]
+     * ```
+     *
+     * @param StatusCode $statusCode
+     *   The HTTP status code for the error page.
+     * @return CUrl
+     *   The URL to the error page with the status code appended as a path segment.
+     */
+    public function ErrorPageUrl(StatusCode $statusCode): CUrl
+    {
+        return CUrl::Join($this->PageUrl('error'), (string)$statusCode->value);
     }
 
     /**

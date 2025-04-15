@@ -18,6 +18,8 @@ use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Peneus\Api\Guards\FormTokenGuard;
+use \Peneus\Systems\PageSystem\AccessPolicies\AnyonePolicy;
+use \Peneus\Systems\PageSystem\AccessPolicies\IAccessPolicy;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -63,6 +65,9 @@ class Page
      *   The absolute path to the directory where the page's `index.php` file
      *   is located. Typically, the `__DIR__` constant is used to specify this
      *   path.
+     * @param IAccessPolicy $accessPolicy
+     *   (Optional) The access policy to enforce. If not specified, the
+     *   `AnyonePolicy` is used, allowing access to all users.
      * @param ?Renderer $renderer
      *   (Optional) The renderer to use. If not specified, a default instance is
      *   created.
@@ -78,12 +83,14 @@ class Page
      */
     public function __construct(
         string $directory,
+        ?IAccessPolicy $accessPolicy = null,
         ?Renderer $renderer = null,
         ?LibraryManager $libraryManager = null,
         ?PageManifest $pageManifest = null,
         ?MetaCollection $metaCollection = null
     ) {
         $this->id = \basename($directory);
+        ($accessPolicy ?? new AnyonePolicy())->Enforce();
         $this->renderer = $renderer ?? new Renderer();
         $this->libraryManager = $libraryManager ?? new LibraryManager();
         $this->pageManifest = $pageManifest ?? new PageManifest($this->id);

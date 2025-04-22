@@ -88,11 +88,11 @@ class AccountService extends Singleton
     public function LoggedInAccount(): ?Account
     {
         $session = Session::Instance()->Start();
-        if (!$this->verifySessionIntegrity()) {
+        if (!$this->verifySessionIntegrity($session)) {
             $session->Destroy();
             return null;
         }
-        $account = $this->retrieveLoggedInAccount();
+        $account = $this->retrieveLoggedInAccount($session);
         if ($account === null) {
             $session->Destroy();
             return null;
@@ -126,18 +126,20 @@ class AccountService extends Singleton
     #region protected ----------------------------------------------------------
 
     /**
-     * Verifies the integrity of the current session.
+     * Verifies the integrity of the session.
      *
      * This method ensures that the session is legitimate by checking if
      * the session integrity token matches its corresponding cookie value.
      * If the values do not match, the session is considered compromised.
      *
+     * @param Session $session
+     *   The started session instance.
      * @return bool
      *   Returns `true` if the session integrity check passes, `false` otherwise.
      */
-    protected function verifySessionIntegrity(): bool
+    protected function verifySessionIntegrity(Session $session): bool
     {
-        $integrityToken = Session::Instance()->Get(self::INTEGRITY_TOKEN_SESSION_KEY);
+        $integrityToken = $session->Get(self::INTEGRITY_TOKEN_SESSION_KEY);
         if ($integrityToken === null) {
             return false;
         }
@@ -151,12 +153,14 @@ class AccountService extends Singleton
      * This method fetches the account ID stored in the session and looks up
      * the corresponding account in the database.
      *
+     * @param Session $session
+     *   The started session instance.
      * @return ?Account
      *   The `Account` instance of the logged-in user, or `null` if not found.
      */
-    protected function retrieveLoggedInAccount(): ?Account
+    protected function retrieveLoggedInAccount(Session $session): ?Account
     {
-        $accountId = Session::Instance()->Get(self::ACCOUNT_ID_SESSION_KEY);
+        $accountId = $session->Get(self::ACCOUNT_ID_SESSION_KEY);
         if ($accountId === null) {
             return null;
         }

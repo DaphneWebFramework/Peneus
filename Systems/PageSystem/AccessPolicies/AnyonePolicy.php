@@ -13,7 +13,7 @@
 namespace Peneus\Systems\PageSystem\AccessPolicies;
 
 /**
- * Allows access to anyone, including both authenticated and anonymous users.
+ * Allows access to anyone, including both logged-in and anonymous users.
  *
  * This is the default policy when no explicit access policy is assigned to a
  * page.
@@ -24,7 +24,7 @@ class AnyonePolicy implements IAccessPolicy
      * Allows access unconditionally.
      *
      * This method performs no checks and permits all users to access the page,
-     * including both anonymous and authenticated users.
+     * including both logged-in and anonymous users.
      */
     public function Enforce(): void
     {

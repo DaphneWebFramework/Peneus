@@ -20,7 +20,7 @@ use \Peneus\Resource;
 use \Peneus\Services\AccountService;
 
 /**
- * Restricts access to authenticated users, optionally requiring a minimum role.
+ * Restricts access to logged-in users, optionally requiring a minimum role.
  */
 class MembersPolicy implements IAccessPolicy
 {
@@ -39,24 +39,22 @@ class MembersPolicy implements IAccessPolicy
     }
 
     /**
-     * Restricts access to authenticated users.
+     * Restricts access to logged-in users.
      *
      * If no user is signed in, the user is redirected to the login page. If a
-     * minimum role is specified, the authenticated user's role is checked
+     * minimum role is specified, the logged-in user's account role is checked
      * against it. If the user's role is insufficient, an HTTP 401 Unauthorized
      * response is sent and execution is terminated.
      */
     public function Enforce(): void
     {
         $accountService = AccountService::Instance();
-        if ($accountService->AuthenticatedAccount() === null) {
+        if ($accountService->LoggedInAccount() === null) {
             $this->redirect(Resource::Instance()->LoginPageUrl());
         }
-        $accountRole = $accountService->RoleOfAuthenticatedAccount() ?? Role::None;
+        $accountRole = $accountService->RoleOfLoggedInAccount() ?? Role::None;
         if ($accountRole->value < $this->minimumRole->value) {
-            $this->redirect(Resource::Instance()->ErrorPageUrl(
-                StatusCode::Unauthorized
-            ));
+            $this->redirect(Resource::Instance()->ErrorPageUrl(StatusCode::Unauthorized));
         }
     }
 

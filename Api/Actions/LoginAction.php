@@ -49,7 +49,7 @@ class LoginAction extends Action
      */
     protected function onExecute(): mixed
     {
-        if (AccountService::Instance()->AuthenticatedAccount() !== null) {
+        if (AccountService::Instance()->LoggedInAccount() !== null) {
             throw new \RuntimeException(
                 Translation::Instance()->Get('error_already_logged_in'),
                 StatusCode::Conflict->value

@@ -15,19 +15,19 @@ namespace Peneus\Api\Guards;
 use \Peneus\Services\AccountService;
 
 /**
- * A guard that verifies whether a request is from an authenticated user.
+ * A guard that verifies whether the request is from a logged-in user.
  */
 class SessionGuard implements IGuard
 {
     /**
-     * Verifies whether the request is from an authenticated user.
+     * Verifies whether the request is from a logged-in user.
      *
      * @return bool
-     *   Returns `true` if the request is from an authenticated user,
-     *   otherwise `false`.
+     *   Returns `true` if the request is from a logged-in user, otherwise
+     *   `false`.
      */
     public function Verify(): bool
     {
-        return AccountService::Instance()->AuthenticatedAccount() !== null;
+        return AccountService::Instance()->LoggedInAccount() !== null;
     }
 }

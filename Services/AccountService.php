@@ -36,7 +36,7 @@ class AccountService extends Singleton
     public const INTEGRITY_TOKEN_SESSION_KEY = 'INTEGRITY_TOKEN';
 
     /**
-     * The session storage key for the authenticated user's account ID.
+     * The session storage key for the logged-in user's account ID.
      *
      * This key stores the user's account ID after successful login and is
      * used to retrieve the associated account details.
@@ -44,7 +44,7 @@ class AccountService extends Singleton
     public const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';
 
     /**
-     * The session storage key for the authenticated user's account role.
+     * The session storage key for the logged-in user's account role.
      *
      * This key stores the user's account role after successful login and is
      * used to determine the user's permissions and access levels within the
@@ -70,7 +70,7 @@ class AccountService extends Singleton
     }
 
     /**
-     * Retrieves the currently authenticated account.
+     * Retrieves the currently logged-in user's account.
      *
      * This method first verifies session integrity by checking whether the
      * session integrity token matches its hashed counterpart stored in the
@@ -80,18 +80,19 @@ class AccountService extends Singleton
      * is destroyed to prevent unauthorized access.
      *
      * @return ?Account
-     *   The authenticated account, or `null` if authentication fails.
+     *   The logged-in user's account, or `null` if no user is logged in or
+     *   the session is compromised.
      * @throws \RuntimeException
      *   If the session cannot be started, closed, or destroyed.
      */
-    public function AuthenticatedAccount(): ?Account
+    public function LoggedInAccount(): ?Account
     {
         $session = Session::Instance()->Start();
         if (!$this->verifySessionIntegrity()) {
             $session->Destroy();
             return null;
         }
-        $account = $this->retrieveAuthenticatedAccount();
+        $account = $this->retrieveLoggedInAccount();
         if ($account === null) {
             $session->Destroy();
             return null;
@@ -101,15 +102,15 @@ class AccountService extends Singleton
     }
 
     /**
-     * Retrieves the role of the authenticated account.
+     * Retrieves the role of the logged-in user's account.
      *
      * @return ?Role
-     *   The role of the authenticated account, or `null` if not set in the
+     *   The role of the logged-in user's account, or `null` if not set in the
      *   session.
      * @throws \RuntimeException
      *   If the session cannot be started or closed.
      */
-    public function RoleOfAuthenticatedAccount(): ?Role
+    public function RoleOfLoggedInAccount(): ?Role
     {
         $session = Session::Instance()->Start();
         $value = $session->Get(self::ACCOUNT_ROLE_SESSION_KEY);
@@ -145,15 +146,15 @@ class AccountService extends Singleton
     }
 
     /**
-     * Retrieves the authenticated user's account object.
+     * Retrieves the logged-in user's account object.
      *
      * This method fetches the account ID stored in the session and looks up
      * the corresponding account in the database.
      *
      * @return ?Account
-     *   The `Account` instance of the authenticated user, or `null` if not found.
+     *   The `Account` instance of the logged-in user, or `null` if not found.
      */
-    protected function retrieveAuthenticatedAccount(): ?Account
+    protected function retrieveLoggedInAccount(): ?Account
     {
         $accountId = Session::Instance()->Get(self::ACCOUNT_ID_SESSION_KEY);
         if ($accountId === null) {

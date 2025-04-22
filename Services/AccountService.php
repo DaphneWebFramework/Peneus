@@ -110,7 +110,7 @@ class AccountService extends Singleton
      * @throws \RuntimeException
      *   If the session cannot be started or closed.
      */
-    public function RoleOfLoggedInAccount(): ?Role
+    public function LoggedInAccountRole(): ?Role
     {
         $session = Session::Instance()->Start();
         $value = $session->Get(self::ACCOUNT_ROLE_SESSION_KEY);

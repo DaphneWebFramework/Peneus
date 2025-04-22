@@ -67,7 +67,7 @@ class AuthManager
     public function LoggedInAccountRole(): Role
     {
         return $this->loggedInAccountRole->Get(fn() =>
-            AccountService::Instance()->RoleOfLoggedInAccount() ?? Role::None
+            AccountService::Instance()->LoggedInAccountRole() ?? Role::None
         );
     }
 

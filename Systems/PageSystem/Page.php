@@ -18,8 +18,8 @@ use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Peneus\Api\Guards\FormTokenGuard;
-use \Peneus\Systems\PageSystem\AccessPolicies\AnyonePolicy;
-use \Peneus\Systems\PageSystem\AccessPolicies\IAccessPolicy;
+use \Peneus\Model\Account;
+use \Peneus\Model\Role;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -50,6 +50,7 @@ class Page
     private readonly LibraryManager $libraryManager;
     private readonly PageManifest $pageManifest;
     private readonly MetaCollection $metaCollection;
+    private readonly AuthManager $authManager;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -65,9 +66,6 @@ class Page
      *   The absolute path to the directory where the page's `index.php` file
      *   is located. Typically, the `__DIR__` constant is used to specify this
      *   path.
-     * @param IAccessPolicy $accessPolicy
-     *   (Optional) The access policy to enforce. If not specified, the
-     *   `AnyonePolicy` is used, allowing access to all users.
      * @param ?Renderer $renderer
      *   (Optional) The renderer to use. If not specified, a default instance is
      *   created.
@@ -80,21 +78,24 @@ class Page
      * @param ?MetaCollection $metaCollection
      *   (Optional) The meta collection to use. If not specified, a default
      *   instance is created.
+     * @param ?AuthManager $authManager
+     *   (Optional) The authentication manager to use. If not specified, a
+     *   default instance is created.
      */
     public function __construct(
         string $directory,
-        ?IAccessPolicy $accessPolicy = null,
         ?Renderer $renderer = null,
         ?LibraryManager $libraryManager = null,
         ?PageManifest $pageManifest = null,
-        ?MetaCollection $metaCollection = null
+        ?MetaCollection $metaCollection = null,
+        ?AuthManager $authManager = null
     ) {
         $this->id = \basename($directory);
-        ($accessPolicy ?? new AnyonePolicy())->Enforce();
         $this->renderer = $renderer ?? new Renderer();
         $this->libraryManager = $libraryManager ?? new LibraryManager();
         $this->pageManifest = $pageManifest ?? new PageManifest($this->id);
         $this->metaCollection = $metaCollection ?? new MetaCollection();
+        $this->authManager = $authManager ?? new AuthManager();
     }
 
     /**
@@ -416,6 +417,56 @@ class Page
     }
 
     #endregion Meta
+
+    #region Auth
+
+    /**
+     * Returns the currently logged-in user's account.
+     *
+     * The result is cached after the first retrieval.
+     *
+     * @return ?Account
+     *   An `Account` object associated with the logged-in user, or `null` if
+     *   no user is logged in.
+     */
+    public function LoggedInAccount(): ?Account
+    {
+        return $this->authManager->LoggedInAccount();
+    }
+
+    /**
+     * Returns the role associated with the currently logged-in user's account.
+     *
+     * The result is cached after the first retrieval.
+     *
+     * @return Role
+     *   The role of the current user, or `Role::None` if no user is logged in
+     *   or a role is not explicitly assigned to the account.
+     */
+    public function LoggedInAccountRole(): Role
+    {
+        return $this->authManager->LoggedInAccountRole();
+    }
+
+    /**
+     * Restricts access to logged-in users.
+     *
+     * If no user is logged in, the user is redirected to the login page. If a
+     * minimum role is specified, the logged-in user's role is checked against
+     * it. If the user's role is insufficient, the user is redirected to the
+     * error page with an HTTP 401 Unauthorized response.
+     *
+     * @param Role $minimumRole
+     *   (Optional) The minimum role required to access the page. Defaults to
+     *   `Role::None`.
+     */
+    public function RequireLogin(Role $minimumRole = Role::None): self
+    {
+        $this->authManager->RequireLogin($minimumRole);
+        return $this;
+    }
+
+    #endregion Auth
 
     #region CSRF
 

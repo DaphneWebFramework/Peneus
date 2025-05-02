@@ -17,6 +17,7 @@ use \Harmonia\Database\Queries\DeleteQuery;
 use \Harmonia\Database\Queries\InsertQuery;
 use \Harmonia\Database\Queries\SelectQuery;
 use \Harmonia\Database\Queries\UpdateQuery;
+use \Harmonia\Database\ResultSet;
 use \Harmonia\Logger;
 
 /**
@@ -291,7 +292,7 @@ abstract class Entity
     {
         $query = (new SelectQuery)
             ->Table(static::tableName())
-            ->Columns('COUNT(*) AS total');
+            ->Columns('COUNT(*)');
         if ($condition !== null) {
             $query->Where($condition);
         }
@@ -303,8 +304,14 @@ abstract class Entity
         if ($resultSet === null) {
             return 0;
         }
-        $row = $resultSet->Row();
-        return $row !== null && isset($row['total']) ? (int) $row['total'] : 0;
+        $row = $resultSet->Row(ResultSet::ROW_MODE_NUMERIC);
+        if ($row === null) {
+            return 0;
+        }
+        if (!isset($row[0])) {
+            return 0;
+        }
+        return (int)$row[0];
     }
 
     #endregion Static methods

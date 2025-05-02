@@ -271,6 +271,42 @@ abstract class Entity
         return $entities;
     }
 
+    /**
+     * Returns the number of rows in the associated table that match a condition.
+     *
+     * @param ?string $condition
+     *   (Optional) A filtering expression for rows to count (e.g.,
+     *   `"status = :status"`). If `null`, all rows are counted.
+     * @param ?array $bindings
+     *   (Optional) An associative array of values to bind to placeholders
+     *   in the condition (e.g., `['status' => 'active']`). If `null`, no
+     *   bindings are applied.
+     * @return int
+     *   The number of matching rows. Returns `0` if the query fails.
+     */
+    public static function Count(
+        ?string $condition = null,
+        ?array $bindings = null
+    ): int
+    {
+        $query = (new SelectQuery)
+            ->Table(static::tableName())
+            ->Columns('COUNT(*) AS total');
+        if ($condition !== null) {
+            $query->Where($condition);
+        }
+        if ($bindings !== null) {
+            $query->Bind($bindings);
+        }
+        $database = Database::Instance();
+        $resultSet = $database->Execute($query);
+        if ($resultSet === null) {
+            return 0;
+        }
+        $row = $resultSet->Row();
+        return $row !== null && isset($row['total']) ? (int) $row['total'] : 0;
+    }
+
     #endregion Static methods
 
     #endregion public

@@ -23,7 +23,7 @@ class MailerConfig
     public bool $isHttps;
 
     /**
-     * The hostname of the SMTP server.
+     * The host name or IP address of the SMTP server.
      */
     public string $host;
 
@@ -33,7 +33,7 @@ class MailerConfig
     public int $port;
 
     /**
-     * The encryption method used (`tls`, `ssl`, etc.).
+     * The encryption method used ('tls' or 'ssl').
      */
     public string $encryption;
 
@@ -58,7 +58,7 @@ class MailerConfig
     public string $fromName;
 
     /**
-     * The log level (0 means no logging).
+     * The log level (0, 1, 2, or 3).
      */
     public int $logLevel;
 }

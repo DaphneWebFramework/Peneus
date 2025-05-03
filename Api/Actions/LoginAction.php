@@ -45,7 +45,8 @@ class LoginAction extends Action
      * @throws \RuntimeException
      *   If the user is already logged in, if the email address or password is
      *   missing or invalid, if the account's last login time cannot be updated,
-     *   or if session integrity cannot be established.
+     *   if session integrity cannot be established, or if the CSRF cookie
+     *   cannot be deleted.
      */
     protected function onExecute(): mixed
     {

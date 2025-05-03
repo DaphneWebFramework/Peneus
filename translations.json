@@ -19,6 +19,14 @@
     "en": "You do not have permission to perform this action.",
     "tr": "Bu işlemi gerçekleştirmek için yetkiniz yok."
   },
+  "error_email_already_registered": {
+    "en": "This email address is already registered.",
+    "tr": "Bu e-posta adresi zaten kayıtlı."
+  },
+  "error_register_account_failed": {
+    "en": "Account registration failed.",
+    "tr": "Hesap kaydı başarısız oldu."
+  },
   "error_already_logged_in": {
     "en": "You are already logged in.",
     "tr": "Zaten oturum açmış durumdasınız."
@@ -34,5 +42,34 @@
   "error_unexpected": {
     "en": "An unexpected error occurred.",
     "tr": "Beklenmeyen bir hata oluştu."
+  },
+
+  "email_common_greeting": {
+    "en": "Hi %s,",
+    "tr": "Merhaba %s,"
+  },
+  "email_common_contact_us": {
+    "en": "Need help? Contact us at",
+    "tr": "Yardım gerekirse bize ulaşın:"
+  },
+  "email_common_copyright": {
+    "en": "© %d %s. All rights reserved.",
+    "tr": "© %d %s. Tüm hakları saklıdır."
+  },
+  "email_activate_account_masthead": {
+    "en": "Welcome!",
+    "tr": "Hoş geldiniz!"
+  },
+  "email_activate_account_intro": {
+    "en": "You're almost there! Just click the button below to activate your account.",
+    "tr": "Hesabınızı etkinleştirmek için aşağıdaki butona tıklayın."
+  },
+  "email_activate_account_button_text": {
+    "en": "Activate My Account",
+    "tr": "Hesabımı Etkinleştir"
+  },
+  "email_activate_account_security_notice": {
+    "en": "You received this email because your email address was used to register on %s. If this wasn't you, you can safely ignore this email.",
+    "tr": "Bu e-posta size gönderildi çünkü e-posta adresiniz %s üzerinde bir kayıt işleminde kullanıldı. Eğer bu işlemi siz yapmadıysanız, bu e-postayı güvenle yok sayabilirsiniz."
   }
 }

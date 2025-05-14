@@ -27,7 +27,7 @@ class AccountHandler extends Handler
     protected function createAction(string $actionName): ?Action
     {
         return match ($actionName) {
-            'register-account' => (new RegisterAccountAction)
+            'register' => (new RegisterAccountAction)
                 ->AddGuard(new FormTokenGuard),
             'login' => (new LoginAction)
                 ->AddGuard(new FormTokenGuard),

@@ -150,7 +150,6 @@ class RegisterAccountAction extends Action
         $language = $config->OptionOrDefault('Language', 'en');
         $appName = $config->OptionOrDefault('AppName', '');
         $supportEmail = $config->OptionOrDefault('SupportEmail', '');
-        $primaryColor = $config->OptionOrDefault('EmailPrimaryColor', '#3b82f6');
 
         $translation = Translation::Instance();
         $html = \strtr($template, [
@@ -164,8 +163,7 @@ class RegisterAccountAction extends Action
             '{{SecurityNoticeText}}' => $translation->Get('email_activate_account_security_notice', $appName),
             '{{ContactUsText}}'      => $translation->Get('email_common_contact_us'),
             '{{SupportEmail}}'       => $supportEmail,
-            '{{CopyrightText}}'      => $translation->Get('email_common_copyright', \date('Y'), $appName),
-            '{{EmailPrimaryColor}}'  => $primaryColor
+            '{{CopyrightText}}'      => $translation->Get('email_common_copyright', \date('Y'), $appName)
         ]);
 
         return $this->newMailer()

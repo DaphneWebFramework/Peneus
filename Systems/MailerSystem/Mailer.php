@@ -38,7 +38,7 @@ class Mailer
     public function __construct()
     {
         $config = Config::Instance();
-        if ($config->Option('MailerDeveloperMode')) {
+        if ($config->Option('IsDebug')) {
             $this->impl = new FakeMailerImpl();
             return;
         }

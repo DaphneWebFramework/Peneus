@@ -44,6 +44,11 @@
     "tr": "Beklenmeyen bir hata oluştu."
   },
 
+  "success_account_activation_link_sent": {
+    "en": "An account activation link has been sent to your email address.",
+    "tr": "E-posta adresinize bir hesap etkinleştirme bağlantısı gönderildi."
+  },
+
   "email_common_greeting": {
     "en": "Hi %s,",
     "tr": "Merhaba %s,"

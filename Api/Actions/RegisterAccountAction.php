@@ -73,9 +73,10 @@ class RegisterAccountAction extends Action
         $email = $dataAccessor->GetField('email');
         $password = $dataAccessor->GetField('password');
         $displayName = $dataAccessor->GetField('displayName');
+        $translation = Translation::Instance();
         if ($this->isEmailAlreadyRegistered($email)) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_email_already_registered'),
+                $translation->Get('error_email_already_registered'),
                 StatusCode::Conflict->value
             );
         }
@@ -94,11 +95,13 @@ class RegisterAccountAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_register_account_failed'),
+                $translation->Get('error_register_account_failed'),
                 StatusCode::InternalServerError->value
             );
         }
-        return null;
+        return [
+            'message' => $translation->Get('success_account_activation_link_sent')
+        ];
     }
 
     #region protected ----------------------------------------------------------

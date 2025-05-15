@@ -175,17 +175,28 @@ class RegisterAccountAction extends Action
 
         $translation = Translation::Instance();
         $html = \strtr($template, [
-            '{{Language}}'           => $language,
-            '{{Title}}'              => $translation->Get('email_activate_account_masthead'),
-            '{{MastheadText}}'       => $translation->Get('email_activate_account_masthead'),
-            '{{GreetingText}}'       => $translation->Get('email_common_greeting', $displayName),
-            '{{IntroText}}'          => $translation->Get('email_activate_account_intro'),
-            '{{ActionUrl}}'          => $resource->PageUrl('activate-account') . $activationCode,
-            '{{ButtonText}}'         => $translation->Get('email_activate_account_button_text'),
-            '{{SecurityNoticeText}}' => $translation->Get('email_activate_account_security_notice', $appName),
-            '{{ContactUsText}}'      => $translation->Get('email_common_contact_us'),
-            '{{SupportEmail}}'       => $supportEmail,
-            '{{CopyrightText}}'      => $translation->Get('email_common_copyright', \date('Y'), $appName)
+            '{{Language}}' =>
+                $language,
+            '{{Title}}' =>
+                $translation->Get('email_activate_account_masthead'),
+            '{{MastheadText}}' =>
+                $translation->Get('email_activate_account_masthead'),
+            '{{GreetingText}}' =>
+                $translation->Get('email_common_greeting', $displayName),
+            '{{IntroText}}' =>
+                $translation->Get('email_activate_account_intro'),
+            '{{ActionUrl}}' =>
+                $resource->PageUrl('activate-account') . $activationCode,
+            '{{ButtonText}}' =>
+                $translation->Get('email_activate_account_button_text'),
+            '{{SecurityNoticeText}}' =>
+                $translation->Get('email_activate_account_security_notice', $appName),
+            '{{ContactUsText}}' =>
+                $translation->Get('email_common_contact_us'),
+            '{{SupportEmail}}' =>
+                $supportEmail,
+            '{{CopyrightText}}' =>
+                $translation->Get('email_common_copyright', $this->currentYear(), $appName),
         ]);
 
         return $this->newMailer()
@@ -205,6 +216,12 @@ class RegisterAccountAction extends Action
     protected function newMailer(): Mailer
     {
         return new Mailer();
+    }
+
+    /** @codeCoverageIgnore */
+    protected function currentYear(): string
+    {
+        return \date('Y');
     }
 
     #endregion protected

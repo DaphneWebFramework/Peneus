@@ -19,6 +19,10 @@
     "en": "You do not have permission to perform this action.",
     "tr": "Bu işlemi gerçekleştirmek için yetkiniz yok."
   },
+  "error_display_name_invalid": {
+    "en": "Display name is invalid. It must start with a letter or number and may only contain letters, numbers, spaces, dots, hyphens, and apostrophes.",
+    "tr": "Görünen ad geçersiz. Bir harf veya sayıyla başlamalıdır ve yalnızca harf, sayı, boşluk, nokta, tire ve kesme işareti içerebilir."
+  },
   "error_email_already_registered": {
     "en": "This email address is already registered.",
     "tr": "Bu e-posta adresi zaten kayıtlı."

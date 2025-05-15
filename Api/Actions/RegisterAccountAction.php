@@ -55,6 +55,7 @@ class RegisterAccountAction extends Action
      */
     protected function onExecute(): mixed
     {
+        $translation = Translation::Instance();
         $validator = new Validator([
             'email' => [
                 'required',
@@ -73,12 +74,13 @@ class RegisterAccountAction extends Action
                 // and apostrophes, with full Unicode support.
                 "regex: /^[\p{L}\p{N}][\p{L}\p{N} .\-']{1,49}$/u"
             ]
+        ], [
+            'displayName.regex' => $translation->Get('error_display_name_invalid')
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $email = $dataAccessor->GetField('email');
         $password = $dataAccessor->GetField('password');
         $displayName = $dataAccessor->GetField('displayName');
-        $translation = Translation::Instance();
         if ($this->isEmailAlreadyRegistered($email)) {
             throw new \RuntimeException(
                 $translation->Get('error_email_already_registered'),

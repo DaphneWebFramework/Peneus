@@ -23,6 +23,10 @@
     "en": "This email address is already registered.",
     "tr": "Bu e-posta adresi zaten kayıtlı."
   },
+  "error_email_already_pending": {
+    "en": "This email address is already awaiting activation.",
+    "tr": "Bu e-posta adresi zaten etkinleştirme bekliyor."
+  },
   "error_register_account_failed": {
     "en": "Account registration failed.",
     "tr": "Hesap kaydı başarısız oldu."

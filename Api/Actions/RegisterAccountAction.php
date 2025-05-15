@@ -67,6 +67,9 @@ class RegisterAccountAction extends Action
             ],
             'displayName' => [
                 'required',
+                // Matches a 2–50 character display name starting with a letter
+                // or number, allowing letters, numbers, spaces, dots, hyphens,
+                // and apostrophes, with full Unicode support.
                 "regex: /^[\p{L}\p{N}][\p{L}\p{N} .\-']{1,49}$/u"
             ]
         ]);
@@ -78,6 +81,12 @@ class RegisterAccountAction extends Action
         if ($this->isEmailAlreadyRegistered($email)) {
             throw new \RuntimeException(
                 $translation->Get('error_email_already_registered'),
+                StatusCode::Conflict->value
+            );
+        }
+        if ($this->isEmailAlreadyPending($email)) {
+            throw new \RuntimeException(
+                $translation->Get('error_email_already_pending'),
                 StatusCode::Conflict->value
             );
         }
@@ -110,6 +119,14 @@ class RegisterAccountAction extends Action
     protected function isEmailAlreadyRegistered(string $email): bool
     {
         return 0 !== Account::Count(
+            condition: 'email = :email',
+            bindings: ['email' => $email]
+        );
+    }
+
+    protected function isEmailAlreadyPending(string $email): bool
+    {
+        return 0 !== PendingAccount::Count(
             condition: 'email = :email',
             bindings: ['email' => $email]
         );

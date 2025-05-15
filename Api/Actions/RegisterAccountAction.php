@@ -48,9 +48,10 @@ class RegisterAccountAction extends Action
      *   If the email address field is missing or invalid, if the password field
      *   is missing or shorter than 8 or longer than 72 characters, if the
      *   display name field is missing or does not match the required pattern,
-     *   if the email address is already registered, if the pending account
-     *   cannot be created, if the activation email cannot be sent, or if the
-     *   CSRF cookie cannot be deleted.
+     *   if the email address is already registered, if the email address is
+     *   already awaiting activation, if the pending account cannot be created,
+     *   if the activation email cannot be sent, or if the CSRF cookie cannot be
+     *   deleted.
      */
     protected function onExecute(): mixed
     {

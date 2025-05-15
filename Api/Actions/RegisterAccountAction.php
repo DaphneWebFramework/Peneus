@@ -41,8 +41,9 @@ class RegisterAccountAction extends Action
      * On failure, the database transaction is rolled back and an exception is
      * thrown.
      *
-     * @return mixed
-     *   Always returns `null`.
+     * @return array<string, string>
+     *   An associative array with a 'message' key containing a localized
+     *   success message to display to the user.
      * @throws \RuntimeException
      *   If the email address field is missing or invalid, if the password field
      *   is missing or shorter than 8 or longer than 72 characters, if the

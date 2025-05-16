@@ -21,7 +21,7 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
-use \Harmonia\Validation\Validator;
+use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;

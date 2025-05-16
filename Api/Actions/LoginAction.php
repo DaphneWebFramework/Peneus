@@ -19,7 +19,7 @@ use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
-use \Harmonia\Validation\Validator;
+use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;

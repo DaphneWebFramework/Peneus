@@ -61,7 +61,7 @@ class Dispatcher implements IShutdownListener
         if ($handlerName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
                     'error_handler_not_specified')));
             return;
         }
@@ -70,7 +70,7 @@ class Dispatcher implements IShutdownListener
         if ($actionName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
                     'error_action_not_specified')));
             return;
         }
@@ -79,7 +79,7 @@ class Dispatcher implements IShutdownListener
         if ($handler === null) {
             $this->response
                 ->SetStatusCode(StatusCode::NotFound)
-                ->SetBody(self::errorJson(Translation::Instance()->Get(
+                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
                     'error_handler_not_found', $handlerName)));
             return;
         }
@@ -93,7 +93,7 @@ class Dispatcher implements IShutdownListener
             } else {
                 $this->response
                     ->SetHeader('Content-Type', 'application/json')
-                    ->SetBody(\json_encode($result, \JSON_UNESCAPED_UNICODE));
+                    ->SetBody(self::toJson($result));
             }
         }
         catch (\Exception $e) {
@@ -102,7 +102,7 @@ class Dispatcher implements IShutdownListener
             $this->response
                 ->SetStatusCode($statusCode)
                 ->SetHeader('Content-Type', 'application/json')
-                ->SetBody(self::errorJson($e->getMessage()));
+                ->SetBody(self::toMessageJson($e->getMessage()));
         }
     }
 
@@ -127,7 +127,7 @@ class Dispatcher implements IShutdownListener
             $this->response
                 ->SetStatusCode(StatusCode::InternalServerError)
                 ->SetHeader('Content-Type', 'application/json')
-                ->SetBody(self::errorJson($errorMessage));
+                ->SetBody(self::toMessageJson($errorMessage));
         }
         $this->response->Send();
     }
@@ -137,16 +137,29 @@ class Dispatcher implements IShutdownListener
     #region private ------------------------------------------------------------
 
     /**
-     * Generates a JSON error response.
+     * Encodes a message into a JSON string using the `message` key.
      *
-     * @param string $errorMessage
-     *   The error message to include in the response.
+     * @param string $message
+     *   The message to encode.
      * @return string
-     *   A JSON-encoded error message in the format: `{"error": "<message>"}`
+     *   A JSON string like: `{"message": "<your message>"}`
      */
-    private static function errorJson(string $errorMessage): string
+    private static function toMessageJson(string $message): string
     {
-        return \json_encode(['error' => $errorMessage], \JSON_UNESCAPED_UNICODE);
+        return self::toJson(['message' => $message]);
+    }
+
+    /**
+     * Encodes the given data to a JSON string.
+     *
+     * @param mixed $data
+     *   The data to encode as JSON.
+     * @return string
+     *   A JSON-encoded string.
+     */
+    private static function toJson(mixed $data): string
+    {
+        return \json_encode($data, \JSON_UNESCAPED_UNICODE);
     }
 
     #endregion private

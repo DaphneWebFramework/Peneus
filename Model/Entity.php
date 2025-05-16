@@ -12,13 +12,13 @@
 
 namespace Peneus\Model;
 
-use \Harmonia\Database\Database;
-use \Harmonia\Database\Queries\DeleteQuery;
-use \Harmonia\Database\Queries\InsertQuery;
-use \Harmonia\Database\Queries\SelectQuery;
-use \Harmonia\Database\Queries\UpdateQuery;
-use \Harmonia\Database\ResultSet;
 use \Harmonia\Logger;
+use \Harmonia\Systems\DatabaseSystem\Database;
+use \Harmonia\Systems\DatabaseSystem\Queries\DeleteQuery;
+use \Harmonia\Systems\DatabaseSystem\Queries\InsertQuery;
+use \Harmonia\Systems\DatabaseSystem\Queries\SelectQuery;
+use \Harmonia\Systems\DatabaseSystem\Queries\UpdateQuery;
+use \Harmonia\Systems\DatabaseSystem\ResultSet;
 
 /**
  * Base class for Active Record entities.

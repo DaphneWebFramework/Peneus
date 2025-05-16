@@ -12,13 +12,13 @@
 
 namespace Peneus\Api\Actions;
 
-use \Harmonia\Database\Database;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
+use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Model\Account;

@@ -12,13 +12,13 @@
 
 namespace Peneus\Api;
 
-use \Harmonia\Shutdown\IShutdownListener;
+use \Harmonia\Systems\ShutdownSystem\IShutdownListener;
 
 use \Harmonia\Config;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
-use \Harmonia\Shutdown\ShutdownHandler;
+use \Harmonia\Systems\ShutdownSystem\ShutdownHandler;
 use \Peneus\Translation;
 
 /**

@@ -47,6 +47,8 @@ class LoginAction extends Action
      *   missing or invalid, if the account's last login time cannot be updated,
      *   if session integrity cannot be established, or if the CSRF cookie
      *   cannot be deleted.
+     *
+     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
     {
@@ -97,8 +99,6 @@ class LoginAction extends Action
         }
         return null;
     }
-
-    #region protected ----------------------------------------------------------
 
     protected function findAccount(string $email): ?Account
     {
@@ -163,6 +163,4 @@ class LoginAction extends Action
     {
         return new LogoutAction;
     }
-
-    #endregion protected
 }

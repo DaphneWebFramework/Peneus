@@ -13,6 +13,7 @@
 namespace Peneus\Api\Handlers;
 
 use \Peneus\Api\Actions\Action;
+use \Peneus\Api\Actions\ActivateAccountAction;
 use \Peneus\Api\Actions\LoginAction;
 use \Peneus\Api\Actions\LogoutAction;
 use \Peneus\Api\Actions\RegisterAccountAction;
@@ -28,6 +29,8 @@ class AccountHandler extends Handler
     {
         return match ($actionName) {
             'register' => (new RegisterAccountAction)
+                ->AddGuard(new FormTokenGuard),
+            'activate' => (new ActivateAccountAction)
                 ->AddGuard(new FormTokenGuard),
             'login' => (new LoginAction)
                 ->AddGuard(new FormTokenGuard),

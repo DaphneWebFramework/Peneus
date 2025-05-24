@@ -35,6 +35,22 @@
     "en": "Account registration failed.",
     "tr": "Hesap kaydı başarısız oldu."
   },
+  "error_activation_code_required": {
+    "en": "Activation code is required.",
+    "tr": "Etkinleştirme kodu gereklidir."
+  },
+  "error_activation_code_invalid": {
+    "en": "Activation code format is invalid.",
+    "tr": "Etkinleştirme kodu biçimi geçersiz."
+  },
+  "error_pending_account_not_found": {
+    "en": "No account is awaiting activation for the given code.",
+    "tr": "Verilen kod için etkinleştirme bekleyen bir hesap bulunamadı."
+  },
+  "error_activate_account_failed": {
+    "en": "Account activation failed.",
+    "tr": "Hesap etkinleştirme işlemi başarısız oldu."
+  },
   "error_already_logged_in": {
     "en": "You are already logged in.",
     "tr": "Zaten oturum açmış durumdasınız."

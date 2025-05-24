@@ -52,6 +52,8 @@ class RegisterAccountAction extends Action
      *   already awaiting activation, if the pending account cannot be created,
      *   if the activation email cannot be sent, or if the CSRF cookie cannot be
      *   deleted.
+     *
+     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
     {
@@ -116,8 +118,6 @@ class RegisterAccountAction extends Action
             'message' => $translation->Get('success_account_activation_link_sent')
         ];
     }
-
-    #region protected ----------------------------------------------------------
 
     protected function isEmailAlreadyRegistered(string $email): bool
     {
@@ -225,6 +225,4 @@ class RegisterAccountAction extends Action
     {
         return \date('Y');
     }
-
-    #endregion protected
 }

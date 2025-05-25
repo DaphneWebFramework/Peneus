@@ -62,24 +62,22 @@ abstract class Entity
         }
         $logger = Logger::Instance();
         foreach ($this->properties() as $key => $_) {
-            if (\array_key_exists($key, $data)) {
-                if ($this->$key instanceof \DateTime) {
-                    try {
-                        if (false === @$this->$key->modify($data[$key])) {
-                            $logger->Warning("Invalid date-time format: {$data[$key]}");
-                        }
-                    } catch (\Throwable $e) {
-                        $logger->Warning("Invalid date-time format: {$data[$key]}");
+            if (!\array_key_exists($key, $data)) {
+                $logger->Warning("Missing data field: {$key}");
+                continue;
+            }
+            $value = $data[$key];
+            try {
+                if ($this->$key instanceof \DateTime && \is_string($value)) {
+                    if (false === @$this->$key->modify($value)) {
+                        $logger->Warning("Invalid date-time format: {$value}");
                     }
                 } else {
-                    try {
-                        $this->$key = $data[$key];
-                    } catch (\Throwable $e) {
-                        $logger->Warning("Failed to assign value: {$data[$key]}");
-                    }
+                    $this->$key = $value; // may throw
                 }
-            } else {
-                $logger->Warning("Missing data field: {$key}");
+            } catch (\Throwable $e) {
+                $value = \var_export($value, true);
+                $logger->Warning("Failed to assign {$value} to `{$key}`");
             }
         }
     }

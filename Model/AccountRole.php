@@ -18,8 +18,8 @@ namespace Peneus\Model;
  * ```sql
  * CREATE TABLE `accountrole` (
  *   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- *   `accountId` INT,
- *   `role` INT
+ *   `accountId` INT NOT NULL,
+ *   `role` INT NOT NULL
  * ) ENGINE = InnoDB;
  * ```
  */

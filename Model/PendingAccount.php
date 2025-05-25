@@ -22,11 +22,11 @@ namespace Peneus\Model;
  * ```sql
  * CREATE TABLE `pendingaccount` (
  *   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- *   `email` TEXT,
- *   `passwordHash` TEXT,
- *   `displayName` TEXT,
- *   `activationCode` TEXT,
- *   `timeRegistered` DATETIME
+ *   `email` TEXT NOT NULL,
+ *   `passwordHash` TEXT NOT NULL,
+ *   `displayName` TEXT NOT NULL,
+ *   `activationCode` TEXT NOT NULL,
+ *   `timeRegistered` DATETIME NOT NULL
  * ) ENGINE = InnoDB;
  * ```
  */

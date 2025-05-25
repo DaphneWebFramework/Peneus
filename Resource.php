@@ -190,7 +190,7 @@ class Resource extends Singleton
         $requestUri = Server::Instance()->RequestUri();
         if ($requestUri !== null) {
             $requestUri->ApplyInPlace('\rawurlencode');
-            $url->AppendInPlace('?redirect=' . $requestUri);
+            $url->AppendInPlace("?redirect={$requestUri}");
         }
         return $url;
     }

@@ -19,6 +19,7 @@ use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
+use \Peneus\Resource;
 use \Peneus\Translation;
 
 /**
@@ -29,8 +30,9 @@ class ActivateAccountAction extends Action
     /**
      * Executes the account activation process.
      *
-     * @return mixed
-     *   Always returns `null`.
+     * @return array<string, string>
+     *   An associative array with a 'redirectUrl' key indicating where the user
+     *   should be redirected after successful activation.
      * @throws \RuntimeException
      *   If the activation code is missing or invalid, if no pending account is
      *   found for the given code, if the email is already registered, if the
@@ -85,7 +87,9 @@ class ActivateAccountAction extends Action
                 StatusCode::InternalServerError->value
             );
         }
-        return null;
+        return [
+            'redirectUrl' => $this->redirectUrl(),
+        ];
     }
 
     /** @codeCoverageIgnore */
@@ -116,5 +120,16 @@ class ActivateAccountAction extends Action
         $account->timeActivated = new \DateTime(); // now
         $account->timeLastLogin = null;
         return $account;
+    }
+
+    /** @codeCoverageIgnore */
+    protected function redirectUrl(): string
+    {
+        $resource = Resource::Instance();
+        $homePageUri = $resource->PageUrl('home')
+            ->ApplyInPlace('\parse_url', \PHP_URL_PATH)
+            ->ApplyInPlace('\rawurlencode');
+        return (string)$resource->PageUrl('login')
+            ->AppendInPlace("?redirect={$homePageUri}");
     }
 }

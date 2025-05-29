@@ -55,6 +55,26 @@
     "en": "Sending password reset link failed.",
     "tr": "Şifre sıfırlama bağlantısı gönderme işlemi başarısız oldu."
   },
+  "error_reset_code_required": {
+    "en": "Reset code is required.",
+    "tr": "Sıfırlama kodu gereklidir."
+  },
+  "error_reset_code_invalid": {
+    "en": "Reset code format is invalid.",
+    "tr": "Sıfırlama kodu biçimi geçersiz."
+  },
+  "error_password_reset_not_found": {
+    "en": "No password reset record found for the given code.",
+    "tr": "Verilen kod için bir şifre sıfırlama kaydı bulunamadı."
+  },
+  "error_password_reset_account_not_found": {
+    "en": "No account is associated with the password reset record.",
+    "tr": "Şifre sıfırlama kaydıyla ilişkili bir hesap bulunamadı."
+  },
+  "error_reset_password_failed": {
+    "en": "Password reset failed.",
+    "tr": "Şifre sıfırlama işlemi başarısız oldu."
+  },
   "error_already_logged_in": {
     "en": "You are already logged in.",
     "tr": "Zaten oturum açmış durumdasınız."

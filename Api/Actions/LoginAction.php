@@ -43,10 +43,10 @@ class LoginAction extends Action
      * @return mixed
      *   Always returns `null`.
      * @throws \RuntimeException
-     *   If the user is already logged in, if the email address or password is
-     *   missing or invalid, if the account's last login time cannot be updated,
-     *   if session integrity cannot be established, or if the CSRF cookie
-     *   cannot be deleted.
+     *   If the user is already logged in, if the email address field is missing
+     *   or invalid, if the password field is missing or invalid due to length
+     *   limits, if the account's last login time cannot be updated, if session
+     *   integrity cannot be established, or if the CSRF cookie cannot be deleted.
      *
      * @todo Define custom error messages for each validation rule.
      */
@@ -66,8 +66,8 @@ class LoginAction extends Action
             'password' => [
                 'required',
                 'string',
-                'minLength: 8',
-                'maxLength: 72'
+                'minLength:' . SecurityService::PASSWORD_MIN_LENGTH,
+                'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
             ]
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());

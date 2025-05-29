@@ -46,12 +46,11 @@ class RegisterAccountAction extends Action
      *   success message to display to the user.
      * @throws \RuntimeException
      *   If the email address field is missing or invalid, if the password field
-     *   is missing or shorter than 8 or longer than 72 characters, if the
-     *   display name field is missing or does not match the required pattern,
-     *   if the email address is already registered, if the email address is
-     *   already awaiting activation, if the pending account cannot be created,
-     *   if the activation email cannot be sent, or if the CSRF cookie cannot be
-     *   deleted.
+     *   is missing or invalid due to length limits, if the display name field
+     *   is missing or does not match the required pattern, if the email address
+     *   is already registered, if the email address is already awaiting activation,
+     *   if the pending account cannot be created, if the activation email cannot
+     *   be sent, or if the CSRF cookie cannot be deleted.
      *
      * @todo Define custom error messages for each validation rule.
      */
@@ -66,8 +65,8 @@ class RegisterAccountAction extends Action
             'password' => [
                 'required',
                 'string',
-                'minLength: 8',
-                'maxLength: 72'
+                'minLength:' . SecurityService::PASSWORD_MIN_LENGTH,
+                'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
             ],
             'displayName' => [
                 'required',

@@ -15,6 +15,7 @@ namespace Peneus\Api\Actions;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
+use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
@@ -45,7 +46,7 @@ class ActivateAccountAction extends Action
         $validator = new Validator([
             'activationCode' => [
                 'required',
-                'regex: /^[a-f0-9]{64}$/'
+                'regex:' . SecurityService::TOKEN_PATTERN
             ]
         ], [
             'activationCode.required' =>

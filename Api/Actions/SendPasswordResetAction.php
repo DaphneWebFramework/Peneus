@@ -12,20 +12,16 @@
 
 namespace Peneus\Api\Actions;
 
-use \Harmonia\Config;
-use \Harmonia\Core\CFile;
-use \Harmonia\Core\CPath;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
-use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Actions\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Resource;
-use \Peneus\Systems\MailerSystem\Mailer;
 use \Peneus\Translation;
 
 /**
@@ -33,6 +29,8 @@ use \Peneus\Translation;
  */
 class SendPasswordResetAction extends Action
 {
+    use TransactionalEmailSender;
+
     /**
      * Executes the password reset request process by validating the email
      * address, locating the associated account, creating a password reset
@@ -117,79 +115,22 @@ class SendPasswordResetAction extends Action
         return $passwordReset->Save();
     }
 
-    /** @codeCoverageIgnore */
     protected function sendPasswordResetEmail(
         string $email,
         string $displayName,
         string $resetCode
     ): bool
     {
-        $resource = Resource::Instance();
-        $file = $this->openFile($resource->TemplateFilePath('transactional-email'));
-        if ($file === null) {
-            Logger::Instance()->Error('Email template not found.');
-            return false;
-        }
-        $template = $file->Read();
-        $file->Close();
-        if ($template === null) {
-            Logger::Instance()->Error('Email template could not be read.');
-            return false;
-        }
-
-        $config = Config::Instance();
-        $language = $config->OptionOrDefault('Language', 'en');
-        $appName = $config->OptionOrDefault('AppName', '');
-        $supportEmail = $config->OptionOrDefault('SupportEmail', '');
-
-        $translation = Translation::Instance();
-        $html = \strtr($template, [
-            '{{Language}}' =>
-                $language,
-            '{{Title}}' =>
-                $translation->Get('email_reset_password_masthead'),
-            '{{MastheadText}}' =>
-                $translation->Get('email_reset_password_masthead'),
-            '{{GreetingText}}' =>
-                $translation->Get('email_common_greeting', $displayName),
-            '{{IntroText}}' =>
-                $translation->Get('email_reset_password_intro'),
-            '{{ActionUrl}}' =>
-                $resource->PageUrl('reset-password') . $resetCode,
-            '{{ButtonText}}' =>
-                $translation->Get('email_reset_password_button_text'),
-            '{{SecurityNoticeText}}' =>
-                $translation->Get('email_reset_password_security_notice', $appName),
-            '{{ContactUsText}}' =>
-                $translation->Get('email_common_contact_us'),
-            '{{SupportEmail}}' =>
-                $supportEmail,
-            '{{CopyrightText}}' =>
-                $translation->Get('email_common_copyright', $this->currentYear(), $appName),
-        ]);
-
-        return $this->newMailer()
-            ->SetAddress($email)
-            ->SetSubject($translation->Get('email_reset_password_masthead'))
-            ->SetBody($html)
-            ->Send();
-    }
-
-    /** @codeCoverageIgnore */
-    protected function openFile(CPath $filePath): ?CFile
-    {
-        return CFile::Open($filePath);
-    }
-
-    /** @codeCoverageIgnore */
-    protected function newMailer(): Mailer
-    {
-        return new Mailer();
-    }
-
-    /** @codeCoverageIgnore */
-    protected function currentYear(): string
-    {
-        return \date('Y');
+        return $this->sendTransactionalEmail(
+            $email,
+            $displayName,
+            Resource::Instance()->PageUrl('reset-password') . $resetCode,
+            [
+                'masthead' => 'email_reset_password_masthead',
+                'intro' => 'email_reset_password_intro',
+                'buttonText' => 'email_reset_password_button_text',
+                'securityNotice' => 'email_reset_password_security_notice'
+            ]
+        );
     }
 }

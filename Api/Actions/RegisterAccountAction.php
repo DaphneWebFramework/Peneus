@@ -12,20 +12,16 @@
 
 namespace Peneus\Api\Actions;
 
-use \Harmonia\Config;
-use \Harmonia\Core\CFile;
-use \Harmonia\Core\CPath;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
-use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Actions\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
-use \Peneus\Systems\MailerSystem\Mailer;
 use \Peneus\Translation;
 
 /**
@@ -33,6 +29,8 @@ use \Peneus\Translation;
  */
 class RegisterAccountAction extends Action
 {
+    use TransactionalEmailSender;
+
     /**
      * Executes the account registration process by validating user input,
      * checking for duplicate email addresses, creating a pending account record,
@@ -156,72 +154,16 @@ class RegisterAccountAction extends Action
         string $activationCode
     ): bool
     {
-        $resource = Resource::Instance();
-        $file = $this->openFile($resource->TemplateFilePath('transactional-email'));
-        if ($file === null) {
-            Logger::Instance()->Error('Email template not found.');
-            return false;
-        }
-        $template = $file->Read();
-        $file->Close();
-        if ($template === null) {
-            Logger::Instance()->Error('Email template could not be read.');
-            return false;
-        }
-
-        $config = Config::Instance();
-        $language = $config->OptionOrDefault('Language', 'en');
-        $appName = $config->OptionOrDefault('AppName', '');
-        $supportEmail = $config->OptionOrDefault('SupportEmail', '');
-
-        $translation = Translation::Instance();
-        $html = \strtr($template, [
-            '{{Language}}' =>
-                $language,
-            '{{Title}}' =>
-                $translation->Get('email_activate_account_masthead'),
-            '{{MastheadText}}' =>
-                $translation->Get('email_activate_account_masthead'),
-            '{{GreetingText}}' =>
-                $translation->Get('email_common_greeting', $displayName),
-            '{{IntroText}}' =>
-                $translation->Get('email_activate_account_intro'),
-            '{{ActionUrl}}' =>
-                $resource->PageUrl('activate-account') . $activationCode,
-            '{{ButtonText}}' =>
-                $translation->Get('email_activate_account_button_text'),
-            '{{SecurityNoticeText}}' =>
-                $translation->Get('email_activate_account_security_notice', $appName),
-            '{{ContactUsText}}' =>
-                $translation->Get('email_common_contact_us'),
-            '{{SupportEmail}}' =>
-                $supportEmail,
-            '{{CopyrightText}}' =>
-                $translation->Get('email_common_copyright', $this->currentYear(), $appName),
-        ]);
-
-        return $this->newMailer()
-            ->SetAddress($email)
-            ->SetSubject($translation->Get('email_activate_account_masthead'))
-            ->SetBody($html)
-            ->Send();
-    }
-
-    /** @codeCoverageIgnore */
-    protected function openFile(CPath $filePath): ?CFile
-    {
-        return CFile::Open($filePath);
-    }
-
-    /** @codeCoverageIgnore */
-    protected function newMailer(): Mailer
-    {
-        return new Mailer();
-    }
-
-    /** @codeCoverageIgnore */
-    protected function currentYear(): string
-    {
-        return \date('Y');
+        return $this->sendTransactionalEmail(
+            $email,
+            $displayName,
+            Resource::Instance()->PageUrl('activate-account') . $activationCode,
+            [
+                'masthead' => 'email_activate_account_masthead',
+                'intro' => 'email_activate_account_intro',
+                'buttonText' => 'email_activate_account_button_text',
+                'securityNotice' => 'email_activate_account_security_notice'
+            ]
+        );
     }
 }

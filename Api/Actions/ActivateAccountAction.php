@@ -18,9 +18,9 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Actions\Traits\LoginUrlBuilder;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
-use \Peneus\Resource;
 use \Peneus\Translation;
 
 /**
@@ -28,6 +28,8 @@ use \Peneus\Translation;
  */
 class ActivateAccountAction extends Action
 {
+    use LoginUrlBuilder;
+
     /**
      * Executes the account activation process.
      *
@@ -89,7 +91,7 @@ class ActivateAccountAction extends Action
             );
         }
         return [
-            'redirectUrl' => $this->redirectUrl(),
+            'redirectUrl' => $this->buildLoginUrl(),
         ];
     }
 
@@ -121,16 +123,5 @@ class ActivateAccountAction extends Action
         $account->timeActivated = new \DateTime(); // now
         $account->timeLastLogin = null;
         return $account;
-    }
-
-    /** @codeCoverageIgnore */
-    protected function redirectUrl(): string
-    {
-        $resource = Resource::Instance();
-        $homePageUri = $resource->PageUrl('home')
-            ->ApplyInPlace('\parse_url', \PHP_URL_PATH)
-            ->ApplyInPlace('\rawurlencode');
-        return (string)$resource->PageUrl('login')
-            ->AppendInPlace("?redirect={$homePageUri}");
     }
 }

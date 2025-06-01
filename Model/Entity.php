@@ -150,7 +150,8 @@ abstract class Entity
         $query = (new SelectQuery)
             ->Table(static::tableName())
             ->Where('id = :id')
-            ->Bind(['id' => $id]);
+            ->Bind(['id' => $id])
+            ->Limit(1);
         $database = Database::Instance();
         $resultSet = $database->Execute($query);
         if ($resultSet === null) {

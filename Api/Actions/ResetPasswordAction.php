@@ -110,7 +110,6 @@ class ResetPasswordAction extends Action
         ];
     }
 
-    /** @codeCoverageIgnore */
     protected function findPasswordReset(string $resetCode): ?PasswordReset
     {
         return PasswordReset::FindFirst(
@@ -119,16 +118,15 @@ class ResetPasswordAction extends Action
         );
     }
 
-    /** @codeCoverageIgnore */
     protected function findAccount(int $accountId): ?Account
     {
         return Account::FindById($accountId);
     }
 
-    /** @codeCoverageIgnore */
     protected function updatePassword(Account $account, string $newPassword): bool
     {
-        $account->passwordHash = SecurityService::Instance()->HashPassword($newPassword);
+        $account->passwordHash =
+            SecurityService::Instance()->HashPassword($newPassword);
         return $account->Save();
     }
 }

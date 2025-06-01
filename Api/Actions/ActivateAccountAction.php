@@ -95,7 +95,6 @@ class ActivateAccountAction extends Action
         ];
     }
 
-    /** @codeCoverageIgnore */
     protected function findPendingAccount(string $activationCode): ?PendingAccount
     {
         return PendingAccount::FindFirst(
@@ -104,7 +103,6 @@ class ActivateAccountAction extends Action
         );
     }
 
-    /** @codeCoverageIgnore */
     protected function isEmailAlreadyRegistered(string $email): bool
     {
         return 0 !== Account::Count(
@@ -113,14 +111,16 @@ class ActivateAccountAction extends Action
         );
     }
 
-    /** @codeCoverageIgnore */
-    protected function createAccountFromPendingAccount(PendingAccount $pendingAccount): Account
+    protected function createAccountFromPendingAccount(
+        PendingAccount $pendingAccount,
+        \DateTime $timeActivated = null
+    ): Account
     {
         $account = new Account();
         $account->email = $pendingAccount->email;
         $account->passwordHash = $pendingAccount->passwordHash;
         $account->displayName = $pendingAccount->displayName;
-        $account->timeActivated = new \DateTime(); // now
+        $account->timeActivated = $timeActivated ?? new \DateTime();
         $account->timeLastLogin = null;
         return $account;
     }

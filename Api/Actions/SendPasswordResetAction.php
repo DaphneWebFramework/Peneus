@@ -87,7 +87,6 @@ class SendPasswordResetAction extends Action
         ];
     }
 
-    /** @codeCoverageIgnore */
     protected function findAccount(string $email): ?Account
     {
         return Account::FindFirst(
@@ -96,10 +95,10 @@ class SendPasswordResetAction extends Action
         );
     }
 
-    /** @codeCoverageIgnore */
     protected function createPasswordReset(
         int $accountId,
-        string $resetCode
+        string $resetCode,
+        \DateTime $timeRequested = null
     ): bool
     {
         $passwordReset = PasswordReset::FindFirst(
@@ -111,7 +110,7 @@ class SendPasswordResetAction extends Action
             $passwordReset->accountId = $accountId;
         }
         $passwordReset->resetCode = $resetCode;
-        $passwordReset->timeRequested = new \DateTime(); // now
+        $passwordReset->timeRequested = $timeRequested ?? new \DateTime();
         return $passwordReset->Save();
     }
 

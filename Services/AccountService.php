@@ -164,12 +164,6 @@ class AccountService extends Singleton
         if ($accountId === null) {
             return null;
         }
-        return $this->findAccountById($accountId);
-    }
-
-    /** @codeCoverageIgnore */
-    protected function findAccountById(int $accountId): ?Account
-    {
         return Account::FindById($accountId);
     }
 

@@ -136,15 +136,17 @@ class RegisterAccountAction extends Action
         string $email,
         string $password,
         string $displayName,
-        string $activationCode
+        string $activationCode,
+        \DateTime $timeRegistered = null
     ): bool
     {
         $pendingAccount = new PendingAccount();
         $pendingAccount->email = $email;
-        $pendingAccount->passwordHash = SecurityService::Instance()->HashPassword($password);
+        $pendingAccount->passwordHash =
+            SecurityService::Instance()->HashPassword($password);
         $pendingAccount->displayName = $displayName;
         $pendingAccount->activationCode = $activationCode;
-        $pendingAccount->timeRegistered = new \DateTime(); // now
+        $pendingAccount->timeRegistered = $timeRegistered ?? new \DateTime();
         return $pendingAccount->Save();
     }
 

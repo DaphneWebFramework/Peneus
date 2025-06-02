@@ -12,7 +12,6 @@
 
 namespace Peneus\Model;
 
-use \Harmonia\Logger;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\DatabaseSystem\Queries\DeleteQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\InsertQuery;
@@ -60,24 +59,19 @@ abstract class Entity
         if ($data === null) {
             return;
         }
-        $logger = Logger::Instance();
         foreach ($this->properties() as $key => $_) {
             if (!\array_key_exists($key, $data)) {
-                $logger->Warning("Missing data field: {$key}");
                 continue;
             }
             $value = $data[$key];
             try {
                 if ($this->$key instanceof \DateTime && \is_string($value)) {
-                    if (false === @$this->$key->modify($value)) {
-                        $logger->Warning("Invalid date-time format: {$value}");
-                    }
+                    @$this->$key->modify($value);
                 } else {
                     $this->$key = $value; // may throw
                 }
-            } catch (\Throwable $e) {
-                $value = \var_export($value, true);
-                $logger->Warning("Failed to assign {$value} to `{$key}`");
+            } catch (\Throwable) {
+                // silently skip
             }
         }
     }

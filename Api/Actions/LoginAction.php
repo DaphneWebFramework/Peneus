@@ -14,7 +14,6 @@ namespace Peneus\Api\Actions;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
-use \Harmonia\Logger;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
@@ -154,7 +153,6 @@ class LoginAction extends Action
             );
             return true;
         } catch (\Exception $e) {
-            Logger::Instance()->Error($e->getMessage());
             return false;
         }
     }

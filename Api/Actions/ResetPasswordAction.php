@@ -18,9 +18,9 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Actions\Traits\LoginUrlBuilder;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
+use \Peneus\Resource;
 use \Peneus\Translation;
 
 /**
@@ -28,8 +28,6 @@ use \Peneus\Translation;
  */
 class ResetPasswordAction extends Action
 {
-    use LoginUrlBuilder;
-
     /**
      * Executes the password reset process by validating input, verifying the
      * reset code, updating the user's password, deleting the reset record,
@@ -106,7 +104,7 @@ class ResetPasswordAction extends Action
             );
         }
         return [
-            'redirectUrl' => $this->buildLoginUrl()
+            'redirectUrl' => (string)Resource::Instance()->LoginPageUrl('home')
         ];
     }
 

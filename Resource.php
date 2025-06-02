@@ -176,21 +176,30 @@ class Resource extends Singleton
     }
 
     /**
-     * Returns the URL to the login page.
+     * Returns the URL to the login page with a "redirect" query parameter.
      *
-     * This method appends a "redirect" query parameter to the URL, pointing
-     * to the current request URI.
+     * If a page ID is provided, the "redirect" parameter will point to that
+     * page. Otherwise, it will point to the current request URI.
      *
+     * @param ?string $redirectPageId
+     *   (Optional) Page ID to redirect to after login (e.g. 'home'). If `null`,
+     *   uses the current request URI.
      * @return CUrl
-     *   The URL to the login page with a "redirect" query parameter.
+     *   The login page URL with a "redirect" query parameter. For example:
+     *   `https://example.com/pages/login/?redirect=%2Fpages%2Fhome%2F`
      */
-    public function LoginPageUrl(): CUrl
+    public function LoginPageUrl(?string $redirectPageId = null): CUrl
     {
         $url = $this->PageUrl('login');
-        $requestUri = Server::Instance()->RequestUri();
-        if ($requestUri !== null) {
-            $requestUri->ApplyInPlace('\rawurlencode');
-            $url->AppendInPlace("?redirect={$requestUri}");
+        if ($redirectPageId !== null) {
+            $redirectUri = $this->PageUrl($redirectPageId)
+                ->ApplyInPlace('\parse_url', \PHP_URL_PATH);
+        } else {
+            $redirectUri = Server::Instance()->RequestUri();
+        }
+        if ($redirectUri !== null) {
+            $redirectUri->ApplyInPlace('\rawurlencode');
+            $url->AppendInPlace("?redirect={$redirectUri}");
         }
         return $url;
     }

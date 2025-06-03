@@ -66,22 +66,22 @@ class Renderer
         }
         $libraries = $page->IncludedLibraries();
         $html = \strtr($template, [
-            '{{Language}}'
-                => $this->config->OptionOrDefault('Language', ''),
-            '{{Title}}'
-                => $page->Title(),
-            "\t{{MetaTags}}"
-                => $this->renderMetaTags($page->MetaItems()),
-            "\t{{LibraryStylesheetLinks}}"
-                => $this->libraryStylesheetLinks($libraries),
-            "\t{{PageStylesheetLinks}}"
-                => $this->pageStylesheetLinks($page),
-            "\t{{Content}}"
-                => $this->content($page),
-            "\t{{LibraryJavascriptLinks}}"
-                => $this->libraryJavascriptLinks($libraries),
-            "\t{{PageJavascriptLinks}}"
-                => $this->pageJavascriptLinks($page),
+            '{{Language}}' =>
+                $this->config->OptionOrDefault('Language', ''),
+            '{{Title}}' =>
+                $page->Title(),
+            "\t{{MetaTags}}" =>
+                $this->renderMetaTags($page->MetaItems()),
+            "\t{{LibraryStylesheetLinks}}" =>
+                $this->libraryStylesheetLinks($libraries),
+            "\t{{PageStylesheetLinks}}" =>
+                $this->pageStylesheetLinks($page),
+            "\t{{Content}}" =>
+                $this->content($page),
+            "\t{{LibraryJavascriptLinks}}" =>
+                $this->libraryJavascriptLinks($libraries),
+            "\t{{PageJavascriptLinks}}" =>
+                $this->pageJavascriptLinks($page),
         ]);
         $this->_echo($html);
     }

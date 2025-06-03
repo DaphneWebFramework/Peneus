@@ -51,6 +51,7 @@ class Page
     private readonly PageManifest $pageManifest;
     private readonly MetaCollection $metaCollection;
     private readonly AuthManager $authManager;
+    private readonly CArray $properties;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -96,6 +97,7 @@ class Page
         $this->pageManifest = $pageManifest ?? new PageManifest($this->id);
         $this->metaCollection = $metaCollection ?? new MetaCollection();
         $this->authManager = $authManager ?? new AuthManager();
+        $this->properties = new CArray();
     }
 
     /**
@@ -467,6 +469,51 @@ class Page
     }
 
     #endregion Auth
+
+    #region Property
+
+    /**
+     * Sets the value of a property.
+     *
+     * This allows the page to pass a value to the masterpage, which can then
+     * adjust its layout, structure, or styling accordingly.
+     *
+     * @param string $key
+     *   The name of the property.
+     * @param mixed $value
+     *   The value of the property.
+     * @return self
+     *   The current instance.
+     *
+     * @see Property
+     */
+    public function SetProperty(string $key, mixed $value): self
+    {
+        $this->properties->Set($key, $value);
+        return $this;
+    }
+
+    /**
+     * Returns the value of a property.
+     *
+     * This is typically used in the masterpage to access values set by the
+     * page and render content conditionally.
+     *
+     * @param string $key
+     *   The name of the property.
+     * @param mixed $default
+     *   (Optional) The value to return if the property is not defined.
+     * @return mixed
+     *   The property value, or the default value if the property is not defined.
+     *
+     * @see SetProperty
+     */
+    public function Property(string $key, mixed $default = null): mixed
+    {
+        return $this->properties->GetOrDefault($key, $default);
+    }
+
+    #endregion Property
 
     #region CSRF
 

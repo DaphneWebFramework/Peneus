@@ -10,7 +10,7 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Api\Actions\Traits;
+namespace Peneus\Api\Actions\Account\Traits;
 
 use \Harmonia\Config;
 use \Harmonia\Core\CFile;
@@ -22,35 +22,6 @@ use \Peneus\Translation;
 
 /**
  * Sends an email based on the "transactional-email.html" template.
- *
- * #### Example
- * ```php
- * <?php declare(strict_types=1);
- *
- * namespace Peneus\Api\Actions;
- *
- * use \Peneus\Api\Actions\Traits\TransactionalEmailSender;
- *
- * class WelcomeAction extends Action
- * {
- *     use TransactionalEmailSender;
- *
- *     protected function onExecute(): mixed
- *     {
- *         return $this->sendTransactionalEmail(
- *             'john@example.com',
- *             'John Doe',
- *             'https://example.com/welcome/',
- *             [
- *                 'masthead' => 'email_welcome_masthead',
- *                 'intro' => 'email_welcome_intro',
- *                 'buttonText' => 'email_welcome_button_text',
- *                 'securityNotice' => 'email_welcome_security_notice'
- *             ]
- *         );
- *     }
- * }
- * ```
  */
 trait TransactionalEmailSender
 {

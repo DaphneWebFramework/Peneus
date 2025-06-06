@@ -12,13 +12,13 @@
 
 namespace Peneus\Api\Handlers;
 
+use \Peneus\Api\Actions\Account\ActivateAction;
+use \Peneus\Api\Actions\Account\LoginAction;
+use \Peneus\Api\Actions\Account\LogoutAction;
+use \Peneus\Api\Actions\Account\RegisterAction;
+use \Peneus\Api\Actions\Account\ResetPasswordAction;
+use \Peneus\Api\Actions\Account\SendPasswordResetAction;
 use \Peneus\Api\Actions\Action;
-use \Peneus\Api\Actions\ActivateAccountAction;
-use \Peneus\Api\Actions\LoginAction;
-use \Peneus\Api\Actions\LogoutAction;
-use \Peneus\Api\Actions\RegisterAccountAction;
-use \Peneus\Api\Actions\ResetPasswordAction;
-use \Peneus\Api\Actions\SendPasswordResetAction;
 use \Peneus\Api\Guards\FormTokenGuard;
 use \Peneus\Api\Guards\SessionGuard;
 
@@ -30,9 +30,9 @@ class AccountHandler extends Handler
     protected function createAction(string $actionName): ?Action
     {
         return match ($actionName) {
-            'register' => (new RegisterAccountAction)
+            'register' => (new RegisterAction)
                 ->AddGuard(new FormTokenGuard),
-            'activate' => (new ActivateAccountAction)
+            'activate' => (new ActivateAction)
                 ->AddGuard(new FormTokenGuard),
             'login' => (new LoginAction)
                 ->AddGuard(new FormTokenGuard),

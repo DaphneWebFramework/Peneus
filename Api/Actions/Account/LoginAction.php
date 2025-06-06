@@ -10,7 +10,9 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Api\Actions;
+namespace Peneus\Api\Actions\Account;
+
+use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
@@ -19,7 +21,7 @@ use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Actions\LogoutAction;
+use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
 use \Peneus\Model\Role;

@@ -75,6 +75,10 @@
     "en": "Password reset failed.",
     "tr": "Şifre sıfırlama işlemi başarısız oldu."
   },
+  "error_change_display_name_failed": {
+    "en": "Display name change failed.",
+    "tr": "Görünen ad değiştirme işlemi başarısız oldu."
+  },
   "error_already_logged_in": {
     "en": "You are already logged in.",
     "tr": "Zaten oturum açmış durumdasınız."

@@ -53,6 +53,15 @@ class AccountService extends Singleton
     public const ACCOUNT_ROLE_SESSION_KEY = 'ACCOUNT_ROLE';
 
     /**
+     * Regular expression pattern for validating display names.
+     *
+     * Matches a 2–50 character display name starting with a letter or number,
+     * allowing letters, numbers, spaces, dots, hyphens, and apostrophes, with
+     * full Unicode support.
+     */
+    public const DISPLAY_NAME_PATTERN = "/^[\p{L}\p{N}][\p{L}\p{N} .\-']{1,49}$/u";
+
+    /**
      * Returns the name of the session integrity cookie.
      *
      * This cookie stores a hashed version of the session integrity token,

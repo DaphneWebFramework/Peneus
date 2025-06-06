@@ -22,6 +22,7 @@ use \Peneus\Api\Actions\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
+use \Peneus\Services\AccountService;
 use \Peneus\Translation;
 
 /**
@@ -68,10 +69,7 @@ class RegisterAccountAction extends Action
             ],
             'displayName' => [
                 'required',
-                // Matches a 2–50 character display name starting with a letter
-                // or number, allowing letters, numbers, spaces, dots, hyphens,
-                // and apostrophes, with full Unicode support.
-                "regex: /^[\p{L}\p{N}][\p{L}\p{N} .\-']{1,49}$/u"
+                'regex:' . AccountService::DISPLAY_NAME_PATTERN
             ]
         ], [
             'displayName.regex' => $translation->Get('error_display_name_invalid')

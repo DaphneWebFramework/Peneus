@@ -51,6 +51,18 @@
     "en": "Account activation failed.",
     "tr": "Hesap etkinleştirme işlemi başarısız oldu."
   },
+  "error_already_logged_in": {
+    "en": "You are already logged in.",
+    "tr": "Zaten oturum açmış durumdasınız."
+  },
+  "error_incorrect_email_or_password": {
+    "en": "Incorrect email address or password.",
+    "tr": "E-posta adresi veya şifre hatalı."
+  },
+  "error_login_failed": {
+    "en": "Login failed.",
+    "tr": "Oturum açma başarısız oldu."
+  },
   "error_send_password_reset_failed": {
     "en": "Sending password reset link failed.",
     "tr": "Şifre sıfırlama bağlantısı gönderme işlemi başarısız oldu."
@@ -78,18 +90,6 @@
   "error_change_display_name_failed": {
     "en": "Display name change failed.",
     "tr": "Görünen ad değiştirme işlemi başarısız oldu."
-  },
-  "error_already_logged_in": {
-    "en": "You are already logged in.",
-    "tr": "Zaten oturum açmış durumdasınız."
-  },
-  "error_incorrect_email_or_password": {
-    "en": "Incorrect email address or password.",
-    "tr": "E-posta adresi veya şifre hatalı."
-  },
-  "error_login_failed": {
-    "en": "Login failed.",
-    "tr": "Oturum açma başarısız oldu."
   },
   "error_unexpected": {
     "en": "An unexpected error occurred.",

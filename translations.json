@@ -99,6 +99,10 @@
     "en": "Password change failed.",
     "tr": "Şifre değiştirme işlemi başarısız oldu."
   },
+  "error_delete_account_failed": {
+    "en": "Account deletion failed.",
+    "tr": "Hesap silme işlemi başarısız oldu."
+  },
   "error_unexpected": {
     "en": "An unexpected error occurred.",
     "tr": "Beklenmeyen bir hata oluştu."

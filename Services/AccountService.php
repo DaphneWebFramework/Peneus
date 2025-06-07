@@ -17,6 +17,7 @@ use \Harmonia\Patterns\Singleton;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Session;
 use \Peneus\Api\Guards\TokenGuard;
+use \Peneus\Api\Hooks\IAccountDeletionHook;
 use \Peneus\Model\Account;
 use \Peneus\Model\Role;
 
@@ -25,6 +26,13 @@ use \Peneus\Model\Role;
  */
 class AccountService extends Singleton
 {
+    /**
+     * Hooks that will be called before an account is deleted.
+     *
+     * @var IAccountDeletionHook[]
+     */
+    private array $deletionHooks = [];
+
     #region public -------------------------------------------------------------
 
     /**
@@ -128,6 +136,28 @@ class AccountService extends Singleton
             return null;
         }
         return Role::tryFrom($value);
+    }
+
+    /**
+     * Registers a hook to be triggered during account deletion.
+     *
+     * @param IAccountDeletionHook $hook
+     *   The hook implementation to be registered.
+     */
+    public function RegisterDeletionHook(IAccountDeletionHook $hook): void
+    {
+        $this->deletionHooks[] = $hook;
+    }
+
+    /**
+     * Returns all registered account deletion hooks.
+     *
+     * @return IAccountDeletionHook[]
+     *   An array of registered deletion hook instances.
+     */
+    public function DeletionHooks(): array
+    {
+        return $this->deletionHooks;
     }
 
     #endregion public

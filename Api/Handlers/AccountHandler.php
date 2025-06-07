@@ -15,6 +15,7 @@ namespace Peneus\Api\Handlers;
 use \Peneus\Api\Actions\Account\ActivateAction;
 use \Peneus\Api\Actions\Account\ChangeDisplayNameAction;
 use \Peneus\Api\Actions\Account\ChangePasswordAction;
+use \Peneus\Api\Actions\Account\DeleteAction;
 use \Peneus\Api\Actions\Account\LoginAction;
 use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Api\Actions\Account\RegisterAction;
@@ -47,6 +48,8 @@ class AccountHandler extends Handler
             'change-display-name' => (new ChangeDisplayNameAction)
                 ->AddGuard(new SessionGuard),
             'change-password' => (new ChangePasswordAction)
+                ->AddGuard(new SessionGuard),
+            'delete' => (new DeleteAction)
                 ->AddGuard(new SessionGuard),
             default => null
         };

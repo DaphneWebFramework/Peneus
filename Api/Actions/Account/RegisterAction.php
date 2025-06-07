@@ -20,7 +20,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Actions\Account\Traits\TransactionalEmailSender;
+use \Peneus\Api\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;

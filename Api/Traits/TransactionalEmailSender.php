@@ -10,7 +10,7 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Api\Actions\Account\Traits;
+namespace Peneus\Api\Traits;
 
 use \Harmonia\Config;
 use \Harmonia\Core\CFile;

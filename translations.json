@@ -91,6 +91,14 @@
     "en": "Display name change failed.",
     "tr": "Görünen ad değiştirme işlemi başarısız oldu."
   },
+  "error_incorrect_current_password": {
+    "en": "Current password is incorrect.",
+    "tr": "Mevcut şifre hatalı."
+  },
+  "error_change_password_failed": {
+    "en": "Password change failed.",
+    "tr": "Şifre değiştirme işlemi başarısız oldu."
+  },
   "error_unexpected": {
     "en": "An unexpected error occurred.",
     "tr": "Beklenmeyen bir hata oluştu."

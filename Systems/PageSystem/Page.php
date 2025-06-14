@@ -528,7 +528,7 @@ class Page
      */
     public function CsrfTokenName(): string
     {
-        return FormTokenGuard::TOKEN_FIELD;
+        return FormTokenGuard::CSRF_TOKEN_NAME;
     }
 
     /**

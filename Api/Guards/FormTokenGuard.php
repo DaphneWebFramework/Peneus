@@ -26,9 +26,9 @@ use \Harmonia\Services\CookieService;
 class FormTokenGuard extends TokenGuard
 {
     /**
-     * The form field name containing the CSRF token.
+     * The name of the form field that contains the CSRF token submitted.
      */
-    public const TOKEN_FIELD = 'csrfToken';
+    public const CSRF_TOKEN_NAME = 'csrfToken';
 
     /**
      * Constructs a new instance using the form-submitted CSRF token and the
@@ -37,7 +37,7 @@ class FormTokenGuard extends TokenGuard
     public function __construct()
     {
         parent::__construct(
-            Request::Instance()->FormParams()->GetOrDefault(self::TOKEN_FIELD, ''),
+            Request::Instance()->FormParams()->GetOrDefault(self::CSRF_TOKEN_NAME, ''),
             CookieService::Instance()->CsrfCookieName()
         );
     }

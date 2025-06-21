@@ -13,45 +13,42 @@
 namespace Peneus\Systems\PageSystem;
 
 /**
- * Encapsulates asset file paths such as CSS, JavaScript, and extra resources.
+ * Represents normalized CSS and JavaScript asset references.
  *
- * This class is used to represent normalized asset definitions for both
- * frontend libraries and individual pages. Paths may be specified as a string,
- * an array of strings, or `null`.
+ * Used by both page-level and library-level manifest loaders to store and
+ * return parsed paths or URLs. Input values may be strings, arrays of strings,
+ * or `null`, and are normalized internally to consistent arrays.
  */
 class Assets
 {
     private readonly array $css;
     private readonly array $js;
-    private readonly array $extras;
 
     /**
-     * Constructs a new instance.
+     * Constructs a new instance with CSS and JavaScript inputs.
      *
      * @param string|array|null $css
-     *   (Optional) One or more relative paths to CSS files, or `null` if none.
+     *   (Optional) A string, array of strings, or `null`, representing one or
+     *   more CSS paths or URLs. Defaults to `null`.
      * @param string|array|null $js
-     *   (Optional) One or more relative paths to JavaScript files, or `null` if
-     *   none.
-     * @param string|array|null $extras
-     *   (Optional) One or more additional asset paths (e.g., fonts, map files),
-     *   or `null` if none.
+     *   (Optional) A string, array of strings, or `null`, representing one or
+     *   more JavaScript paths or URLs. Defaults to `null`.
      */
     public function __construct(
         string|array|null $css = null,
-        string|array|null $js = null,
-        string|array|null $extras = null
+        string|array|null $js = null
     ) {
         $this->css = $this->normalize($css);
         $this->js = $this->normalize($js);
-        $this->extras = $this->normalize($extras);
     }
 
     /**
-     * Returns an array of CSS file paths.
+     * Returns an array of CSS asset references.
      *
      * @return string[]
-     *   The list of CSS file paths (relative or absolute).
+     *   A list of paths or URLs. Each item is either a relative path (with or
+     *   without extension, resolved relative to its context) or a URL (e.g.,
+     *   CDN links).
      */
     public function Css(): array
     {
@@ -59,48 +56,30 @@ class Assets
     }
 
     /**
-     * Returns an array of JavaScript file paths.
+     * Returns an array of JavaScript asset references.
      *
      * @return string[]
-     *   The list of JavaScript file paths (relative or absolute).
+     *   A list of paths or URLs. Each item is either a relative path (with or
+     *   without extension, resolved relative to its context) or a URL (e.g.,
+     *   CDN links).
      */
     public function Js(): array
     {
         return $this->js;
     }
 
-    /**
-     * Returns an array of extra resources.
-     *
-     * These may include fonts, source maps, or other supplementary assets
-     * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that
-     * are required at runtime by the production version of the application
-     * and must be copied alongside the main assets during deployment.
-     *
-     * File paths may contain wildcard characters (e.g., `*`, `?`), which are
-     * matched against the filesystem during deployment.
-     *
-     * @return string[]
-     *   The list of extra asset paths (relative or absolute). Paths may include
-     *   wildcard patterns (e.g., `*`, `?`).
-     */
-    public function Extras(): array
-    {
-        return $this->extras;
-    }
-
     #region protected ----------------------------------------------------------
 
     /**
-     * Normalizes the given value into an array of strings.
+     * Normalizes a manifest value into an array of strings.
      *
-     * Used internally to support flexible input (string, array, or null) when
-     * initializing file path properties.
+     * Used internally to accept flexible input formats (string, array, or null)
+     * and convert them to a consistent array representation.
      *
      * @param string|array|null $value
-     *   The raw value from the manifest.
+     *   A raw manifest value representing one or more paths or URLs.
      * @return string[]
-     *   A normalized array of strings.
+     *   An array of strings. Returns an empty array if the input is `null`.
      */
     protected function normalize(string|array|null $value): array
     {

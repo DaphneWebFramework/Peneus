@@ -19,8 +19,8 @@ use \Harmonia\Core\CSequentialArray;
 use \Peneus\Resource;
 
 /**
- * Loads and provides access to metadata for all frontend libraries defined in
- * `manifest.json`.
+ * Loads and provides access to CSS and JavaScript asset references defined in
+ * the `frontend/manifest.json` file.
  *
  * **Example JSON structure:**
  * ```json
@@ -39,27 +39,20 @@ use \Peneus\Resource;
  *   },
  *   "audiojs": {
  *     "css": "audiojs-1.0.1/audio",
- *     "js": "audiojs-1.0.1/audio",
- *     "*": "audiojs-1.0.1/player-graphics.gif"
+ *     "js": "audiojs-1.0.1/audio"
  *   }
  * }
  * ```
  *
  * CSS and JS paths listed in the manifest may omit file extensions. In debug
  * mode (when the `IsDebug` configuration option is enabled), the framework will
- * append `.css` or `.js` automatically if no extension is present. For example,
- * the entry `"js": "lib/foo"` will resolve to `lib/foo.js`. If a file path
- * already includes a full extension (such as `.min.js` or `.css`), the system
- * uses it as-is.
+ * append `.css` or `.js` automatically if no extension is present. If a file
+ * path already includes a full extension (such as `.min.js` or `.css`), the
+ * system uses it as-is.
  *
- * In production mode (when the `IsDebug` configuration option is disabled),
- * the framework resolves paths to minified variants by appending `.min` before
- * the extension. For example, `"js": "lib/foo"` will resolve to `lib/foo.min.js`.
- *
- * Unlike page-level assets, library assets are not bundled or minified by the
- * deployer tool. Instead, the deployer preserves the structure of the manifest
- * and only ensures the correct file extension is applied based on the debug
- * configuration.
+ * In production mode (when `IsDebug` is disabled), if a path has no extension,
+ * the framework attempts to resolve it to a `.min.js` or `.min.css` version.
+ * If the path already ends with a full extension, it is used as-is.
  */
 class LibraryManifest
 {
@@ -120,15 +113,14 @@ class LibraryManifest
     #region protected ----------------------------------------------------------
 
     /**
-     * Loads and parses the file, returning validated library definitions.
-     *
-     * This method handles file I/O, JSON decoding, structural validation, and
-     * conversion into a `CArray` of `LibraryItem` instances.
+     * Loads and parses the frontend manifest file, extracting all library
+     * entries.
      *
      * @return CArray
-     *   A `CArray` mapping library names to `LibraryItem` instances.
+     *   A `CArray` mapping library names to `LibraryItem` instances, containing
+     *   normalized paths or URLs for CSS and JavaScript.
      * @throws \RuntimeException
-     *   If the file cannot be opened, read, decoded, or validated.
+     *   If the manifest file cannot be opened, read, decoded, or validated.
      */
     protected function loadFile(): CArray
     {
@@ -157,46 +149,48 @@ class LibraryManifest
             if (!\is_array($data)) {
                 throw new \RuntimeException('Library data must be an object.');
             }
-            $css = $this->validateAssetField($data, 'css');
-            $js = $this->validateAssetField($data, 'js');
-            $extras = $this->validateAssetField($data, '*');
-            $isDefault = $this->validateBooleanField($data, 'default');
-            $items->Set($name, new LibraryItem($css, $js, $extras, $isDefault));
+            $css = $this->parseField($data, 'css');
+            $js = $this->parseField($data, 'js');
+            $isDefault = $this->parseBooleanField($data, 'default');
+            $items->Set($name, new LibraryItem($css, $js, $isDefault));
         }
         return $items;
     }
 
     /**
-     * Validates and retrieves a specific asset field from a manifest entry.
+     * Parses the value of the CSS or JavaScript entry from the manifest.
      *
      * @param array $data
-     *   The associative array representing a single library entry.
+     *   The associative array from the decoded manifest.
      * @param string $key
-     *   The field name to validate and retrieve (`css`, `js`, or `*`).
+     *   The manifest key to parse (`css` or `js`).
      * @return string|array<int, string>|null
-     *   The validated asset value or `null` if missing.
+     *   A string or list of strings, where each item is a path or a URL.
+     *   Returns `null` if the key is missing.
      * @throws \RuntimeException
-     *   If the field exists but is not a string or an array of strings.
+     *   If the entry exists but is not a string or an array of strings.
      */
-    protected function validateAssetField(array $data, string $key): string|array|null
+    protected function parseField(array $data, string $key): string|array|null
     {
         if (!\array_key_exists($key, $data)) {
             return null;
         }
-        return $this->validateAssetValue($data[$key]);
+        return $this->parseValue($data[$key]);
     }
 
     /**
-     * Validates that a value is either a string or an array of strings.
+     * Validates the value of a manifest entry and ensures it is either a string
+     * or an array of strings.
      *
      * @param mixed $value
-     *   The value to validate.
+     *   The raw value from the manifest.
      * @return string|array<int, string>
-     *   The original value if valid.
+     *   A string or list of strings, where each item is expected to be a path
+     *   or a URL.
      * @throws \RuntimeException
      *   If the value is not a string or an array of strings.
      */
-    protected function validateAssetValue(mixed $value): string|array
+    protected function parseValue(mixed $value): string|array
     {
         if (\is_string($value)) {
             return $value;
@@ -205,27 +199,26 @@ class LibraryManifest
             foreach ($value as $element) {
                 if (!\is_string($element)) {
                     throw new \RuntimeException(
-                        'Library asset value must be a string.');
+                        'Manifest entry must be a string.');
                 }
             }
             return $value;
         }
         throw new \RuntimeException(
-            'Library asset value must be a string or an array of strings.');
+            'Manifest entry must be a string or an array of strings.');
     }
 
     /**
-     * Validates and retrieves a specific boolean field from a manifest entry.
+     * Parses a boolean field from a manifest entry.
      *
      * @param array $data
-     *   The associative array representing a single library entry.
+     *   The associative array from the decoded manifest.
      * @param string $key
-     *   The field name to validate and retrieve, i.e., `default`.
+     *   The manifest key to parse (e.g., `default`).
      * @return bool
-     *   The validated boolean value or `false` if the key is not set or the
-     *   value is not a boolean.
+     *   Returns `true` if the value exists and is truthy; `false` otherwise.
      */
-    protected function validateBooleanField(array $data, string $key): bool
+    protected function parseBooleanField(array $data, string $key): bool
     {
         return \filter_var($data[$key] ?? false, \FILTER_VALIDATE_BOOL);
     }

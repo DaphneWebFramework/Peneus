@@ -17,31 +17,26 @@ use \Harmonia\Core\CPath;
 use \Peneus\Resource;
 
 /**
- * Loads and provides access to metadata for assets defined in a page-level
- * `manifest.json`.
+ * Loads and provides access to CSS and JavaScript asset references defined in a
+ * page-level `manifest.json`.
  *
  * **Example JSON structure:**
  * ```json
  * {
  *   "css": ["index", "theme"],
- *   "js": ["Model", "View", "Controller"],
- *   "*": "localization.json"
+ *   "js": ["Model", "View", "Controller"]
  * }
  * ```
  *
  * CSS and JS paths listed in the manifest may omit file extensions. In debug
  * mode (when the `IsDebug` configuration option is enabled), the framework will
- * append `.css` or `.js` automatically if no extension is present. For example,
- * the entry `"js": "View"` will resolve to `View.js`. If a file path already
- * includes a full extension (such as `.min.js` or `.css`), the system uses it
- * as-is.
+ * append `.css` or `.js` automatically if no extension is present. If a file
+ * path already includes a full extension (such as `.min.js` or `.css`), the
+ * system uses it as-is.
  *
- * In production mode (when the `IsDebug` configuration option is disabled),
- * unlike library assets, the page system does not resolve or append `.min`
- * suffixes for specific assets. Instead, it assumes the deployer tool has
- * already minified and combined all CSS and JavaScript files into two optimized
- * bundles named `page.min.css` and `page.min.js`, which are then included in
- * place of individual files.
+ * In production mode (when `IsDebug` is disabled), it is assumed that the
+ * deployer has already combined and minified all assets into `page.min.css`
+ * and `page.min.js`, which are included instead of individual files.
  */
 class PageManifest
 {
@@ -62,10 +57,12 @@ class PageManifest
     }
 
     /**
-     * Returns an array of CSS file paths.
+     * Returns an array of CSS asset references.
      *
      * @return string[]
-     *   The list of CSS file paths (relative or absolute).
+     *   A list of paths or URLs. Each item is either a relative path (with or
+     *   without extension, resolved against the page directory) or a URL (e.g.,
+     *   CDN links).
      */
     public function Css(): array
     {
@@ -73,34 +70,16 @@ class PageManifest
     }
 
     /**
-     * Returns an array of JavaScript file paths.
+     * Returns an array of JavaScript asset references.
      *
      * @return string[]
-     *   The list of JavaScript file paths (relative or absolute).
+     *   A list of paths or URLs. Each item is either a relative path (with or
+     *   without extension, resolved against the page directory) or a URL (e.g.,
+     *   CDN links).
      */
     public function Js(): array
     {
         return $this->assets->Js();
-    }
-
-    /**
-     * Returns an array of extra resources.
-     *
-     * These may include fonts, source maps, or other supplementary assets
-     * (e.g., `.woff2`, `.min.js.map`, `.min.css.map`, `.json`, `.png`) that
-     * are required at runtime by the production version of the application
-     * and must be copied alongside the main assets during deployment.
-     *
-     * File paths may contain wildcard characters (e.g., `*`, `?`), which are
-     * matched against the filesystem during deployment.
-     *
-     * @return string[]
-     *   The list of extra asset paths (relative or absolute). Paths may include
-     *   wildcard patterns (e.g., `*`, `?`).
-     */
-    public function Extras(): array
-    {
-        return $this->assets->Extras();
     }
 
     #endregion public
@@ -108,15 +87,15 @@ class PageManifest
     #region protected ----------------------------------------------------------
 
     /**
-     * Loads and parses the file, returning validated asset definitions.
-     *
-     * This method handles file I/O, JSON decoding, structural validation, and
-     * conversion into an `Assets` instance.
+     * Loads and parses the manifest file for the given page, extracting asset
+     * entries.
      *
      * @param string $pageId
      *   The unique identifier of the page.
      * @return Assets
-     *   The parsed asset definitions.
+     *   An `Assets` instance containing normalized paths or URLs for CSS and
+     *   JavaScript. An empty `Assets` instance is returned if the file is
+     *   missing, invalid, or if the manifest does not contain any entries.
      */
     protected function loadFile(string $pageId): Assets
     {
@@ -134,43 +113,45 @@ class PageManifest
         if (!\is_array($decoded)) {
             return new Assets();
         }
-        $css = $this->validateAssetField($decoded, 'css');
-        $js = $this->validateAssetField($decoded, 'js');
-        $extras = $this->validateAssetField($decoded, '*');
-        return new Assets($css, $js, $extras);
+        $css = $this->parseField($decoded, 'css');
+        $js = $this->parseField($decoded, 'js');
+        return new Assets($css, $js);
     }
 
     /**
-     * Validates and retrieves a specific asset field from the manifest.
+     * Parses the value of the CSS or JavaScript entry from the manifest.
      *
      * @param array $data
      *   The associative array from the decoded manifest.
      * @param string $key
-     *   The field name to validate and retrieve (`css`, `js`, or `*`).
+     *   The manifest key to parse (`css` or `js`).
      * @return string|array<int, string>|null
-     *   The validated asset value or `null` if missing.
+     *   A string or list of strings, where each item is a path or a URL.
+     *   Returns `null` if the key is missing.
      * @throws \RuntimeException
-     *   If the field exists but is not a string or an array of strings.
+     *   If the entry exists but is not a string or an array of strings.
      */
-    protected function validateAssetField(array $data, string $key): string|array|null
+    protected function parseField(array $data, string $key): string|array|null
     {
         if (!\array_key_exists($key, $data)) {
             return null;
         }
-        return $this->validateAssetValue($data[$key]);
+        return $this->parseValue($data[$key]);
     }
 
     /**
-     * Validates that a value is either a string or an array of strings.
+     * Validates the value of a manifest entry and ensures it is either a string
+     * or an array of strings.
      *
      * @param mixed $value
-     *   The value to validate.
+     *   The raw value from the manifest.
      * @return string|array<int, string>
-     *   The original value if valid.
+     *   A string or list of strings, where each item is expected to be a path
+     *   or a URL.
      * @throws \RuntimeException
      *   If the value is not a string or an array of strings.
      */
-    protected function validateAssetValue(mixed $value): string|array
+    protected function parseValue(mixed $value): string|array
     {
         if (\is_string($value)) {
             return $value;
@@ -179,13 +160,13 @@ class PageManifest
             foreach ($value as $element) {
                 if (!\is_string($element)) {
                     throw new \RuntimeException(
-                        'Page asset value must be a string.');
+                        'Manifest entry must be a string.');
                 }
             }
             return $value;
         }
         throw new \RuntimeException(
-            'Page asset value must be a string or an array of strings.');
+            'Manifest entry must be a string or an array of strings.');
     }
 
     /** @codeCoverageIgnore */

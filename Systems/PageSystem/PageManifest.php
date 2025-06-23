@@ -28,15 +28,10 @@ use \Peneus\Resource;
  * }
  * ```
  *
- * CSS and JS paths listed in the manifest may omit file extensions. In debug
- * mode (when the `IsDebug` configuration option is enabled), the framework will
- * append `.css` or `.js` automatically if no extension is present. If a file
- * path already includes a full extension (such as `.min.js` or `.css`), the
- * system uses it as-is.
- *
- * In production mode (when `IsDebug` is disabled), it is assumed that the
- * deployer has already combined and minified all assets into `page.min.css`
- * and `page.min.js`, which are included instead of individual files.
+ * If an asset path omits a file extension, the framework appends `.css` or
+ * `.js` automatically based on the asset type. In production mode, a `.min`
+ * suffix is also added before the extension. If the path already specifies
+ * a full filename with extension, it is used as-is.
  */
 class PageManifest
 {
@@ -113,8 +108,8 @@ class PageManifest
         if (!\is_array($decoded)) {
             return new Assets();
         }
-        $css = $this->parseField($decoded, 'css');
-        $js = $this->parseField($decoded, 'js');
+        $css = $this->parseAssetBlock($decoded, 'css');
+        $js = $this->parseAssetBlock($decoded, 'js');
         return new Assets($css, $js);
     }
 
@@ -131,12 +126,12 @@ class PageManifest
      * @throws \RuntimeException
      *   If the entry exists but is not a string or an array of strings.
      */
-    protected function parseField(array $data, string $key): string|array|null
+    protected function parseAssetBlock(array $data, string $key): string|array|null
     {
         if (!\array_key_exists($key, $data)) {
             return null;
         }
-        return $this->parseValue($data[$key]);
+        return $this->parseAssetValue($data[$key]);
     }
 
     /**
@@ -151,7 +146,7 @@ class PageManifest
      * @throws \RuntimeException
      *   If the value is not a string or an array of strings.
      */
-    protected function parseValue(mixed $value): string|array
+    protected function parseAssetValue(mixed $value): string|array
     {
         if (\is_string($value)) {
             return $value;

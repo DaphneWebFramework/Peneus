@@ -44,15 +44,10 @@ use \Peneus\Resource;
  * }
  * ```
  *
- * CSS and JS paths listed in the manifest may omit file extensions. In debug
- * mode (when the `IsDebug` configuration option is enabled), the framework will
- * append `.css` or `.js` automatically if no extension is present. If a file
- * path already includes a full extension (such as `.min.js` or `.css`), the
- * system uses it as-is.
- *
- * In production mode (when `IsDebug` is disabled), if a path has no extension,
- * the framework attempts to resolve it to a `.min.js` or `.min.css` version.
- * If the path already ends with a full extension, it is used as-is.
+ * If an asset path omits a file extension, the framework appends `.css` or
+ * `.js` automatically based on the asset type. In production mode, a `.min`
+ * suffix is also added before the extension. If the path already specifies
+ * a full filename with extension, it is used as-is.
  */
 class LibraryManifest
 {
@@ -149,9 +144,9 @@ class LibraryManifest
             if (!\is_array($data)) {
                 throw new \RuntimeException('Library data must be an object.');
             }
-            $css = $this->parseField($data, 'css');
-            $js = $this->parseField($data, 'js');
-            $isDefault = $this->parseBooleanField($data, 'default');
+            $css = $this->parseAssetBlock($data, 'css');
+            $js = $this->parseAssetBlock($data, 'js');
+            $isDefault = $this->parseBooleanValue($data, 'default');
             $items->Set($name, new LibraryItem($css, $js, $isDefault));
         }
         return $items;
@@ -170,12 +165,12 @@ class LibraryManifest
      * @throws \RuntimeException
      *   If the entry exists but is not a string or an array of strings.
      */
-    protected function parseField(array $data, string $key): string|array|null
+    protected function parseAssetBlock(array $data, string $key): string|array|null
     {
         if (!\array_key_exists($key, $data)) {
             return null;
         }
-        return $this->parseValue($data[$key]);
+        return $this->parseAssetValue($data[$key]);
     }
 
     /**
@@ -190,7 +185,7 @@ class LibraryManifest
      * @throws \RuntimeException
      *   If the value is not a string or an array of strings.
      */
-    protected function parseValue(mixed $value): string|array
+    protected function parseAssetValue(mixed $value): string|array
     {
         if (\is_string($value)) {
             return $value;
@@ -218,7 +213,7 @@ class LibraryManifest
      * @return bool
      *   Returns `true` if the value exists and is truthy; `false` otherwise.
      */
-    protected function parseBooleanField(array $data, string $key): bool
+    protected function parseBooleanValue(array $data, string $key): bool
     {
         return \filter_var($data[$key] ?? false, \FILTER_VALIDATE_BOOL);
     }

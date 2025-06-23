@@ -144,11 +144,10 @@ class Renderer
     }
 
     /**
-     * Generates `<link>` tags for all CSS files of the specified frontend
-     * libraries.
+     * Generates `<link>` tags for the libraries' stylesheets.
      *
      * @param CSequentialArray $libraries
-     *   The libraries to render.
+     *   The libraries whose stylesheets will be rendered.
      * @return string
      *   A newline-separated string of `<link>` tags.
      */
@@ -165,11 +164,10 @@ class Renderer
     }
 
     /**
-     * Generates `<script>` tags for all JS files of the specified frontend
-     * libraries.
+     * Generates `<script>` tags for the libraries' scripts.
      *
      * @param CSequentialArray $libraries
-     *   The libraries to render.
+     *   The libraries whose scripts will be rendered.
      * @return string
      *   A newline-separated string of `<script>` tags.
      */
@@ -186,17 +184,10 @@ class Renderer
     }
 
     /**
-     * Generates `<link>` tags for all CSS files defined by the page manifest.
-     *
-     * In debug mode, all local and remote stylesheet paths are rendered
-     * individually. For local paths, a `.css` extension is added if missing.
-     *
-     * In production mode, only remote paths are rendered individually. Local
-     * stylesheets are expected to be bundled into `page.min.css`, which is
-     * included if it exists in the page directory.
+     * Generates `<link>` tags for the page's stylesheets.
      *
      * @param Page $page
-     *   The page whose manifest-defined stylesheets will be rendered.
+     *   The page whose stylesheets will be rendered.
      * @return string
      *   A newline-separated string of `<link>` tags.
      */
@@ -204,38 +195,18 @@ class Renderer
     {
         $result = '';
         $pageId = $page->Id();
-        if ($this->config->OptionOrDefault('IsDebug', false)) {
-            foreach ($page->Manifest()->Css() as $path) {
-                $url = $this->resolvePageAssetUrl($pageId, $path, 'css');
-                $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
-            }
-        } else {
-            foreach ($page->Manifest()->Css() as $path) {
-                if ($this->isRemoteAsset($path)) {
-                    $result .= "\t<link rel=\"stylesheet\" href=\"{$path}\">\n";
-                }
-            }
-            if ($this->pageMinifiedAssetExists($pageId, 'css')) {
-                $url = $this->resource->PageFileUrl($pageId, 'page.min.css');
-                $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
-            }
+        foreach ($page->Manifest()->Css() as $path) {
+            $url = $this->resolvePageAssetUrl($pageId, $path, 'css');
+            $result .= "\t<link rel=\"stylesheet\" href=\"{$url}\">\n";
         }
         return \rtrim($result, "\n");
     }
 
     /**
-     * Generates `<script>` tags for all JavaScript files defined by the page
-     * manifest.
-     *
-     * In debug mode, all local and remote script paths are rendered
-     * individually. For local paths, a `.js` extension is added if missing.
-     *
-     * In production mode, only remote paths are rendered individually. Local
-     * scripts are expected to be bundled into `page.min.js`, which is included
-     * if it exists in the page directory.
+     * Generates `<script>` tags for the page's scripts.
      *
      * @param Page $page
-     *   The page whose manifest-defined scripts will be rendered.
+     *   The page whose scripts will be rendered.
      * @return string
      *   A newline-separated string of `<script>` tags.
      */
@@ -243,21 +214,9 @@ class Renderer
     {
         $result = '';
         $pageId = $page->Id();
-        if ($this->config->OptionOrDefault('IsDebug', false)) {
-            foreach ($page->Manifest()->Js() as $path) {
-                $url = $this->resolvePageAssetUrl($pageId, $path, 'js');
-                $result .= "\t<script src=\"{$url}\"></script>\n";
-            }
-        } else {
-            foreach ($page->Manifest()->Js() as $path) {
-                if ($this->isRemoteAsset($path)) {
-                    $result .= "\t<script src=\"{$path}\"></script>\n";
-                }
-            }
-            if ($this->pageMinifiedAssetExists($pageId, 'js')) {
-                $url = $this->resource->PageFileUrl($pageId, 'page.min.js');
-                $result .= "\t<script src=\"{$url}\"></script>\n";
-            }
+        foreach ($page->Manifest()->Js() as $path) {
+            $url = $this->resolvePageAssetUrl($pageId, $path, 'js');
+            $result .= "\t<script src=\"{$url}\"></script>\n";
         }
         return \rtrim($result, "\n");
     }
@@ -370,26 +329,6 @@ class Renderer
     protected function lowercaseExtension(string $path): string
     {
         return \strtolower(\pathinfo($path, \PATHINFO_EXTENSION));
-    }
-
-    /**
-     * Checks whether the page has a bundled minified asset file.
-     *
-     * This method looks for `page.min.css` or `page.min.js` within the
-     * specified page directory, based on the requested file type.
-     *
-     * @param string $pageId
-     *   The identifier (folder name) of the page (e.g., `'home'`).
-     * @param string $type
-     *   The file extension to check for, either `'css'` or `'js'`.
-     * @return bool
-     *   Returns `true` if the corresponding minified file exists, `false`
-     *   otherwise.
-     */
-    protected function pageMinifiedAssetExists(string $pageId, string $type): bool
-    {
-        $path = $this->resource->PageFilePath($pageId, "page.min.{$type}");
-        return $path->IsFile();
     }
 
     /** @codeCoverageIgnore */

@@ -461,6 +461,8 @@ class Page
      * @param Role $minimumRole
      *   (Optional) The minimum role required to access the page. Defaults to
      *   `Role::None`.
+     * @return self
+     *   The current instance.
      */
     public function RequireLogin(Role $minimumRole = Role::None): self
     {

@@ -111,7 +111,7 @@ abstract class Entity
             return false;
         }
         $query = (new DeleteQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Where('id = :id')
             ->Bind(['id' => $this->id]);
         $database = Database::Instance();
@@ -131,6 +131,33 @@ abstract class Entity
     #region Static methods -----------------------------------------------------
 
     /**
+     * Returns the table name of the entity.
+     *
+     * By default, the table name is derived from the entity's class name,
+     * converted to lowercase. Subclasses can override this method to specify
+     * a custom table name.
+     *
+     * #### Example
+     * ```php
+     * class CustomEntity extends Entity
+     * {
+     *     public static function TableName(): string
+     *     {
+     *         return 'custom_table_name';
+     *     }
+     * }
+     * ```
+     *
+     * @return string
+     *   The table name associated with the entity.
+     */
+    public static function TableName(): string
+    {
+        $reflectionClass = new \ReflectionClass(static::class);
+        return \strtolower($reflectionClass->getShortName());
+    }
+
+    /**
      * Retrieves an entity by its primary key.
      *
      * @param int $id
@@ -142,7 +169,7 @@ abstract class Entity
     public static function FindById(int $id): ?static
     {
         $query = (new SelectQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Where('id = :id')
             ->Bind(['id' => $id])
             ->Limit(1);
@@ -184,7 +211,7 @@ abstract class Entity
     ): ?static
     {
         $query = (new SelectQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Limit(1);
         if ($condition !== null) {
             $query->Where($condition);
@@ -240,7 +267,7 @@ abstract class Entity
     ): array
     {
         $query = (new SelectQuery)
-            ->Table(static::tableName());
+            ->Table(static::TableName());
         if ($condition !== null) {
             $query->Where($condition);
         }
@@ -284,7 +311,7 @@ abstract class Entity
     ): int
     {
         $query = (new SelectQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Columns('COUNT(*)');
         if ($condition !== null) {
             $query->Where($condition);
@@ -312,33 +339,6 @@ abstract class Entity
     #endregion public
 
     #region protected ----------------------------------------------------------
-
-    /**
-     * Returns the table name of the entity.
-     *
-     * By default, the table name is derived from the entity's class name,
-     * converted to lowercase. Subclasses can override this method to specify
-     * a custom table name.
-     *
-     * #### Example
-     * ```php
-     * class CustomEntity extends Entity
-     * {
-     *     protected static function tableName(): string
-     *     {
-     *         return 'custom_table_name';
-     *     }
-     * }
-     * ```
-     *
-     * @return string
-     *   The table name associated with the entity.
-     */
-    protected static function tableName(): string
-    {
-        $reflectionClass = new \ReflectionClass(static::class);
-        return \strtolower($reflectionClass->getShortName());
-    }
 
     /**
      * Inserts a new record into the database.
@@ -369,7 +369,7 @@ abstract class Entity
             return false;
         }
         $query = (new InsertQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Columns(...$columns)
             ->Values(...$placeholders)
             ->Bind($bindings);
@@ -411,7 +411,7 @@ abstract class Entity
             return false;
         }
         $query = (new UpdateQuery)
-            ->Table(static::tableName())
+            ->Table(static::TableName())
             ->Columns(...$columns)
             ->Values(...$placeholders)
             ->Where('id = :id')

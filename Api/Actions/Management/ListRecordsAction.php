@@ -15,19 +15,16 @@ namespace Peneus\Api\Actions\Management;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
-use \Harmonia\Systems\DatabaseSystem\Database;
-use \Harmonia\Systems\DatabaseSystem\Queries\RawQuery;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Model\Account;
-use \Peneus\Model\AccountRole;
-use \Peneus\Model\PasswordReset;
-use \Peneus\Model\PendingAccount;
+use \Peneus\Api\Actions\Management\ModelClassResolver;
 
 /**
  * Returns a paginated list of records from a specified table.
  */
 class ListRecordsAction extends Action
 {
+    use ModelClassResolver;
+
     /**
      * Executes the process of listing records from a specified table with
      * support for pagination, filtering, and sorting.
@@ -50,14 +47,7 @@ class ListRecordsAction extends Action
     protected function onExecute(): mixed
     {
         $validator = new Validator([
-            'table' => ['required', 'string', function($value) {
-                return \in_array($value, [
-                    'account',
-                    'accountrole',
-                    'passwordreset',
-                    'pendingaccount',
-                ], true);
-            }],
+            'table' => ['required', 'string'],
             'page' => ['integer', 'min:1'],
             'pagesize' => ['integer', 'min:1', 'max:100'],
             'search' => ['string'],
@@ -74,12 +64,9 @@ class ListRecordsAction extends Action
         $search = $dataAccessor->GetFieldOrDefault('search', null);
         $sortKey = $dataAccessor->GetFieldOrDefault('sortkey', null);
         $sortDir = $dataAccessor->GetFieldOrDefault('sortdir', null);
-        $modelClass = match ($table) {
-            'account'        => Account::class,
-            'accountrole'    => AccountRole::class,
-            'passwordreset'  => PasswordReset::class,
-            'pendingaccount' => PendingAccount::class,
-        };
+
+        $modelClass = $this->resolveModelClass($table);
+        $columns = $modelClass::Columns();
 
         $condition = null;
         $bindings = null;
@@ -90,7 +77,7 @@ class ListRecordsAction extends Action
                 '_'  => '\_'
             ]);
             $conditions = [];
-            foreach ($this->columnNames($table) as $columnName) {
+            foreach ($columns as $columnName) {
                 $conditions[] = "`$columnName` LIKE :search";
             }
             if (!empty($conditions)) {
@@ -101,9 +88,10 @@ class ListRecordsAction extends Action
 
         $orderBy = null;
         if ($sortKey !== null) {
-            if (!\in_array($sortKey, $this->columnNames($table), true)) {
+            if (!\in_array($sortKey, $columns, true)) {
                 throw new \InvalidArgumentException(
-                    "Table `$table` does not have a column named `$sortKey`.");
+                    "Table '{$modelClass::TableName()}' does not have a "
+                  . "column named '$sortKey'.");
             }
             $orderBy = "`$sortKey`";
             if ($sortDir !== null) {
@@ -124,25 +112,5 @@ class ListRecordsAction extends Action
                 bindings: $bindings
             )
         ];
-    }
-
-    protected function columnNames(string $tableName): array
-    {
-        static $cache = [];
-        if (isset($cache[$tableName])) {
-            return $cache[$tableName];
-        }
-        $query = (new RawQuery)
-            ->Sql("SHOW COLUMNS FROM `$tableName`");
-        $resultSet = Database::Instance()->Execute($query);
-        if ($resultSet === null) {
-            throw new \RuntimeException(
-                "Failed to retrieve columns for table: $tableName");
-        }
-        $columnNames = [];
-        while ($row = $resultSet->Row()) {
-            $columnNames[] = $row['Field'];
-        }
-        return $cache[$tableName] = $columnNames;
     }
 }

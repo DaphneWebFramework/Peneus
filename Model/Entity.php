@@ -158,6 +158,31 @@ abstract class Entity
     }
 
     /**
+     * Returns the column names associated with the entity.
+     *
+     * The `id` column is always placed first, followed by all other public,
+     * non-static, non-readonly properties whose values are considered bindable.
+     * Bindable values exclude arrays, resources, and objects lacking a
+     * `__toString()` method.
+     *
+     * @return string[]
+     *   An ordered list of column names.
+     */
+    public static function Columns(): array
+    {
+        $columns = [];
+        $instance = new static();
+        foreach ($instance->properties() as $key => $value) {
+            if ($key === 'id') {
+                \array_unshift($columns, 'id'); // Push 'id' to the front
+            } else if (self::isBindable($value)) {
+                $columns[] = $key;
+            }
+        }
+        return $columns;
+    }
+
+    /**
      * Retrieves an entity by its primary key.
      *
      * @param int $id

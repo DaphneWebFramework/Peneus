@@ -16,7 +16,6 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Actions\Management\ModelClassResolver;
 
 /**
  * Returns a paginated list of records from a specified table.

@@ -13,6 +13,9 @@
 namespace Peneus\Api\Handlers;
 
 use \Peneus\Api\Actions\Action;
+use \Peneus\Api\Actions\Management\AddRecordAction;
+use \Peneus\Api\Actions\Management\DeleteRecordAction;
+use \Peneus\Api\Actions\Management\EditRecordAction;
 use \Peneus\Api\Actions\Management\ListRecordsAction;
 use \Peneus\Api\Guards\SessionGuard;
 use \Peneus\Model\Role;
@@ -26,6 +29,12 @@ class ManagementHandler extends Handler
     {
         return match ($actionName) {
             'list-records' => (new ListRecordsAction)
+                ->AddGuard(new SessionGuard(Role::Admin)),
+            'add-record' => (new AddRecordAction)
+                ->AddGuard(new SessionGuard(Role::Admin)),
+            'edit-record' => (new EditRecordAction)
+                ->AddGuard(new SessionGuard(Role::Admin)),
+            'delete-record' => (new DeleteRecordAction)
                 ->AddGuard(new SessionGuard(Role::Admin)),
             default => null
         };

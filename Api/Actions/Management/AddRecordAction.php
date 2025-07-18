@@ -39,7 +39,8 @@ class AddRecordAction extends Action
      *   An associative array containing the key 'id' mapped to the primary
      *   key of the newly inserted record.
      * @throws \InvalidArgumentException
-     *   If the table name is not recognized or the request body fails validation.
+     *   If the table name is not recognized or the request body fails
+     *   validation.
      * @throws \RuntimeException
      *   If the record cannot be saved to the data store.
      */
@@ -65,7 +66,7 @@ class AddRecordAction extends Action
      * @param class-string $modelClass
      * @param array<string, mixed> $data
      * @return Entity
-     * 
+     *
      * @codeCoverageIgnore
      */
     protected function createEntity(string $modelClass, array $data): Entity

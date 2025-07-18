@@ -27,19 +27,21 @@ class DeleteRecordAction extends Action
     use ModelValidationRulesProvider;
 
     /**
-     * Executes the process of deleting a record from a specified table.
+     * Executes the process of deleting an existing record from a specified
+     * table.
      *
-     * Validates the table name using the query parameters and the record ID
-     * using the form parameters. Resolves the model class based on the table
-     * name and attempts to locate the target record by ID. If found, the
-     * record is deleted; otherwise, an error is thrown.
+     * Validates the table name from the query parameters and determines
+     * the corresponding model class. Then validates the request body against
+     * model-specific delete rules, including the record ID.
+     * If the record is found, it is deleted from the data store.
      *
      * @return mixed
      *   Always returns `null`.
      * @throws \InvalidArgumentException
-     *   If the table name is invalid or the form data fails validation.
+     *   If the table name is not recognized or the request body fails
+     *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be found or deletion fails.
+     *   If the record cannot be found or deleted from the data store.
      */
     protected function onExecute(): mixed
     {

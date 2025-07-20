@@ -70,10 +70,7 @@ trait ModelValidationRulesProvider
                 ],
                 'role' => [
                     'required',
-                    'integer',
-                    function($value) {
-                        return null !== Role::tryFrom($value);
-                    }
+                    'enum:' . Role::class
                 ],
             ],
             PendingAccount::class => [

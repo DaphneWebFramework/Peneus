@@ -104,17 +104,19 @@ class AccountService extends Singleton
      */
     public function LoggedInAccount(): ?Account
     {
-        $session = Session::Instance()->Start();
+        // Since the session will be used for read-only purposes, we close it
+        // immediately after loading the data to avoid locking issues, such as
+        // during concurrent AJAX calls.
+        $session = Session::Instance()->Start()->Close();
         if (!$this->verifySessionIntegrity($session)) {
-            $session->Destroy();
+            $session->Start()->Destroy();
             return null;
         }
         $account = $this->retrieveLoggedInAccount($session);
         if ($account === null) {
-            $session->Destroy();
+            $session->Start()->Destroy();
             return null;
         }
-        $session->Close();
         return $account;
     }
 
@@ -129,9 +131,8 @@ class AccountService extends Singleton
      */
     public function LoggedInAccountRole(): ?Role
     {
-        $session = Session::Instance()->Start();
+        $session = Session::Instance()->Start()->Close();
         $value = $session->Get(self::ACCOUNT_ROLE_SESSION_KEY);
-        $session->Close();
         if ($value === null) {
             return null;
         }

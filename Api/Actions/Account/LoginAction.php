@@ -142,6 +142,7 @@ class LoginAction extends Action
             $session = Session::Instance()
                 ->Start()
                 ->Clear()
+                ->RenewId()
                 ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
                 ->Set(AccountService::ACCOUNT_ID_SESSION_KEY, $account->id);
             $role = $this->findAccountRole($account->id);

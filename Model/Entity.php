@@ -299,7 +299,8 @@ abstract class Entity
      *   (Optional) The number of entities to skip before returning results. If
      *   `null` (default), no offset is applied.
      * @return array
-     *   An array of instances of the called class.
+     *   An array of instances of the called class. Returns an empty array if
+     *   no matching rows are found or if the query fails.
      */
     public static function Find(
         ?string $condition = null,
@@ -346,7 +347,8 @@ abstract class Entity
      *   in the condition (e.g., `['status' => 'active']`). If `null`, no
      *   bindings are applied.
      * @return int
-     *   The number of matching rows. Returns `0` if the query fails.
+     *   The number of matching rows. Returns `0` if no matching rows are found
+     *   or if the query fails.
      */
     public static function Count(
         ?string $condition = null,

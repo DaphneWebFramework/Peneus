@@ -42,17 +42,15 @@ abstract class Entity
     /**
      * Constructs an entity with the given data.
      *
-     * Date and time values in the provided data should be formatted as strings
-     * (e.g., `'2025-03-15 12:45:00'`, `'2025-03-15'`). If a corresponding
-     * property is an instance of `DateTime`, its value is updated using the
-     * given string. Any conversion errors are silently ignored.
-     *
-     * If a property assignment fails due to a type mismatch or other error,
-     * it is silently skipped.
+     * If a corresponding property is a `DateTime` instance, it will be updated
+     * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
+     * `'2025-03-15'`).
      *
      * @param ?array $data
      *   (Optional) An associative array of property values. Keys must match the
      *   entity's public properties. If `id` is specified, it is also assigned.
+     * @throws \InvalidArgumentException
+     *   If a property assignment fails due to an invalid value or type mismatch.
      */
     public function __construct(?array $data = null)
     {
@@ -67,33 +65,33 @@ abstract class Entity
     /**
      * Populates the entity's properties with the given data.
      *
-     * Date and time values in the provided data should be formatted as strings
-     * (e.g., `'2025-03-15 12:45:00'`, `'2025-03-15'`). If a corresponding
-     * property is an instance of `DateTime`, its value is updated using the
-     * given string. Any conversion errors are silently ignored.
-     *
-     * If a property assignment fails due to a type mismatch or other error,
-     * it is silently skipped.
+     * If a corresponding property is a `DateTime` instance, it will be updated
+     * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
+     * `'2025-03-15'`).
      *
      * @param array $data
      *   An associative array of property values. Keys must match the entity's
      *   public properties. If `id` is specified, it is also assigned.
+     * @throws \InvalidArgumentException
+     *   If a property assignment fails due to an invalid value or type mismatch.
      */
     public function Populate(array $data): void
     {
         foreach ($this->properties() as $key => $_) {
             if (!\array_key_exists($key, $data)) {
+                // Skip properties that are not present in the data.
                 continue;
             }
             $value = $data[$key];
             try {
                 if ($this->$key instanceof \DateTime && \is_string($value)) {
-                    @$this->$key->modify($value);
+                    $this->$key->modify($value);
                 } else {
-                    $this->$key = $value; // may throw
+                    $this->$key = $value;
                 }
-            } catch (\Throwable) {
-                // silently skip
+            } catch (\Throwable $e) {
+                throw new \InvalidArgumentException(
+                    "Failed to assign value to property '{$key}'.", 0, $e);
             }
         }
     }

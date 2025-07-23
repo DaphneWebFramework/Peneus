@@ -28,8 +28,13 @@ use \Harmonia\Systems\DatabaseSystem\ResultSet;
  *
  * Subclasses should define public properties that correspond to table columns.
  */
-abstract class Entity
+abstract class Entity implements \JsonSerializable
 {
+    /**
+     * Standard format for date-time values.
+     */
+    private const DATETIME_FORMAT = 'Y-m-d H:i:s';
+
     #region public -------------------------------------------------------------
 
     /**
@@ -149,6 +154,35 @@ abstract class Entity
         }
         $this->id = 0;
         return true;
+    }
+
+    /**
+     * Specifies how the entity should be serialized to JSON.
+     *
+     * Converts `DateTimeInterface` properties to strings using the standard
+     * date-time format. Preserves `null` for uninitialized date-time fields.
+     * Only properties eligible as database columns are included in the output.
+     *
+     * This method implements the `JsonSerializable` interface.
+     *
+     * @return array
+     *   An associative array of property names and their serialized values.
+     */
+    public function jsonSerialize(): mixed
+    {
+        $serialized = [];
+        foreach ($this->properties() as $key => $typeName) {
+            if (!self::isColumnType($typeName)) {
+                continue;
+            }
+            $value = $this->$key;
+            if ($value instanceof \DateTimeInterface) {
+                $serialized[$key] = $value->format(self::DATETIME_FORMAT);
+            } else {
+                $serialized[$key] = $value;
+            }
+        }
+        return $serialized;
     }
 
     #endregion Instance methods
@@ -413,7 +447,7 @@ abstract class Entity
             $columns[] = $key;
             $placeholders[] = ":{$key}";
             if ($value instanceof \DateTimeInterface) {
-                $value = $value->format('Y-m-d H:i:s');
+                $value = $value->format(self::DATETIME_FORMAT);
             }
             $bindings[$key] = $value;
         }
@@ -456,7 +490,7 @@ abstract class Entity
             $columns[] = $key;
             $placeholders[] = ":{$key}";
             if ($value instanceof \DateTimeInterface) {
-                $value = $value->format('Y-m-d H:i:s');
+                $value = $value->format(self::DATETIME_FORMAT);
             }
             $bindings[$key] = $value;
         }

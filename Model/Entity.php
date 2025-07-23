@@ -77,15 +77,22 @@ abstract class Entity
      */
     public function Populate(array $data): void
     {
-        foreach ($this->properties() as $key => $_) {
+        foreach ($this->properties() as $key => $typeName) {
             if (!\array_key_exists($key, $data)) {
                 // Skip properties that are not present in the data.
                 continue;
             }
             $value = $data[$key];
             try {
-                if ($this->$key instanceof \DateTime && \is_string($value)) {
-                    $this->$key->modify($value);
+                if (\is_subclass_of($typeName, \DateTimeInterface::class) &&
+                    \is_string($value))
+                {
+                    if ($this->$key instanceof \DateTime) {
+                        $this->$key->modify($value);
+                    } else {
+                        // Probably a DateTimeImmutable or a custom class.
+                        $this->$key = new $typeName($value);
+                    }
                 } else {
                     $this->$key = $value;
                 }
@@ -179,9 +186,8 @@ abstract class Entity
      * Returns the column names associated with the entity.
      *
      * The `id` column is always placed first, followed by all other public,
-     * non-static, non-readonly properties whose values are considered bindable.
-     * Bindable values exclude arrays, resources, and objects lacking a
-     * `__toString()` method.
+     * non-static, non-readonly properties whose types are eligible to be mapped
+     * to database columns.
      *
      * @return string[]
      *   An ordered list of column names.
@@ -190,10 +196,10 @@ abstract class Entity
     {
         $columns = [];
         $instance = new static();
-        foreach ($instance->properties() as $key => $value) {
+        foreach ($instance->properties() as $key => $typeName) {
             if ($key === 'id') {
-                \array_unshift($columns, 'id'); // Push 'id' to the front
-            } else if (self::isBindable($value)) {
+                \array_unshift($columns, 'id'); // Push to the front
+            } else if (self::isColumnType($typeName)) {
                 $columns[] = $key;
             }
         }
@@ -396,11 +402,12 @@ abstract class Entity
         $columns = [];
         $placeholders = [];
         $bindings = [];
-        foreach ($this->properties() as $key => $value) {
+        foreach ($this->properties() as $key => $typeName) {
             if ($key === 'id') {
                 continue;
             }
-            if (!self::isBindable($value)) {
+            $value = $this->$key;
+            if (!self::isBindableValue($value)) {
                 continue;
             }
             $columns[] = $key;
@@ -438,11 +445,12 @@ abstract class Entity
         $columns = [];
         $placeholders = [];
         $bindings = ['id' => $this->id];
-        foreach ($this->properties() as $key => $value) {
+        foreach ($this->properties() as $key => $typeName) {
             if ($key === 'id') {
                 continue;
             }
-            if (!self::isBindable($value)) {
+            $value = $this->$key;
+            if (!self::isBindableValue($value)) {
                 continue;
             }
             $columns[] = $key;
@@ -484,7 +492,7 @@ abstract class Entity
      * @return bool
      *   Returns `true` if the value is bindable, `false` otherwise.
      */
-    private static function isBindable(mixed $value): bool
+    private static function isBindableValue(mixed $value): bool
     {
         if (\is_array($value) || \is_resource($value)) {
             return false;
@@ -496,6 +504,35 @@ abstract class Entity
             return \method_exists($value, '__toString');
         }
         return true;
+    }
+
+    /**
+     * Determines whether a type name maps to a supported database column type.
+     *
+     * A type is considered a valid column type if it corresponds to one of the
+     * following PHP types: `bool`, `int`, `float`, `string`, or any class that
+     * implements `DateTimeInterface`. These types map directly to MySQL column
+     * types such as BIT, INT, DOUBLE, TEXT, and DATETIME.
+     *
+     * @param ?string $typeName
+     *   The declared or inferred type name of the property, or `null` if the
+     *   type could not be determined.
+     * @return bool
+     *   Returns `true` if the type is supported as a database column type,
+     *   `false` otherwise.
+     */
+    private static function isColumnType(?string $typeName): bool
+    {
+        switch ($typeName)
+        {
+        case 'bool':
+        case 'int':
+        case 'float':
+        case 'string':
+            return true;
+        default:
+            return \is_subclass_of($typeName, \DateTimeInterface::class);
+        }
     }
 
     /**
@@ -516,7 +553,12 @@ abstract class Entity
      * which case they are assigned `null`.
      *
      * @return \Generator
-     *   A generator yielding property names and their values.
+     *   Yields each property as a key-value pair, where the key is the property
+     *   name and the value is the property's type name. The type name is taken
+     *   from the property's declared type if available. If no declared type
+     *   exists or the type is a union or intersection, but the property is
+     *   initialized, the type name is inferred from the current value. If the
+     *   type cannot be determined, the type name will be `null`.
      */
     private function properties(): \Generator
     {
@@ -532,19 +574,36 @@ abstract class Entity
                 continue;
             }
             $key = $reflectionProperty->getName();
-            if ($reflectionProperty->isInitialized($this)) {
-                // If the property is already initialized, yield it immediately.
-                // This includes untyped properties, which are always implicitly
-                // initialized to null.
-                yield $key => $this->$key;
-                continue;
-            }
             $reflectionType = $reflectionProperty->getType();
-            if (!$reflectionType instanceof \ReflectionNamedType) {
-                // Skip properties with union or intersection types.
+            $typeName = $reflectionType instanceof \ReflectionNamedType
+                ? $reflectionType->getName()
+                : null;
+            if ($reflectionProperty->isInitialized($this)) {
+                // Try to infer the type name from the value if no type is
+                // declared. This skips 'resource', 'resource (closed)', 'NULL',
+                // 'unknown type', etc.
+                if ($typeName === null) {
+                    switch (\gettype($this->$key))
+                    {
+                    case 'boolean': $typeName = 'bool'; break;
+                    case 'integer': $typeName = 'int'; break;
+                    case 'double':  $typeName = 'float'; break;
+                    case 'string':  $typeName = 'string'; break;
+                    case 'array':   $typeName = 'array'; break;
+                    case 'object':  $typeName = \get_class($this->$key); break;
+                    }
+                }
+                // If the property is already initialized, yield it immediately.
+                // This includes untyped properties, which are auto-initialized
+                // to null unless explicitly assigned, as well as union or
+                // intersection type properties with an initial value.
+                yield $key => $typeName;
                 continue;
             }
-            $typeName = $reflectionType->getName();
+            if ($typeName === null) {
+                // Skip uninitialized union or intersection properties.
+                continue;
+            }
             switch ($typeName)
             {
             case 'bool'  : $this->$key = false; break;
@@ -566,7 +625,7 @@ abstract class Entity
                     continue 2; // foreach
                 }
             }
-            yield $key => $this->$key;
+            yield $key => $typeName;
         }
     }
 

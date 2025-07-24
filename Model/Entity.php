@@ -89,15 +89,10 @@ abstract class Entity implements \JsonSerializable
             }
             $value = $data[$key];
             try {
-                if (\is_subclass_of($typeName, \DateTimeInterface::class) &&
-                    \is_string($value))
-                {
-                    if ($this->$key instanceof \DateTime) {
-                        $this->$key->modify($value);
-                    } else {
-                        // Probably a DateTimeImmutable or a custom class.
-                        $this->$key = new $typeName($value);
-                    }
+                if ($typeName === 'bool') {
+                    $this->$key = (bool)$value;
+                } elseif ($typeName === \DateTime::class && \is_string($value)) {
+                    $this->$key = new \DateTime($value);
                 } else {
                     $this->$key = $value;
                 }
@@ -159,11 +154,9 @@ abstract class Entity implements \JsonSerializable
     /**
      * Specifies how the entity should be serialized to JSON.
      *
-     * Converts `DateTimeInterface` properties to strings using the standard
-     * date-time format. Preserves `null` for uninitialized date-time fields.
-     * Only properties eligible as database columns are included in the output.
-     *
-     * This method implements the `JsonSerializable` interface.
+     * Converts `DateTime` properties to strings using the standard
+     * date-time format. Preserves `null` for nullable date-time fields.
+     * Only properties with supported types are included in the output.
      *
      * @return array
      *   An associative array of property names and their serialized values.
@@ -172,11 +165,8 @@ abstract class Entity implements \JsonSerializable
     {
         $serialized = [];
         foreach ($this->properties() as $key => $typeName) {
-            if (!self::isColumnType($typeName)) {
-                continue;
-            }
             $value = $this->$key;
-            if ($value instanceof \DateTimeInterface) {
+            if ($value instanceof \DateTime) {
                 $serialized[$key] = $value->format(self::DATETIME_FORMAT);
             } else {
                 $serialized[$key] = $value;
@@ -220,8 +210,7 @@ abstract class Entity implements \JsonSerializable
      * Returns the column names associated with the entity.
      *
      * The `id` column is always placed first, followed by all other public,
-     * non-static, non-readonly properties whose types are eligible to be mapped
-     * to database columns.
+     * non-static, non-readonly properties with supported types.
      *
      * @return string[]
      *   An ordered list of column names.
@@ -232,8 +221,8 @@ abstract class Entity implements \JsonSerializable
         $instance = new static();
         foreach ($instance->properties() as $key => $typeName) {
             if ($key === 'id') {
-                \array_unshift($columns, 'id'); // Push to the front
-            } else if (self::isColumnType($typeName)) {
+                \array_unshift($columns, 'id');
+            } else {
                 $columns[] = $key;
             }
         }
@@ -440,16 +429,14 @@ abstract class Entity implements \JsonSerializable
             if ($key === 'id') {
                 continue;
             }
-            $value = $this->$key;
-            if (!self::isBindableValue($value)) {
-                continue;
-            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
-            if ($value instanceof \DateTimeInterface) {
-                $value = $value->format(self::DATETIME_FORMAT);
+            $value = $this->$key;
+            if ($value instanceof \DateTime) {
+                $bindings[$key] = $value->format(self::DATETIME_FORMAT);
+            } else {
+                $bindings[$key] = $value;
             }
-            $bindings[$key] = $value;
         }
         if (empty($columns)) {
             return false;
@@ -483,16 +470,14 @@ abstract class Entity implements \JsonSerializable
             if ($key === 'id') {
                 continue;
             }
-            $value = $this->$key;
-            if (!self::isBindableValue($value)) {
-                continue;
-            }
             $columns[] = $key;
             $placeholders[] = ":{$key}";
-            if ($value instanceof \DateTimeInterface) {
-                $value = $value->format(self::DATETIME_FORMAT);
+            $value = $this->$key;
+            if ($value instanceof \DateTime) {
+                $bindings[$key] = $value->format(self::DATETIME_FORMAT);
+            } else {
+                $bindings[$key] = $value;
             }
-            $bindings[$key] = $value;
         }
         if (empty($columns)) {
             return false;
@@ -519,146 +504,54 @@ abstract class Entity implements \JsonSerializable
     #region private ------------------------------------------------------------
 
     /**
-     * Checks if a value can be safely bound in a query.
+     * Iterates over public properties with supported types.
      *
-     * @param mixed $value
-     *   The value to check.
-     * @return bool
-     *   Returns `true` if the value is bindable, `false` otherwise.
-     */
-    private static function isBindableValue(mixed $value): bool
-    {
-        if (\is_array($value) || \is_resource($value)) {
-            return false;
-        }
-        if (\is_object($value)) {
-            if ($value instanceof \DateTimeInterface) {
-                return true;
-            }
-            return \method_exists($value, '__toString');
-        }
-        return true;
-    }
-
-    /**
-     * Determines whether a type name maps to a supported database column type.
+     * Includes only public, non-static, non-readonly properties that are typed
+     * as `bool`, `int`, `float`, `string`, or `DateTime`. If a property is
+     * uninitialized, it is assigned a default value before being yielded.
      *
-     * A type is considered a valid column type if it corresponds to one of the
-     * following PHP types: `bool`, `int`, `float`, `string`, or any class that
-     * implements `DateTimeInterface`. These types map directly to MySQL column
-     * types such as BIT, INT, DOUBLE, TEXT, and DATETIME.
-     *
-     * @param ?string $typeName
-     *   The declared or inferred type name of the property, or `null` if the
-     *   type could not be determined.
-     * @return bool
-     *   Returns `true` if the type is supported as a database column type,
-     *   `false` otherwise.
-     */
-    private static function isColumnType(?string $typeName): bool
-    {
-        switch ($typeName)
-        {
-        case 'bool':
-        case 'int':
-        case 'float':
-        case 'string':
-            return true;
-        default:
-            return \is_subclass_of($typeName, \DateTimeInterface::class);
-        }
-    }
-
-    /**
-     * Iterates over the public, non-static properties of the entity.
-     *
-     * This method uses reflection to retrieve the properties of the entity and
-     * initializes them if necessary. It ensures that uninitialized properties
-     * are assigned safe default values based on their type. Primitive types
-     * (`bool`, `int`, `float`, `string`, `array`) receive their standard PHP
-     * defaults, while `mixed` properties are always initialized to `null`.
-     * Class-type properties are instantiated if the class exists.
-     *
-     * Properties are skipped if they are non-public, static, readonly, union,
-     * intersection, or a class type that does not exist and is not nullable.
-     * Instantiation of class-type properties is skipped if their constructor
-     * requires arguments or is inaccessible. The primitive types `object`,
-     * `resource`, `callable`, and `iterable` are skipped, unless nullable, in
-     * which case they are assigned `null`.
-     *
-     * @return \Generator
-     *   Yields each property as a key-value pair, where the key is the property
-     *   name and the value is the property's type name. The type name is taken
-     *   from the property's declared type if available. If no declared type
-     *   exists or the type is a union or intersection, but the property is
-     *   initialized, the type name is inferred from the current value. If the
-     *   type cannot be determined, the type name will be `null`.
+     * @return \Generator<string, string>
+     *   Yields each property name and its type name as a key-value pair.
      */
     private function properties(): \Generator
     {
+        static $supportedTypes = [
+            'bool',
+            'int',
+            'float',
+            'string',
+            \DateTime::class
+        ];
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            if (!$reflectionProperty->isPublic()) {
+            // 1
+            if (!$reflectionProperty->isPublic()
+             || $reflectionProperty->isStatic()
+             || $reflectionProperty->isReadOnly()) {
                 continue;
             }
-            if ($reflectionProperty->isStatic()) {
-                continue;
-            }
-            if ($reflectionProperty->isReadOnly()) {
-                continue;
-            }
-            $key = $reflectionProperty->getName();
+            // 2
             $reflectionType = $reflectionProperty->getType();
-            $typeName = $reflectionType instanceof \ReflectionNamedType
-                ? $reflectionType->getName()
-                : null;
-            if ($reflectionProperty->isInitialized($this)) {
-                // Try to infer the type name from the value if no type is
-                // declared. This skips 'resource', 'resource (closed)', 'NULL',
-                // 'unknown type', etc.
-                if ($typeName === null) {
-                    switch (\gettype($this->$key))
-                    {
-                    case 'boolean': $typeName = 'bool'; break;
-                    case 'integer': $typeName = 'int'; break;
-                    case 'double':  $typeName = 'float'; break;
-                    case 'string':  $typeName = 'string'; break;
-                    case 'array':   $typeName = 'array'; break;
-                    case 'object':  $typeName = \get_class($this->$key); break;
-                    }
-                }
-                // If the property is already initialized, yield it immediately.
-                // This includes untyped properties, which are auto-initialized
-                // to null unless explicitly assigned, as well as union or
-                // intersection type properties with an initial value.
-                yield $key => $typeName;
+            if (!$reflectionType instanceof \ReflectionNamedType) {
                 continue;
             }
-            if ($typeName === null) {
-                // Skip uninitialized union or intersection properties.
+            // 3
+            $typeName = $reflectionType->getName();
+            if (!\in_array($typeName, $supportedTypes, true)) {
                 continue;
             }
-            switch ($typeName)
-            {
-            case 'bool'  : $this->$key = false; break;
-            case 'int'   : $this->$key = 0    ; break;
-            case 'float' : $this->$key = 0.0  ; break;
-            case 'string': $this->$key = ''   ; break;
-            case 'array' : $this->$key = []   ; break;
-            case 'mixed' : $this->$key = null ; break;
-            default:
-                if (\class_exists($typeName, false)) {
-                    try {
-                        $this->$key = new $typeName();
-                    } catch (\Throwable $e) {
-                        continue 2; // foreach
-                    }
-                } elseif ($reflectionType->allowsNull()) {
-                    $this->$key = null;
-                } else {
-                    continue 2; // foreach
+            // 4
+            $key = $reflectionProperty->getName();
+            if (!$reflectionProperty->isInitialized($this)) {
+                switch ($typeName) {
+                case 'bool': $this->$key = false; break;
+                case 'int': $this->$key = 0; break;
+                case 'float': $this->$key = 0.0; break;
+                case 'string': $this->$key = ''; break;
+                case \DateTime::class: $this->$key = new \DateTime(); break;
                 }
             }
+            // 5
             yield $key => $typeName;
         }
     }

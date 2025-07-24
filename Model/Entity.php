@@ -82,18 +82,28 @@ abstract class Entity implements \JsonSerializable
      */
     public function Populate(array $data): void
     {
-        foreach ($this->properties() as $key => $typeName) {
+        foreach ($this->properties() as $key => $metadata) {
             if (!\array_key_exists($key, $data)) {
-                // Skip properties that are not present in the data.
                 continue;
             }
             $value = $data[$key];
             try {
-                if ($typeName === 'bool') {
+                if ($value === null) {
+                    if ($metadata['nullable']) {
+                        $this->$key = null;
+                        continue;
+                    }
+                    throw new \InvalidArgumentException(
+                        "Cannot assign null to non-nullable property '{$key}'.");
+                }
+                switch ($metadata['type']) {
+                case 'bool':
                     $this->$key = (bool)$value;
-                } elseif ($typeName === \DateTime::class && \is_string($value)) {
+                    break;
+                case 'DateTime':
                     $this->$key = new \DateTime($value);
-                } else {
+                    break;
+                default:
                     $this->$key = $value;
                 }
             } catch (\Throwable $e) {
@@ -164,7 +174,7 @@ abstract class Entity implements \JsonSerializable
     public function jsonSerialize(): mixed
     {
         $serialized = [];
-        foreach ($this->properties() as $key => $typeName) {
+        foreach ($this->properties() as $key => $metadata) {
             $value = $this->$key;
             if ($value instanceof \DateTime) {
                 $serialized[$key] = $value->format(self::DATETIME_FORMAT);
@@ -219,7 +229,7 @@ abstract class Entity implements \JsonSerializable
     {
         $columns = [];
         $instance = new static();
-        foreach ($instance->properties() as $key => $typeName) {
+        foreach ($instance->properties() as $key => $metadata) {
             if ($key === 'id') {
                 \array_unshift($columns, 'id');
             } else {
@@ -425,7 +435,7 @@ abstract class Entity implements \JsonSerializable
         $columns = [];
         $placeholders = [];
         $bindings = [];
-        foreach ($this->properties() as $key => $typeName) {
+        foreach ($this->properties() as $key => $metadata) {
             if ($key === 'id') {
                 continue;
             }
@@ -466,7 +476,7 @@ abstract class Entity implements \JsonSerializable
         $columns = [];
         $placeholders = [];
         $bindings = ['id' => $this->id];
-        foreach ($this->properties() as $key => $typeName) {
+        foreach ($this->properties() as $key => $metadata) {
             if ($key === 'id') {
                 continue;
             }
@@ -504,24 +514,22 @@ abstract class Entity implements \JsonSerializable
     #region private ------------------------------------------------------------
 
     /**
-     * Iterates over public properties with supported types.
+     * Iterates over public properties with supported types and yields their
+     * metadata.
      *
-     * Includes only public, non-static, non-readonly properties that are typed
-     * as `bool`, `int`, `float`, `string`, or `DateTime`. If a property is
-     * uninitialized, it is assigned a default value before being yielded.
+     * Only properties declared as public, non-static, and non-readonly are
+     * included. The supported types are `bool`, `int`, `float`, `string`, and
+     * `DateTime`. Nullable types are supported and indicated in the returned
+     * metadata. If a supported property is uninitialized, it is assigned a safe
+     * default before being yielded.
      *
-     * @return \Generator<string, string>
-     *   Yields each property name and its type name as a key-value pair.
+     * @return \Generator
+     *   Yields a key-value pair where the key is the property name and the
+     *   value is an array containing its type name and nullability flag.
      */
     private function properties(): \Generator
     {
-        static $supportedTypes = [
-            'bool',
-            'int',
-            'float',
-            'string',
-            \DateTime::class
-        ];
+        static $supportedTypes = ['bool', 'int', 'float', 'string', 'DateTime'];
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
             // 1
@@ -536,23 +544,28 @@ abstract class Entity implements \JsonSerializable
                 continue;
             }
             // 3
-            $typeName = $reflectionType->getName();
-            if (!\in_array($typeName, $supportedTypes, true)) {
+            $type = $reflectionType->getName();
+            if (!\in_array($type, $supportedTypes, true)) {
                 continue;
             }
             // 4
             $key = $reflectionProperty->getName();
             if (!$reflectionProperty->isInitialized($this)) {
-                switch ($typeName) {
-                case 'bool': $this->$key = false; break;
-                case 'int': $this->$key = 0; break;
-                case 'float': $this->$key = 0.0; break;
-                case 'string': $this->$key = ''; break;
-                case \DateTime::class: $this->$key = new \DateTime(); break;
+                // Assign safe defaults to prevent "Typed property must not be
+                // accessed before initialization" errors.
+                switch ($type) {
+                case 'bool'    : $this->$key = false; break;
+                case 'int'     : $this->$key = 0; break;
+                case 'float'   : $this->$key = 0.0; break;
+                case 'string'  : $this->$key = ''; break;
+                case 'DateTime': $this->$key = new \DateTime(); break;
                 }
             }
             // 5
-            yield $key => $typeName;
+            yield $key => [
+                'type' => $type,
+                'nullable' => $reflectionType->allowsNull()
+            ];
         }
     }
 

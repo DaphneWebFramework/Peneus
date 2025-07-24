@@ -15,6 +15,7 @@ namespace Peneus\Model;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\DatabaseSystem\Queries\DeleteQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\InsertQuery;
+use \Harmonia\Systems\DatabaseSystem\Queries\RawQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\SelectQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\UpdateQuery;
 use \Harmonia\Systems\DatabaseSystem\ResultSet;
@@ -243,6 +244,43 @@ abstract class Entity implements \JsonSerializable
             }
         }
         return $columns;
+    }
+
+    /**
+     * Creates the database table for the entity.
+     *
+     * @return bool
+     *   Returns `true` on success or if the table already exists. Returns
+     *   `false` if the entity has no properties suitable for table creation,
+     *   or if query execution fails.
+     */
+    public static function CreateTable(): bool
+    {
+        $columns = ['`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY'];
+        $instance = new static();
+        foreach ($instance->properties() as $key => $metadata) {
+            if ($key === 'id') {
+                continue;
+            }
+            $sqlType = match ($metadata['type']) {
+                'bool'     => 'BIT',
+                'int'      => 'INT',
+                'float'    => 'DOUBLE',
+                'string'   => 'TEXT',
+                'DateTime' => 'DATETIME'
+            };
+            $nullability = $metadata['nullable'] ? 'NULL' : 'NOT NULL';
+            $columns[] = "`$key` $sqlType $nullability";
+        }
+        if (count($columns) === 1) {
+            return false;
+        }
+        $table = static::TableName();
+        $columns = implode(', ', $columns);
+        $query = (new RawQuery)
+            ->Sql("CREATE TABLE IF NOT EXISTS `$table` ($columns) ENGINE=InnoDB;");
+        $database = Database::Instance();
+        return $database->Execute($query) !== null;
     }
 
     /**

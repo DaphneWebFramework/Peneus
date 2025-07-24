@@ -182,6 +182,12 @@ abstract class Entity implements \JsonSerializable
                 $serialized[$key] = $value;
             }
         }
+        // Ensure 'id' is always the first key in the serialized output.
+        if (\array_key_exists('id', $serialized)) {
+            $id = $serialized['id'];
+            unset($serialized['id']);
+            $serialized = ['id' => $id] + $serialized;
+        }
         return $serialized;
     }
 

@@ -148,7 +148,7 @@ abstract class Entity implements \JsonSerializable
         }
         $query = (new DeleteQuery)
             ->Table(static::TableName())
-            ->Where('id = :id')
+            ->Where('`id` = :id')
             ->Bind(['id' => $this->id]);
         $database = Database::Instance();
         $resultSet = $database->Execute($query);
@@ -296,7 +296,7 @@ abstract class Entity implements \JsonSerializable
     {
         $query = (new SelectQuery)
             ->Table(static::TableName())
-            ->Where('id = :id')
+            ->Where('`id` = :id')
             ->Bind(['id' => $id])
             ->Limit(1);
         $database = Database::Instance();
@@ -483,7 +483,7 @@ abstract class Entity implements \JsonSerializable
             if ($key === 'id') {
                 continue;
             }
-            $columns[] = $key;
+            $columns[] = "`$key`";
             $placeholders[] = ":{$key}";
             $value = $this->$key;
             if ($value instanceof \DateTime) {
@@ -524,7 +524,7 @@ abstract class Entity implements \JsonSerializable
             if ($key === 'id') {
                 continue;
             }
-            $columns[] = $key;
+            $columns[] = "`$key`";
             $placeholders[] = ":{$key}";
             $value = $this->$key;
             if ($value instanceof \DateTime) {
@@ -540,7 +540,7 @@ abstract class Entity implements \JsonSerializable
             ->Table(static::TableName())
             ->Columns(...$columns)
             ->Values(...$placeholders)
-            ->Where('id = :id')
+            ->Where('`id` = :id')
             ->Bind($bindings);
         $database = Database::Instance();
         $resultSet = $database->Execute($query);

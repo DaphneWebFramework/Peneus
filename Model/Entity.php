@@ -250,9 +250,9 @@ abstract class Entity implements \JsonSerializable
      * Creates the database table for the entity.
      *
      * @return bool
-     *   Returns `true` on success or if the table already exists. Returns
-     *   `false` if the entity has no properties suitable for table creation,
-     *   or if query execution fails.
+     *   Returns `true` on success. Returns `false` if the table already exists,
+     *   if the entity has no properties suitable for table creation, or if
+     *   query execution fails.
      */
     public static function CreateTable(): bool
     {
@@ -278,7 +278,7 @@ abstract class Entity implements \JsonSerializable
         $table = static::TableName();
         $columns = implode(', ', $columns);
         $query = (new RawQuery)
-            ->Sql("CREATE TABLE IF NOT EXISTS `$table` ($columns) ENGINE=InnoDB;");
+            ->Sql("CREATE TABLE `$table` ($columns) ENGINE=InnoDB;");
         $database = Database::Instance();
         return $database->Execute($query) !== null;
     }

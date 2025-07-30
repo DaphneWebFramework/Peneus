@@ -70,19 +70,23 @@ class MetaCollection
      *
      * @param string $name
      *   The name of the meta tag (e.g., `description`, `og:title`).
-     * @param string $content
+     * @param string|\Stringable $content
      *   The content of the meta tag.
      * @param string $type
      *   (Optional) The attribute type (e.g., `name`, `property`, `itemprop`).
      *   Defaults to `name`.
      */
-    public function Set(string $name, string $content, string $type = 'name'): void
+    public function Set(
+        string $name,
+        string|\Stringable $content,
+        string $type = 'name'
+    ): void
     {
         if (!$this->items->Has($type)) {
             $this->items->Set($type, new CArray());
         }
         $group = $this->items->Get($type);
-        $group->Set($name, $content);
+        $group->Set($name, (string)$content);
     }
 
     /**
@@ -158,7 +162,7 @@ class MetaCollection
             $this->Set('og:locale', $value, 'property');
         }
         $this->Set('og:type', 'website', 'property');
-        $this->Set('app:api-url', (string)$resource->AppSubdirectoryUrl('api'));
+        $this->Set('app:api-url', $resource->AppSubdirectoryUrl('api'));
     }
 
     #endregion protected

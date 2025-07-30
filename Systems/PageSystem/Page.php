@@ -352,7 +352,7 @@ class Page
      *
      * @param string $name
      *   The name of the meta tag (e.g., `description`, `og:title`).
-     * @param string $content
+     * @param string|\Stringable $content
      *   The content of the meta tag.
      * @param string $type
      *   (Optional) The attribute type (e.g., `name`, `property`, `itemprop`).
@@ -360,7 +360,11 @@ class Page
      * @return self
      *   The current instance.
      */
-    public function SetMeta(string $name, string $content, string $type = 'name'): self
+    public function SetMeta(
+        string $name,
+        string|\Stringable $content,
+        string $type = 'name'
+    ): self
     {
         $this->metaCollection->Set($name, $content, $type);
         return $this;

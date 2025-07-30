@@ -91,7 +91,7 @@ class ActivateAction extends Action
             );
         }
         return [
-            'redirectUrl' => (string)Resource::Instance()->LoginPageUrl('home')
+            'redirectUrl' => Resource::Instance()->LoginPageUrl('home')
         ];
     }
 

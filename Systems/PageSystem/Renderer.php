@@ -246,10 +246,10 @@ class Renderer
     protected function resolveLibraryAssetUrl(
         string $path,
         string $extension,
-    ): string
+    ): CUrl
     {
         if ($this->isRemoteAsset($path)) {
-            return $path;
+            return new CUrl($path);
         }
         if ($extension !== $this->lowercaseExtension($path)) {
             if (!$this->config->OptionOrDefault('IsDebug', false)) {
@@ -257,7 +257,7 @@ class Renderer
             }
             $path .= ".{$extension}";
         }
-        return (string)$this->resource->FrontendLibraryFileUrl($path);
+        return $this->resource->FrontendLibraryFileUrl($path);
     }
 
     /**
@@ -289,15 +289,15 @@ class Renderer
         string $pageId,
         string $path,
         string $extension
-    ): string
+    ): CUrl
     {
         if ($this->isRemoteAsset($path)) {
-            return $path;
+            return new CUrl($path);
         }
         if ($extension !== $this->lowercaseExtension($path)) {
             $path .= ".{$extension}";
         }
-        return (string)$this->resource->PageFileUrl($pageId, $path);
+        return $this->resource->PageFileUrl($pageId, $path);
     }
 
     /**

@@ -108,7 +108,7 @@ class Renderer
             $this->_echo($page->Content());
         } else {
             $masterpagePath = $this->resource->MasterpageFilePath($masterpage);
-            if (!$masterpagePath->IsFile()) {
+            if (!$masterpagePath->Call('\is_file')) {
                 $this->logger->Error("Masterpage not found: {$masterpage}");
             } else {
                 (function() use($masterpagePath) {

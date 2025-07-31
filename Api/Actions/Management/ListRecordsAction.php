@@ -65,7 +65,7 @@ class ListRecordsAction extends Action
         $sortDir = $dataAccessor->GetFieldOrDefault('sortdir', null);
 
         $modelClass = $this->resolveModelClass($table);
-        $columns = $modelClass::Columns();
+        $columns = \array_column($modelClass::Metadata(), 'name');
 
         $condition = null;
         $bindings = null;

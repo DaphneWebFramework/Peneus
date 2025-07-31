@@ -239,29 +239,6 @@ abstract class Entity implements \JsonSerializable
     }
 
     /**
-     * Returns the column names associated with the entity.
-     *
-     * The `id` column is always placed first, followed by all other public,
-     * non-static, non-readonly properties with supported types.
-     *
-     * @return string[]
-     *   An ordered list of column names.
-     */
-    public static function Columns(): array
-    {
-        $columns = [];
-        $instance = new static();
-        foreach ($instance->properties() as $key => $metadata) {
-            if ($key === 'id') {
-                \array_unshift($columns, 'id');
-            } else {
-                $columns[] = $key;
-            }
-        }
-        return $columns;
-    }
-
-    /**
      * Returns metadata for all supported properties of the entity.
      *
      * The `id` column is always placed first, followed by all other public,
@@ -343,20 +320,14 @@ abstract class Entity implements \JsonSerializable
         else
         {
             $columns = ['`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY'];
-            $instance = new static();
-            foreach ($instance->properties() as $key => $metadata) {
-                if ($key === 'id') {
+            foreach (static::Metadata() as $column) {
+                $name = $column['name'];
+                if ($name === 'id') {
                     continue;
                 }
-                $sqlType = match ($metadata['type']) {
-                    'bool'     => 'BIT',
-                    'int'      => 'INT',
-                    'float'    => 'DOUBLE',
-                    'string'   => 'TEXT',
-                    'DateTime' => 'DATETIME'
-                };
-                $nullability = $metadata['nullable'] ? 'NULL' : 'NOT NULL';
-                $columns[] = "`$key` $sqlType $nullability";
+                $type = $column['type'];
+                $nullability = $column['nullable'] ? 'NULL' : 'NOT NULL';
+                $columns[] = "`{$name}` {$type} {$nullability}";
             }
             if (count($columns) === 1) {
                 return false;

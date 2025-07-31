@@ -262,6 +262,43 @@ abstract class Entity implements \JsonSerializable
     }
 
     /**
+     * Returns metadata for all supported properties of the entity.
+     *
+     * The `id` column is always placed first, followed by all other public,
+     * non-static, non-readonly properties with supported types. Each entry
+     * contains the property's name, corresponding SQL type, and nullability
+     * information.
+     *
+     * @return array<int, array<string, mixed>>
+     *   An ordered array of metadata entries for each property. Each entry
+     *   is an associative array with keys `name`, `type`, and `nullable`.
+     */
+    public static function Metadata(): array
+    {
+        $result = [];
+        $instance = new static();
+        foreach ($instance->properties() as $key => $metadata) {
+            $entry = [
+                'name' => $key,
+                'type' => match ($metadata['type']) {
+                    'bool'     => 'BIT',
+                    'int'      => 'INT',
+                    'float'    => 'DOUBLE',
+                    'string'   => 'TEXT',
+                    'DateTime' => 'DATETIME'
+                },
+                'nullable' => $metadata['nullable']
+            ];
+            if ($key === 'id') {
+                \array_unshift($result, $entry);
+            } else {
+                $result[] = $entry;
+            }
+        }
+        return $result;
+    }
+
+    /**
      * Checks whether the entity's associated table or view exists in the
      * database.
      *

@@ -197,6 +197,21 @@ abstract class Entity implements \JsonSerializable
     #region Static methods -----------------------------------------------------
 
     /**
+     * Determines whether the entity represents a view.
+     *
+     * This method checks if the entity class extends `ViewEntity`, indicating
+     * that it should be treated as a database view rather than a regular table.
+     *
+     * @return bool
+     *   Returns `true` if the entity is a view, `false` if it is a regular
+     *   table entity.
+     */
+    public static function IsView(): bool
+    {
+        return \is_subclass_of(static::class, ViewEntity::class);
+    }
+
+    /**
      * Returns the table name of the entity.
      *
      * By default, the table name is derived from the entity's class name,
@@ -247,38 +262,51 @@ abstract class Entity implements \JsonSerializable
     }
 
     /**
-     * Creates the database table for the entity.
+     * Creates the database table or view for the entity.
+     *
+     * If the entity is a view (extends `ViewEntity`), a `CREATE OR REPLACE VIEW`
+     * statement is executed using the SQL returned from `ViewDefinition` method.
+     * Otherwise, a `CREATE TABLE` statement is generated based on the entity's
+     * properties.
      *
      * @return bool
-     *   Returns `true` on success. Returns `false` if the table already exists,
-     *   if the entity has no properties suitable for table creation, or if
-     *   query execution fails.
+     *   Returns `true` on success. Returns `false` if the entity is not a view
+     *   and defines no properties (other than `id`) that can be used for table
+     *   creation, or if query execution fails.
      */
     public static function CreateTable(): bool
     {
-        $columns = ['`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY'];
-        $instance = new static();
-        foreach ($instance->properties() as $key => $metadata) {
-            if ($key === 'id') {
-                continue;
-            }
-            $sqlType = match ($metadata['type']) {
-                'bool'     => 'BIT',
-                'int'      => 'INT',
-                'float'    => 'DOUBLE',
-                'string'   => 'TEXT',
-                'DateTime' => 'DATETIME'
-            };
-            $nullability = $metadata['nullable'] ? 'NULL' : 'NOT NULL';
-            $columns[] = "`$key` $sqlType $nullability";
-        }
-        if (count($columns) === 1) {
-            return false;
-        }
         $table = static::TableName();
-        $columns = implode(', ', $columns);
-        $query = (new RawQuery)
-            ->Sql("CREATE TABLE `$table` ($columns) ENGINE=InnoDB;");
+        if (static::IsView())
+        {
+            $viewDefinition = static::ViewDefinition();
+            $sql = "CREATE OR REPLACE VIEW `$table` AS $viewDefinition;";
+        }
+        else
+        {
+            $columns = ['`id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY'];
+            $instance = new static();
+            foreach ($instance->properties() as $key => $metadata) {
+                if ($key === 'id') {
+                    continue;
+                }
+                $sqlType = match ($metadata['type']) {
+                    'bool'     => 'BIT',
+                    'int'      => 'INT',
+                    'float'    => 'DOUBLE',
+                    'string'   => 'TEXT',
+                    'DateTime' => 'DATETIME'
+                };
+                $nullability = $metadata['nullable'] ? 'NULL' : 'NOT NULL';
+                $columns[] = "`$key` $sqlType $nullability";
+            }
+            if (count($columns) === 1) {
+                return false;
+            }
+            $columns = implode(', ', $columns);
+            $sql = "CREATE TABLE `$table` ($columns) ENGINE=InnoDB;";
+        }
+        $query = (new RawQuery)->Sql($sql);
         $database = Database::Instance();
         return $database->Execute($query) !== null;
     }

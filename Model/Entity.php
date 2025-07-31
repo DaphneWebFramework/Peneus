@@ -262,6 +262,27 @@ abstract class Entity implements \JsonSerializable
     }
 
     /**
+     * Checks whether the entity's associated table or view exists in the
+     * database.
+     *
+     * @return bool
+     *   Returns `true` if a table or view with the matching name exists,
+     *   `false` otherwise.
+     */
+    public static function TableExists(): bool
+    {
+        $database = Database::Instance();
+        $tableName = $database->EscapeString(static::TableName());
+        $query = (new RawQuery)
+            ->Sql("SHOW TABLES LIKE '$tableName'");
+        $resultSet = $database->Execute($query);
+        if ($resultSet === null) {
+            return false;
+        }
+        return $resultSet->RowCount() > 0;
+    }
+
+    /**
      * Creates the database table or view for the entity.
      *
      * If the entity is a view (extends `ViewEntity`), a `CREATE OR REPLACE VIEW`

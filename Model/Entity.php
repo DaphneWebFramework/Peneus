@@ -14,6 +14,7 @@ namespace Peneus\Model;
 
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\DatabaseSystem\Queries\DeleteQuery;
+use \Harmonia\Systems\DatabaseSystem\Queries\IdentifierEscaper;
 use \Harmonia\Systems\DatabaseSystem\Queries\InsertQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\RawQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\SelectQuery;
@@ -31,6 +32,8 @@ use \Harmonia\Systems\DatabaseSystem\ResultSet;
  */
 abstract class Entity implements \JsonSerializable
 {
+    use IdentifierEscaper;
+
     /**
      * Standard format for date-time values.
      */
@@ -311,11 +314,11 @@ abstract class Entity implements \JsonSerializable
      */
     public static function CreateTable(): bool
     {
-        $table = self::escapeBackticks(static::TableName());
+        $tableName = self::escapeIdentifier(static::TableName());
         if (static::IsView())
         {
             $viewDefinition = static::ViewDefinition();
-            $sql = "CREATE OR REPLACE VIEW `$table` AS $viewDefinition;";
+            $sql = "CREATE OR REPLACE VIEW `$tableName` AS $viewDefinition;";
         }
         else
         {
@@ -333,7 +336,7 @@ abstract class Entity implements \JsonSerializable
                 return false;
             }
             $columns = implode(', ', $columns);
-            $sql = "CREATE TABLE `$table` ($columns) ENGINE=InnoDB;";
+            $sql = "CREATE TABLE `$tableName` ($columns) ENGINE=InnoDB;";
         }
         $query = (new RawQuery)->Sql($sql);
         $database = Database::Instance();
@@ -668,25 +671,6 @@ abstract class Entity implements \JsonSerializable
                 'nullable' => $reflectionType->allowsNull()
             ];
         }
-    }
-
-    /**
-     * Escapes backticks in a SQL identifier to prevent SQL injection.
-     *
-     * This method doubles any backticks found in the identifier. The returned
-     * value is not enclosed in backticks automatically; it is the caller's
-     * responsibility to wrap the result in backticks when embedding it directly
-     * in SQL strings.
-     *
-     * @param string $identifier
-     *   The identifier to escape, such as a table or column name.
-     * @return string
-     *   The escaped identifier, safe for use in SQL contexts when properly
-     *   enclosed in backticks.
-     */
-    private static function escapeBackticks(string $identifier): string
-    {
-        return \str_replace('`', '``', $identifier);
     }
 
     #endregion private

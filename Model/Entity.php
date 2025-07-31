@@ -297,7 +297,7 @@ abstract class Entity implements \JsonSerializable
      */
     public static function CreateTable(): bool
     {
-        $table = static::TableName();
+        $table = self::escapeBackticks(static::TableName());
         if (static::IsView())
         {
             $viewDefinition = static::ViewDefinition();
@@ -660,6 +660,25 @@ abstract class Entity implements \JsonSerializable
                 'nullable' => $reflectionType->allowsNull()
             ];
         }
+    }
+
+    /**
+     * Escapes backticks in a SQL identifier to prevent SQL injection.
+     *
+     * This method doubles any backticks found in the identifier. The returned
+     * value is not enclosed in backticks automatically; it is the caller's
+     * responsibility to wrap the result in backticks when embedding it directly
+     * in SQL strings.
+     *
+     * @param string $identifier
+     *   The identifier to escape, such as a table or column name.
+     * @return string
+     *   The escaped identifier, safe for use in SQL contexts when properly
+     *   enclosed in backticks.
+     */
+    private static function escapeBackticks(string $identifier): string
+    {
+        return \str_replace('`', '``', $identifier);
     }
 
     #endregion private

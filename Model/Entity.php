@@ -318,7 +318,7 @@ abstract class Entity implements \JsonSerializable
         if (static::IsView())
         {
             $viewDefinition = static::ViewDefinition();
-            $sql = "CREATE OR REPLACE VIEW `$tableName` AS $viewDefinition;";
+            $sql = "CREATE OR REPLACE VIEW `$tableName` AS $viewDefinition";
         }
         else
         {
@@ -336,8 +336,26 @@ abstract class Entity implements \JsonSerializable
                 return false;
             }
             $columns = implode(', ', $columns);
-            $sql = "CREATE TABLE `$tableName` ($columns) ENGINE=InnoDB;";
+            $sql = "CREATE TABLE `$tableName` ($columns) ENGINE=InnoDB";
         }
+        $query = (new RawQuery)->Sql($sql);
+        $database = Database::Instance();
+        return $database->Execute($query) !== null;
+    }
+
+    /**
+     * Drops the database table or view associated with the entity.
+     *
+     * @return bool
+     *   Returns `true` on success, `false` on failure.
+     */
+    public static function DropTable(): bool
+    {
+        $tableName = self::escapeIdentifier(static::TableName());
+        $sql = static::IsView()
+            ? "DROP VIEW `$tableName`"
+            : "DROP TABLE `$tableName`";
+
         $query = (new RawQuery)->Sql($sql);
         $database = Database::Instance();
         return $database->Execute($query) !== null;

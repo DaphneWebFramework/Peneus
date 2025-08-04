@@ -36,7 +36,7 @@ class DeleteRecordAction extends Action
      * If the record is found, it is deleted from the data store.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \InvalidArgumentException
      *   If the table name is not recognized or the request body fails
      *   validation.

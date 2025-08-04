@@ -28,7 +28,7 @@ class LogoutAction extends Action
      * destroying the user's session.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the session integrity cookie cannot be deleted, or if the session
      *   cannot be destroyed.

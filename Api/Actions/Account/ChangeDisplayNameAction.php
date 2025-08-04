@@ -31,7 +31,7 @@ class ChangeDisplayNameAction extends Action
      * value.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the display name field is missing or does not match the required
      *   pattern, if the user is not logged in, or if the account cannot be

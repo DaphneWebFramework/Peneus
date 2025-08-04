@@ -42,7 +42,7 @@ class LoginAction extends Action
      * deleted, and an exception is thrown.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the user is already logged in, if the email address field is missing
      *   or invalid, if the password field is missing or invalid due to length

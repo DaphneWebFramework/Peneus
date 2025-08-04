@@ -36,7 +36,7 @@ class EditRecordAction extends Action
      * are persisted to the data store.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \InvalidArgumentException
      *   If the table name is not recognized or the request body fails
      *   validation.

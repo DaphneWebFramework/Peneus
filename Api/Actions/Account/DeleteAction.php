@@ -30,7 +30,7 @@ class DeleteAction extends Action
      * finally logs the user out.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the user is not logged in, if any hook cleanup fails, or if the
      *   account cannot be deleted.

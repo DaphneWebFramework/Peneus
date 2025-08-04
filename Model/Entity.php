@@ -355,7 +355,6 @@ abstract class Entity implements \JsonSerializable
         $sql = static::IsView()
             ? "DROP VIEW `$tableName`"
             : "DROP TABLE `$tableName`";
-
         $query = (new RawQuery)->Sql($sql);
         $database = Database::Instance();
         return $database->Execute($query) !== null;

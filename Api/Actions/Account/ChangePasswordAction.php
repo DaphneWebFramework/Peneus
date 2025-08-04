@@ -31,7 +31,7 @@ class ChangePasswordAction extends Action
      * verifying the current password, and saving the updated hash.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the input is invalid, the user is not logged in, the current
      *   password is incorrect, or the save operation fails.

@@ -28,7 +28,7 @@ class ChangeAction extends Action
      * Validates the submitted language code and sets it in a cookie.
      *
      * @return mixed
-     *   Always returns `null`.
+     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
      *   If the language code field is missing, or is not supported.
      */

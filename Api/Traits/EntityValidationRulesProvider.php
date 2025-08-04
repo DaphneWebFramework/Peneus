@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * ModelValidationRulesProvider.php
+ * EntityValidationRulesProvider.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -10,7 +10,7 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Api\Actions\Management;
+namespace Peneus\Api\Traits;
 
 use \Harmonia\Services\SecurityService;
 use \Peneus\Model\Account;
@@ -21,24 +21,24 @@ use \Peneus\Model\Role;
 use \Peneus\Services\AccountService;
 
 /**
- * Provides validation rules for model-specific create/edit operations.
+ * Provides validation rules for entity-specific create/edit operations.
  */
-trait ModelValidationRulesProvider
+trait EntityValidationRulesProvider
 {
     /**
      * Returns the validation rule set for creating a new record of the
-     * given model class.
+     * given entity class.
      *
-     * @param class-string $modelClass
-     *   Fully qualified model class name.
+     * @param class-string $entityClass
+     *   Fully qualified entity class name.
      * @return array<string, array<int, string>>
      *   Field names mapped to rule arrays.
      * @throws \InvalidArgumentException
-     *   If the given model class is not supported.
+     *   If the given entity class is not supported.
      */
-    protected function validationRulesForAdd(string $modelClass): array
+    protected function validationRulesForAdd(string $entityClass): array
     {
-        return match ($modelClass) {
+        return match ($entityClass) {
             Account::class => [
                 'email' => [
                     'required',
@@ -111,12 +111,12 @@ trait ModelValidationRulesProvider
                 ],
             ],
             default => throw new \InvalidArgumentException(
-                "Unsupported model class: $modelClass"),
+                "Unsupported entity class: $entityClass"),
         };
     }
 
     /**
-     * Returns the validation rule set for deleting a record of the given model
+     * Returns the validation rule set for deleting a record of the given entity
      * class.
      *
      * @return array<string, array<int, string>>
@@ -129,20 +129,20 @@ trait ModelValidationRulesProvider
 
     /**
      * Returns the validation rule set for editing an existing record of the
-     * given model class.
+     * given entity class.
      *
-     * @param class-string $modelClass
-     *   Fully qualified model class name.
+     * @param class-string $entityClass
+     *   Fully qualified entity class name.
      * @return array<string, array<int, string>>
      *   Field names mapped to rule arrays.
      * @throws \InvalidArgumentException
-     *   If the given model class is not supported.
+     *   If the given entity class is not supported.
       */
-    protected function validationRulesForEdit(string $modelClass): array
+    protected function validationRulesForEdit(string $entityClass): array
     {
         return array_merge(
             $this->validationRulesForDelete(),
-            $this->validationRulesForAdd($modelClass)
+            $this->validationRulesForAdd($entityClass)
         );
     }
 }

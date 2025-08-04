@@ -16,6 +16,8 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\EntityClassResolver;
+use \Peneus\Api\Traits\EntityValidationRulesProvider;
 use \Peneus\Model\Entity;
 
 /**
@@ -23,16 +25,16 @@ use \Peneus\Model\Entity;
  */
 class DeleteRecordAction extends Action
 {
-    use ModelClassResolver;
-    use ModelValidationRulesProvider;
+    use EntityClassResolver;
+    use EntityValidationRulesProvider;
 
     /**
      * Executes the process of deleting an existing record from a specified
      * table.
      *
      * Validates the table name from the query parameters and determines
-     * the corresponding model class. Then validates the request body against
-     * model-specific delete rules, including the record ID.
+     * the corresponding entity class. Then validates the request body against
+     * entity-specific delete rules, including the record ID.
      * If the record is found, it is deleted from the data store.
      *
      * @return mixed
@@ -45,17 +47,18 @@ class DeleteRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
+        // 1
         $validator = new Validator([ 'table' => ['required', 'string'] ]);
         $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
         $table = $dataAccessor->GetField('table');
-
-        $modelClass = $this->resolveModelClass($table);
-
+        // 2
+        $entityClass = $this->resolveEntityClass($table);
+        // 3
         $validator = new Validator($this->validationRulesForDelete());
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $id = (int)$dataAccessor->GetField('id');
-
-        $entity = $this->findEntity($modelClass, $id);
+        // 4
+        $entity = $this->findEntity($entityClass, $id);
         if ($entity === null) {
             throw new \RuntimeException(
                 "Record with ID $id not found in table '$table'.");
@@ -68,12 +71,12 @@ class DeleteRecordAction extends Action
     }
 
     /**
-     * @param class-string $modelClass
+     * @param class-string $entityClass
      * @param int $id
      * @return ?Entity
      */
-    protected function findEntity(string $modelClass, int $id): ?Entity
+    protected function findEntity(string $entityClass, int $id): ?Entity
     {
-        return $modelClass::FindById($id);
+        return $entityClass::FindById($id);
     }
 }

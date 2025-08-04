@@ -16,6 +16,8 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\EntityClassResolver;
+use \Peneus\Api\Traits\EntityValidationRulesProvider;
 use \Peneus\Model\Entity;
 
 /**
@@ -23,15 +25,15 @@ use \Peneus\Model\Entity;
  */
 class AddRecordAction extends Action
 {
-    use ModelClassResolver;
-    use ModelValidationRulesProvider;
+    use EntityClassResolver;
+    use EntityValidationRulesProvider;
 
     /**
      * Executes the process of adding a new record to a specified table.
      *
      * Validates the table name from the query parameters and determines
-     * the corresponding model class. Then validates the request body
-     * according to model-specific rules, constructs a new model instance
+     * the corresponding entity class. Then validates the request body
+     * according to entity-specific rules, constructs a new entity instance
      * from the validated fields, persists it, and returns the identifier
      * of the newly inserted record.
      *
@@ -46,16 +48,17 @@ class AddRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
+        // 1
         $validator = new Validator([ 'table' => ['required', 'string'] ]);
         $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
         $table = $dataAccessor->GetField('table');
-
-        $modelClass = $this->resolveModelClass($table);
-
-        $validator = new Validator($this->validationRulesForAdd($modelClass));
+        // 2
+        $entityClass = $this->resolveEntityClass($table);
+        // 3
+        $validator = new Validator($this->validationRulesForAdd($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
-
-        $entity = $this->createEntity($modelClass, $dataAccessor->Data());
+        // 4
+        $entity = $this->createEntity($entityClass, $dataAccessor->Data());
         if (!$entity->Save()) {
             throw new \RuntimeException("Failed to add record to table '$table'.");
         }
@@ -63,14 +66,14 @@ class AddRecordAction extends Action
     }
 
     /**
-     * @param class-string $modelClass
+     * @param class-string $entityClass
      * @param array<string, mixed> $data
      * @return Entity
      *
      * @codeCoverageIgnore
      */
-    protected function createEntity(string $modelClass, array $data): Entity
+    protected function createEntity(string $entityClass, array $data): Entity
     {
-        return new $modelClass($data);
+        return new $entityClass($data);
     }
 }

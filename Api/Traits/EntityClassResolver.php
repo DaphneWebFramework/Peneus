@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * ModelClassResolver.php
+ * EntityClassResolver.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -10,7 +10,7 @@
  * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
-namespace Peneus\Api\Actions\Management;
+namespace Peneus\Api\Traits;
 
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
@@ -18,12 +18,12 @@ use \Peneus\Model\PasswordReset;
 use \Peneus\Model\PendingAccount;
 
 /**
- * Provides model resolution logic based on a table name string.
+ * Provides entity class resolution logic based on a table name string.
  */
-trait ModelClassResolver
+trait EntityClassResolver
 {
     /** @var class-string[] */
-    private array $allowedModelClasses = [
+    private array $allowedEntityClasses = [
         Account::class,
         AccountRole::class,
         PasswordReset::class,
@@ -31,19 +31,19 @@ trait ModelClassResolver
     ];
 
     /**
-     * Returns the fully qualified class name of the model that matches the
+     * Returns the fully qualified class name of the entity that matches the
      * provided table name.
      *
      * @param string $tableName
-     *   The name of the table to resolve to a model class.
+     *   The name of the table to resolve to an entity class.
      * @return class-string
-     *   Fully qualified model class name.
+     *   Fully qualified entity class name.
      * @throws \InvalidArgumentException
-     *   If no allowed model matches the given table name.
+     *   If no allowed entity matches the given table name.
      */
-    protected function resolveModelClass(string $tableName): string
+    protected function resolveEntityClass(string $tableName): string
     {
-        foreach ($this->allowedModelClasses as $class) {
+        foreach ($this->allowedEntityClasses as $class) {
             if ($tableName === $class::TableName()) {
                 return $class;
             }

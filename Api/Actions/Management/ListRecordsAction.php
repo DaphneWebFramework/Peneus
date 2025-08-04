@@ -16,22 +16,23 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\EntityClassResolver;
 
 /**
  * Returns a paginated list of records from a specified table.
  */
 class ListRecordsAction extends Action
 {
-    use ModelClassResolver;
+    use EntityClassResolver;
 
     /**
      * Executes the process of listing records from a specified table with
      * support for pagination, filtering, and sorting.
      *
      * Validates and sanitizes incoming query parameters, determines the
-     * appropriate model class, constructs the necessary conditions for search
-     * and ordering, and returns a paginated result set along with the total
-     * count of matched records.
+     * corresponding entity class, constructs the necessary conditions for
+     * search and ordering, and returns a paginated result set along with the
+     * total count of matched records.
      *
      * @return array<string, mixed>
      *   An associative array containing two keys: 'data', which holds the array
@@ -45,6 +46,7 @@ class ListRecordsAction extends Action
      */
     protected function onExecute(): mixed
     {
+        // 1
         $validator = new Validator([
             'table' => ['required', 'string'],
             'page' => ['integer', 'min:1'],
@@ -63,10 +65,10 @@ class ListRecordsAction extends Action
         $search = $dataAccessor->GetFieldOrDefault('search', null);
         $sortKey = $dataAccessor->GetFieldOrDefault('sortkey', null);
         $sortDir = $dataAccessor->GetFieldOrDefault('sortdir', null);
-
-        $modelClass = $this->resolveModelClass($table);
-        $columns = \array_column($modelClass::Metadata(), 'name');
-
+        // 2
+        $entityClass = $this->resolveEntityClass($table);
+        $columns = \array_column($entityClass::Metadata(), 'name');
+        // 3
         $condition = null;
         $bindings = null;
         if ($search !== null) {
@@ -84,12 +86,12 @@ class ListRecordsAction extends Action
                 $bindings = ['search' => "%{$search}%"];
             }
         }
-
+        // 4
         $orderBy = null;
         if ($sortKey !== null) {
             if (!\in_array($sortKey, $columns, true)) {
                 throw new \InvalidArgumentException(
-                    "Table '{$modelClass::TableName()}' does not have a "
+                    "Table '{$entityClass::TableName()}' does not have a "
                   . "column named '$sortKey'.");
             }
             $orderBy = "`$sortKey`";
@@ -97,16 +99,16 @@ class ListRecordsAction extends Action
                 $orderBy .= ' ' . \strtoupper($sortDir);
             }
         }
-
+        // 5
         return [
-            'data' => $modelClass::Find(
+            'data' => $entityClass::Find(
                 condition: $condition,
                 bindings: $bindings,
                 orderBy: $orderBy,
                 limit: $pageSize,
                 offset: $offset
             ),
-            'total' => $modelClass::Count(
+            'total' => $entityClass::Count(
                 condition: $condition,
                 bindings: $bindings
             )

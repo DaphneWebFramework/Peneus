@@ -16,6 +16,8 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\EntityClassResolver;
+use \Peneus\Api\Traits\EntityValidationRulesProvider;
 use \Peneus\Model\Entity;
 
 /**
@@ -23,15 +25,15 @@ use \Peneus\Model\Entity;
  */
 class EditRecordAction extends Action
 {
-    use ModelClassResolver;
-    use ModelValidationRulesProvider;
+    use EntityClassResolver;
+    use EntityValidationRulesProvider;
 
     /**
      * Executes the process of editing an existing record in a specified table.
      *
      * Validates the table name from the query parameters and determines
-     * the corresponding model class. Then validates the request body
-     * against model-specific edit rules, including the record ID.
+     * the corresponding entity class. Then validates the request body
+     * against entity-specific edit rules, including the record ID.
      * If the record is found, its fields are updated and the changes
      * are persisted to the data store.
      *
@@ -45,17 +47,18 @@ class EditRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
+        // 1
         $validator = new Validator([ 'table' => ['required', 'string'] ]);
         $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
         $table = $dataAccessor->GetField('table');
-
-        $modelClass = $this->resolveModelClass($table);
-
-        $validator = new Validator($this->validationRulesForEdit($modelClass));
+        // 2
+        $entityClass = $this->resolveEntityClass($table);
+        // 3
+        $validator = new Validator($this->validationRulesForEdit($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
         $id = (int)$dataAccessor->GetField('id');
-
-        $entity = $this->findEntity($modelClass, $id);
+        // 4
+        $entity = $this->findEntity($entityClass, $id);
         if ($entity === null) {
             throw new \RuntimeException(
                 "Record with ID $id not found in table '$table'.");
@@ -69,12 +72,12 @@ class EditRecordAction extends Action
     }
 
     /**
-     * @param class-string $modelClass
+     * @param class-string $entityClass
      * @param int $id
      * @return ?Entity
      */
-    protected function findEntity(string $modelClass, int $id): ?Entity
+    protected function findEntity(string $entityClass, int $id): ?Entity
     {
-        return $modelClass::FindById($id);
+        return $entityClass::FindById($id);
     }
 }

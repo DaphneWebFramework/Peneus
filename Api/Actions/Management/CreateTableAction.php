@@ -33,6 +33,7 @@ class CreateTableAction extends Action
      */
     protected function onExecute(): mixed
     {
+        // 1
         $validator = new Validator([
             'entityClass' => [
                 'required',
@@ -48,6 +49,7 @@ class CreateTableAction extends Action
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $entityClass = $dataAccessor->GetField('entityClass');
+        // 2
         if (!$entityClass::CreateTable()) {
             throw new \RuntimeException(
                 "Failed to create table for: $entityClass");

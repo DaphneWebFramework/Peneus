@@ -76,6 +76,8 @@ class Renderer
                 $this->libraryStylesheetLinks($libraries),
             "\t{{PageStylesheetLinks}}" =>
                 $this->pageStylesheetLinks($page),
+            "{{BodyClass}}" =>
+                $page->Property('bodyClass', ''),
             "\t{{Content}}" =>
                 $this->content($page),
             "\t{{LibraryJavascriptLinks}}" =>

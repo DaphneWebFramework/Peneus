@@ -195,6 +195,28 @@ abstract class Entity implements \JsonSerializable
         return $serialized;
     }
 
+    /**
+     * Serializes the entity to an associative array, excluding specified
+     * properties.
+     *
+     * Uses the same logic as `jsonSerialize` (e.g., DateTime formatting),
+     * but allows certain fields to be omitted dynamically.
+     *
+     * @param string ...$excludes
+     *   Property names to exclude from the result.
+     * @return array
+     *   An associative array of property names and their serialized values,
+     *   excluding any specified properties.
+     */
+    public function Without(string ...$excludes): array
+    {
+        $serialized = $this->jsonSerialize();
+        foreach ($excludes as $key) {
+            unset($serialized[$key]);
+        }
+        return $serialized;
+    }
+
     #endregion Instance methods
 
     #region Static methods -----------------------------------------------------

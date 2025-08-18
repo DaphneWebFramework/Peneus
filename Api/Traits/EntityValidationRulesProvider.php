@@ -65,7 +65,7 @@ trait EntityValidationRulesProvider
             AccountRole::class => [
                 'accountId' => [
                     'required',
-                    'integer',
+                    'integer:strict',
                     'min:1'
                 ],
                 'role' => [
@@ -98,7 +98,7 @@ trait EntityValidationRulesProvider
             PasswordReset::class => [
                 'accountId' => [
                     'required',
-                    'integer',
+                    'integer:strict',
                     'min:1'
                 ],
                 'resetCode' => [

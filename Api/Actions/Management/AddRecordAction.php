@@ -21,7 +21,7 @@ use \Peneus\Api\Traits\EntityValidationRulesProvider;
 use \Peneus\Model\Entity;
 
 /**
- * Creates and persists a new record into a specified table.
+ * Creates a new record in a specified table.
  */
 class AddRecordAction extends Action
 {
@@ -32,19 +32,18 @@ class AddRecordAction extends Action
      * Executes the process of adding a new record to a specified table.
      *
      * Validates the table name from the query parameters and determines
-     * the corresponding entity class. Then validates the request body
-     * according to entity-specific rules, constructs a new entity instance
-     * from the validated fields, persists it, and returns the identifier
-     * of the newly inserted record.
+     * the corresponding entity class. Then validates the request body against
+     * entity-specific rules. If the record is created successfully, the
+     * identifier of the newly inserted record is returned.
      *
      * @return array<string, int>
-     *   An associative array containing the key 'id' mapped to the primary
-     *   key of the newly inserted record.
+     *   An associative array with the key 'id', containing the primary key of
+     *   the newly created record.
      * @throws \InvalidArgumentException
      *   If the table name is not recognized or the request body fails
      *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be saved to the data store.
+     *   If the record cannot be created in the data store.
      */
     protected function onExecute(): mixed
     {

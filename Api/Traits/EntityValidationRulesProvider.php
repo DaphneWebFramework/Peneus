@@ -124,7 +124,13 @@ trait EntityValidationRulesProvider
      */
     protected function validationRulesForDelete(): array
     {
-        return [ 'id' => ['required', 'integer', 'min:1'] ];
+        return [
+            'id' => [
+                'required',
+                'integer:strict',
+                'min:1'
+            ]
+        ];
     }
 
     /**

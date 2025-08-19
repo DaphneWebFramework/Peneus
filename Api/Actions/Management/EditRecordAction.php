@@ -32,10 +32,9 @@ class EditRecordAction extends Action
      * Executes the process of editing an existing record in a specified table.
      *
      * Validates the table name from the query parameters and determines
-     * the corresponding entity class. Then validates the request body
-     * against entity-specific edit rules, including the record ID.
-     * If the record is found, its fields are updated and the changes
-     * are persisted to the data store.
+     * the corresponding entity class. Then validates the request body against
+     * entity-specific rules. If the record is found, it is updated in the
+     * data store.
      *
      * @return mixed
      *   Always returns `null` if the operation is successful.
@@ -43,7 +42,7 @@ class EditRecordAction extends Action
      *   If the table name is not recognized or the request body fails
      *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be found or saved to the data store.
+     *   If the record cannot be found or updated in the data store.
      */
     protected function onExecute(): mixed
     {
@@ -56,7 +55,7 @@ class EditRecordAction extends Action
         // 3
         $validator = new Validator($this->validationRulesForEdit($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
-        $id = (int)$dataAccessor->GetField('id');
+        $id = $dataAccessor->GetField('id');
         // 4
         $entity = $this->findEntity($entityClass, $id);
         if ($entity === null) {

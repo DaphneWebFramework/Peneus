@@ -34,8 +34,8 @@ class DeleteRecordAction extends Action
      *
      * Validates the table name from the query parameters and determines
      * the corresponding entity class. Then validates the request body against
-     * entity-specific delete rules, including the record ID.
-     * If the record is found, it is deleted from the data store.
+     * entity-specific rules. If the record is found, it is deleted from the
+     * data store.
      *
      * @return mixed
      *   Always returns `null` if the operation is successful.
@@ -55,8 +55,8 @@ class DeleteRecordAction extends Action
         $entityClass = $this->resolveEntityClass($table);
         // 3
         $validator = new Validator($this->validationRulesForDelete());
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $id = (int)$dataAccessor->GetField('id');
+        $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
+        $id = $dataAccessor->GetField('id');
         // 4
         $entity = $this->findEntity($entityClass, $id);
         if ($entity === null) {
@@ -65,7 +65,7 @@ class DeleteRecordAction extends Action
         }
         if (!$entity->Delete()) {
             throw new \RuntimeException(
-                "Failed to delete record from table '$table'.");
+                "Failed to delete record with ID $id from table '$table'.");
         }
         return null;
     }

@@ -66,12 +66,14 @@ class Renderer
         }
         $libraries = $page->IncludedLibraries();
         $html = \strtr($template, [
+            "{{AppUrl}}" =>
+                $this->appUrl(),
             '{{Language}}' =>
                 $this->config->OptionOrDefault('Language', ''),
             '{{Title}}' =>
                 $page->Title(),
             "\t{{MetaTags}}" =>
-                $this->renderMetaTags($page->MetaItems()),
+                $this->metaTags($page->MetaItems()),
             "\t{{LibraryStylesheetLinks}}" =>
                 $this->libraryStylesheetLinks($libraries),
             "\t{{PageStylesheetLinks}}" =>
@@ -122,6 +124,17 @@ class Renderer
     }
 
     /**
+     * Retrieves the application URL without a trailing slash.
+     *
+     * @return string
+     *   The application URL.
+     */
+    protected function appUrl(): string
+    {
+        return $this->resource->AppUrl()->TrimTrailingSlashes()->__toString();
+    }
+
+    /**
      * Generates <meta> tags.
      *
      * @param CArray $metaItems
@@ -131,7 +144,7 @@ class Renderer
      * @return string
      *   A newline-separated string of <meta> tags.
      */
-    protected function renderMetaTags(CArray $metaItems): string
+    protected function metaTags(CArray $metaItems): string
     {
         $result = '';
         foreach ($metaItems as $type => $group) {

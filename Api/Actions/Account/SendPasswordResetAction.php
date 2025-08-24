@@ -125,7 +125,10 @@ class SendPasswordResetAction extends Action
         return $this->sendTransactionalEmail(
             $email,
             $displayName,
-            Resource::Instance()->PageUrl('reset-password') . $resetCode,
+            Resource::Instance()
+                ->PageUrl('reset-password')
+                ->Extend($resetCode)
+                ->__toString(),
             [
                 'masthead' => 'email_reset_password_masthead',
                 'intro' => 'email_reset_password_intro',

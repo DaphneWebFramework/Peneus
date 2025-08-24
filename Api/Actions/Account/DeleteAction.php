@@ -47,7 +47,7 @@ class DeleteAction extends Action
             );
         }
         $result = Database::Instance()->WithTransaction(function()
-            use ($accountService, $account)
+            use($accountService, $account)
         {
             foreach ($accountService->DeletionHooks() as $hook) {
                 $hook->OnDeleteAccount($account);

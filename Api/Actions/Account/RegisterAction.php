@@ -159,7 +159,10 @@ class RegisterAction extends Action
         return $this->sendTransactionalEmail(
             $email,
             $displayName,
-            Resource::Instance()->PageUrl('activate-account') . $activationCode,
+            Resource::Instance()
+                ->PageUrl('activate-account')
+                ->Extend($activationCode)
+                ->__toString(),
             [
                 'masthead' => 'email_activate_account_masthead',
                 'intro' => 'email_activate_account_intro',

@@ -76,10 +76,8 @@ class Resource extends Singleton
      */
     public function TemplateFilePath($templateName): CPath
     {
-        return CPath::Join(
-            $this->base->AppSubdirectoryPath('templates'),
-            "{$templateName}.html"
-        );
+        return $this->base->AppSubdirectoryPath('templates')
+            ->Extend("{$templateName}.html");
     }
 
     /**
@@ -92,10 +90,8 @@ class Resource extends Singleton
      */
     public function MasterpageFilePath($masterpageName): CPath
     {
-        return CPath::Join(
-            $this->base->AppSubdirectoryPath('masterpages'),
-            "{$masterpageName}.php"
-        );
+        return $this->base->AppSubdirectoryPath('masterpages')
+            ->Extend("{$masterpageName}.php");
     }
 
     /**
@@ -106,10 +102,8 @@ class Resource extends Singleton
      */
     public function FrontendManifestFilePath(): CPath
     {
-        return CPath::Join(
-            $this->base->AppSubdirectoryPath('frontend'),
-            'manifest.json'
-        );
+        return $this->base->AppSubdirectoryPath('frontend')
+            ->Extend('manifest.json');
     }
 
     /**
@@ -125,14 +119,10 @@ class Resource extends Singleton
      */
     public function FrontendLibraryFileUrl(string $relativePath): CUrl
     {
-        $fileUrl = CUrl::Join(
-            $this->base->AppSubdirectoryUrl('frontend'),
-            $relativePath
-        );
-        $filePath = CPath::Join(
-            $this->base->AppSubdirectoryPath('frontend'),
-            $relativePath
-        );
+        $fileUrl = $this->base->AppSubdirectoryUrl('frontend')
+            ->Extend($relativePath);
+        $filePath = $this->base->AppSubdirectoryPath('frontend')
+            ->Extend($relativePath);
         $modTime = CFileSystem::Instance()->ModificationTime($filePath);
         if ($modTime !== 0) {
             $fileUrl->AppendInPlace('?' . $modTime);
@@ -150,10 +140,8 @@ class Resource extends Singleton
      */
     public function PagePath(string $pageId): CPath
     {
-        return CPath::Join(
-            $this->base->AppSubdirectoryPath('pages'),
-            $pageId
-        );
+        return $this->base->AppSubdirectoryPath('pages')
+            ->Extend($pageId);
     }
 
     /**
@@ -169,10 +157,9 @@ class Resource extends Singleton
      */
     public function PageUrl(string $pageId): CUrl
     {
-        return CUrl::Join(
-            $this->base->AppSubdirectoryUrl('pages'),
-            $pageId
-        )->EnsureTrailingSlash();
+        return $this->base->AppSubdirectoryUrl('pages')
+            ->Extend($pageId)
+            ->EnsureTrailingSlash();
     }
 
     /**
@@ -223,7 +210,8 @@ class Resource extends Singleton
      */
     public function ErrorPageUrl(StatusCode $statusCode): CUrl
     {
-        return CUrl::Join($this->PageUrl('error'), (string)$statusCode->value);
+        return $this->PageUrl('error')
+            ->Extend((string)$statusCode->value);
     }
 
     /**
@@ -238,7 +226,8 @@ class Resource extends Singleton
      */
     public function PageFilePath(string $pageId, string $relativePath): CPath
     {
-        return CPath::Join($this->PagePath($pageId), $relativePath);
+        return $this->PagePath($pageId)
+            ->Extend($relativePath);
     }
 
     /**
@@ -256,7 +245,7 @@ class Resource extends Singleton
      */
     public function PageFileUrl(string $pageId, string $relativePath): CUrl
     {
-        $fileUrl = CUrl::Join($this->PageUrl($pageId), $relativePath);
+        $fileUrl = $this->PageUrl($pageId)->Extend($relativePath);
         $filePath = $this->PageFilePath($pageId, $relativePath);
         $modTime = CFileSystem::Instance()->ModificationTime($filePath);
         if ($modTime !== 0) {

@@ -98,7 +98,7 @@ class ListEntityMappingsAction extends Action
             if (\in_array($moduleName, ['.', '..'])) {
                 continue;
             }
-            $modulePath = $this->joinPath($this->backendPath, $moduleName);
+            $modulePath = $this->backendPath->Extend($moduleName);
             if (!$modulePath->Call('\is_dir')) {
                 continue;
             }
@@ -114,7 +114,7 @@ class ListEntityMappingsAction extends Action
      */
     protected function findEntities(CPath $modulePath, bool $recursive = true): array
     {
-        $modelPath = $this->joinPath($modulePath, 'Model');
+        $modelPath = $modulePath->Extend('Model');
         if (!$modelPath->Call('\is_dir')) {
             return [];
         }
@@ -197,11 +197,5 @@ class ListEntityMappingsAction extends Action
             ];
         }
         return $result;
-    }
-
-    /** @codeCoverageIgnore */
-    protected function joinPath(string|\Stringable ...$segments): CPath
-    {
-        return CPath::Join(...$segments);
     }
 }

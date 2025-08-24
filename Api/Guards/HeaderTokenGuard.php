@@ -28,7 +28,7 @@ class HeaderTokenGuard extends TokenGuard
     /**
      * The name of the HTTP header that contains the CSRF token.
      */
-    public const CSRF_HEADER_NAME = 'X-CSRF-Token';
+    public const CSRF_HEADER_NAME = 'x-csrf-token';
 
     /**
      * Constructs a new instance using the CSRF token from HTTP headers and the

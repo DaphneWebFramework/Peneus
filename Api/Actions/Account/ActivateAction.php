@@ -113,7 +113,7 @@ class ActivateAction extends Action
 
     protected function createAccountFromPendingAccount(
         PendingAccount $pendingAccount,
-        \DateTime $timeActivated = null
+        ?\DateTime $timeActivated = null
     ): Account
     {
         $account = new Account();

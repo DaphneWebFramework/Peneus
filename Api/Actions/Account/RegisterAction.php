@@ -137,7 +137,7 @@ class RegisterAction extends Action
         string $password,
         string $displayName,
         string $activationCode,
-        \DateTime $timeRegistered = null
+        ?\DateTime $timeRegistered = null
     ): bool
     {
         $pendingAccount = new PendingAccount();

@@ -100,7 +100,7 @@ class SendPasswordResetAction extends Action
     protected function createPasswordReset(
         int $accountId,
         string $resetCode,
-        \DateTime $timeRequested = null
+        ?\DateTime $timeRequested = null
     ): bool
     {
         $passwordReset = PasswordReset::FindFirst(

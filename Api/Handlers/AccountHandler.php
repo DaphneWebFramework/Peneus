@@ -21,8 +21,10 @@ use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Api\Actions\Account\RegisterAction;
 use \Peneus\Api\Actions\Account\ResetPasswordAction;
 use \Peneus\Api\Actions\Account\SendPasswordResetAction;
+use \Peneus\Api\Actions\Account\SignInWithGoogleAction;
 use \Peneus\Api\Actions\Action;
 use \Peneus\Api\Guards\FormTokenGuard;
+use \Peneus\Api\Guards\HeaderTokenGuard;
 use \Peneus\Api\Guards\SessionGuard;
 
 /**
@@ -33,6 +35,8 @@ class AccountHandler extends Handler
     protected function createAction(string $actionName): ?Action
     {
         return match ($actionName) {
+            'sign-in-with-google' => (new SignInWithGoogleAction)
+                ->AddGuard(new HeaderTokenGuard),
             'register' => (new RegisterAction)
                 ->AddGuard(new FormTokenGuard),
             'activate' => (new ActivateAction)

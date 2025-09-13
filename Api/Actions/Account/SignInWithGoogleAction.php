@@ -328,8 +328,6 @@ class SignInWithGoogleAction extends Action
     /**
      * @return void
      * @throws \RuntimeException
-     *
-     * @codeCoverageIgnore
      */
     protected function deleteCsrfCookie(): void
     {
@@ -349,11 +347,9 @@ class SignInWithGoogleAction extends Action
 
     /**
      * @return string
-     *
-     * @codeCoverageIgnore
      */
     protected function homePageUrl(): string
     {
-        return Resource::Instance()->PageUrl('home');
+        return (string)Resource::Instance()->PageUrl('home');
     }
 }

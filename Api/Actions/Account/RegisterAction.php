@@ -14,6 +14,7 @@ namespace Peneus\Api\Actions\Account;
 
 use \Peneus\Api\Actions\Action;
 
+use \Harmonia\Config;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
@@ -25,7 +26,6 @@ use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
 use \Peneus\Services\AccountService;
-use \Peneus\Translation;
 
 /**
  * Registers a new user account and sends an activation email.
@@ -57,7 +57,6 @@ class RegisterAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $validator = new Validator([
             'email' => [
                 'required',
@@ -74,7 +73,9 @@ class RegisterAction extends Action
                 'regex:' . AccountService::DISPLAY_NAME_PATTERN
             ]
         ], [
-            'displayName.regex' => $translation->Get('error_display_name_invalid')
+            'displayName.regex' => "Display name is invalid. It must start"
+                . " with a letter or number and may only contain letters,"
+                . " numbers, spaces, dots, hyphens, and apostrophes."
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $email = $dataAccessor->GetField('email');
@@ -82,13 +83,13 @@ class RegisterAction extends Action
         $displayName = $dataAccessor->GetField('displayName');
         if ($this->isEmailAlreadyRegistered($email)) {
             throw new \RuntimeException(
-                $translation->Get('error_email_already_registered'),
+                "This email address is already registered.",
                 StatusCode::Conflict->value
             );
         }
         if ($this->isEmailAlreadyPending($email)) {
             throw new \RuntimeException(
-                $translation->Get('error_email_already_pending'),
+                "This email address is already awaiting activation.",
                 StatusCode::Conflict->value
             );
         }
@@ -107,12 +108,12 @@ class RegisterAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                $translation->Get('error_register_account_failed'),
+                "Account registration failed.",
                 StatusCode::InternalServerError->value
             );
         }
         return [
-            'message' => $translation->Get('success_account_activation_link_sent')
+            'message' => "An account activation link has been sent to your email address."
         ];
     }
 
@@ -156,18 +157,25 @@ class RegisterAction extends Action
         string $activationCode
     ): bool
     {
+        $appName = Config::Instance()->OptionOrDefault('AppName', '');
+        $actionUrl = Resource::Instance()->PageUrl('activate-account')
+            ->Extend($activationCode)->__toString();
         return $this->sendTransactionalEmail(
             $email,
             $displayName,
-            Resource::Instance()
-                ->PageUrl('activate-account')
-                ->Extend($activationCode)
-                ->__toString(),
+            $actionUrl,
             [
-                'masthead' => 'email_activate_account_masthead',
-                'intro' => 'email_activate_account_intro',
-                'buttonText' => 'email_activate_account_button_text',
-                'securityNotice' => 'email_activate_account_security_notice'
+                'heroText' =>
+                    "Welcome to {$appName}!",
+                'introText' =>
+                    "You're almost there! Just click the button below to"
+                  . " activate your account.",
+                'buttonText' =>
+                    "Activate My Account",
+                'disclaimerText' =>
+                    "You received this email because your email address was"
+                  . " used to register on {$appName}. If this wasn't you, you"
+                  . " can safely ignore this email."
             ]
         );
     }

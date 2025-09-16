@@ -23,7 +23,6 @@ use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Resource;
-use \Peneus\Translation;
 
 /**
  * Resets a user's password using a previously issued reset code.
@@ -52,7 +51,6 @@ class ResetPasswordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $validator = new Validator([
             'resetCode' => [
                 'required',
@@ -65,10 +63,8 @@ class ResetPasswordAction extends Action
                 'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
             ]
         ], [
-            'resetCode.required' =>
-                $translation->Get('error_reset_code_required'),
-            'resetCode.regex' =>
-                $translation->Get('error_reset_code_invalid')
+            'resetCode.required' => "Reset code is required.",
+            'resetCode.regex' => "Reset code format is invalid."
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $resetCode = $dataAccessor->GetField('resetCode');
@@ -76,14 +72,14 @@ class ResetPasswordAction extends Action
         $passwordReset = $this->findPasswordReset($resetCode);
         if ($passwordReset === null) {
             throw new \RuntimeException(
-                $translation->Get('error_password_reset_not_found'),
+                "No password reset record found for the given code.",
                 StatusCode::NotFound->value
             );
         }
         $account = $this->findAccount($passwordReset->accountId);
         if ($account === null) {
             throw new \RuntimeException(
-                $translation->Get('error_password_reset_account_not_found'),
+                "No account is associated with the password reset record.",
                 StatusCode::NotFound->value
             );
         }
@@ -101,7 +97,7 @@ class ResetPasswordAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                $translation->Get('error_reset_password_failed'),
+                "Password reset failed.",
                 StatusCode::InternalServerError->value
             );
         }

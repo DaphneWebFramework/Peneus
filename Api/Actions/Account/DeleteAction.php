@@ -15,7 +15,6 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Services\AccountService;
-use \Peneus\Translation;
 
 /**
  * Deletes the currently logged-in account along with associated records.
@@ -37,12 +36,11 @@ class DeleteAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $accountService = AccountService::Instance();
         $account = $accountService->LoggedInAccount();
         if ($account === null) {
             throw new \RuntimeException(
-                $translation->Get('error_no_permission_for_action'),
+                "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
             );
         }
@@ -59,7 +57,7 @@ class DeleteAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                $translation->Get('error_delete_account_failed'),
+                "Account deletion failed.",
                 StatusCode::InternalServerError->value
             );
         }

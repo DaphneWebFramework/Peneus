@@ -19,7 +19,6 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Services\AccountService;
-use \Peneus\Translation;
 
 /**
  * Changes the password of the currently logged-in account.
@@ -40,7 +39,6 @@ class ChangePasswordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $validator = new Validator([
             'currentPassword' => [
                 'required',
@@ -61,21 +59,21 @@ class ChangePasswordAction extends Action
         $account = AccountService::Instance()->LoggedInAccount();
         if ($account === null) {
             throw new \RuntimeException(
-                $translation->Get('error_no_permission_for_action'),
+                "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
             );
         }
         $securityService = SecurityService::Instance();
         if (!$securityService->VerifyPassword($currentPassword, $account->passwordHash)) {
             throw new \RuntimeException(
-                $translation->Get('error_incorrect_current_password'),
+                "Current password is incorrect.",
                 StatusCode::Forbidden->value
             );
         }
         $account->passwordHash = $securityService->HashPassword($newPassword);
         if (!$account->Save()) {
             throw new \RuntimeException(
-                $translation->Get('error_change_password_failed'),
+                "Password change failed.",
                 StatusCode::InternalServerError->value
             );
         }

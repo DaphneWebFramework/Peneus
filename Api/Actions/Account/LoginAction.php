@@ -26,7 +26,6 @@ use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
 use \Peneus\Model\Role;
 use \Peneus\Services\AccountService;
-use \Peneus\Translation;
 
 /**
  * Logs in a user with provided credentials.
@@ -55,7 +54,7 @@ class LoginAction extends Action
     {
         if (AccountService::Instance()->LoggedInAccount() !== null) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_already_logged_in'),
+                "You are already logged in.",
                 StatusCode::Conflict->value
             );
         }
@@ -77,7 +76,7 @@ class LoginAction extends Action
         $account = $this->findAccount($email);
         if ($account === null || !$this->verifyPassword($account, $password)) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_incorrect_email_or_password'),
+                "Incorrect email address or password.",
                 StatusCode::Unauthorized->value
             );
         }
@@ -94,7 +93,7 @@ class LoginAction extends Action
         if ($result !== true) {
             $this->createLogoutAction()->Execute();
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_login_failed'),
+                "Login failed.",
                 StatusCode::InternalServerError->value
             );
         }

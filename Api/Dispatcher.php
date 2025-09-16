@@ -19,7 +19,6 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\ShutdownSystem\ShutdownHandler;
-use \Peneus\Translation;
 
 /**
  * Dispatches API requests to the appropriate handler.
@@ -61,8 +60,7 @@ class Dispatcher implements IShutdownListener
         if ($handlerName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
-                    'error_handler_not_specified')));
+                ->SetBody(self::toMessageJson("Handler not specified."));
             return;
         }
 
@@ -70,8 +68,7 @@ class Dispatcher implements IShutdownListener
         if ($actionName === null) {
             $this->response
                 ->SetStatusCode(StatusCode::BadRequest)
-                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
-                    'error_action_not_specified')));
+                ->SetBody(self::toMessageJson("Action not specified."));
             return;
         }
 
@@ -79,8 +76,7 @@ class Dispatcher implements IShutdownListener
         if ($handler === null) {
             $this->response
                 ->SetStatusCode(StatusCode::NotFound)
-                ->SetBody(self::toMessageJson(Translation::Instance()->Get(
-                    'error_handler_not_found', $handlerName)));
+                ->SetBody(self::toMessageJson("Handler not found: {$handlerName}"));
             return;
         }
 
@@ -121,7 +117,7 @@ class Dispatcher implements IShutdownListener
     {
         if ($errorMessage !== null) {
             if (!Config::Instance()->Option('IsDebug')) {
-                $errorMessage = Translation::Instance()->Get('error_unexpected');
+                $errorMessage = "An unexpected error occurred.";
             }
             $this->response
                 ->SetStatusCode(StatusCode::InternalServerError)

@@ -23,7 +23,6 @@ use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
-use \Peneus\Translation;
 
 /**
  * Handles account activation via activation code.
@@ -44,30 +43,27 @@ class ActivateAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $validator = new Validator([
             'activationCode' => [
                 'required',
                 'regex:' . SecurityService::TOKEN_PATTERN
             ]
         ], [
-            'activationCode.required' =>
-                $translation->Get('error_activation_code_required'),
-            'activationCode.regex' =>
-                $translation->Get('error_activation_code_invalid')
+            'activationCode.required' => "Activation code is required.",
+            'activationCode.regex' => "Activation code format is invalid."
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $activationCode = $dataAccessor->GetField('activationCode');
         $pendingAccount = $this->findPendingAccount($activationCode);
         if ($pendingAccount === null) {
             throw new \RuntimeException(
-                $translation->Get('error_pending_account_not_found'),
+                "No account is awaiting activation for the given code.",
                 StatusCode::NotFound->value
             );
         }
         if ($this->isEmailAlreadyRegistered($pendingAccount->email)) {
             throw new \RuntimeException(
-                $translation->Get('error_email_already_registered'),
+                "This email address is already registered.",
                 StatusCode::Conflict->value
             );
         }
@@ -86,7 +82,7 @@ class ActivateAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                $translation->Get('error_activate_account_failed'),
+                "Account activation failed.",
                 StatusCode::InternalServerError->value
             );
         }

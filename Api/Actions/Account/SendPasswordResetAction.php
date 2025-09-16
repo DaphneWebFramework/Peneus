@@ -14,6 +14,7 @@ namespace Peneus\Api\Actions\Account;
 
 use \Peneus\Api\Actions\Action;
 
+use \Harmonia\Config;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
@@ -24,7 +25,6 @@ use \Peneus\Api\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Resource;
-use \Peneus\Translation;
 
 /**
  * Handles password reset requests for accounts.
@@ -56,7 +56,6 @@ class SendPasswordResetAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $translation = Translation::Instance();
         $validator = new Validator([
             'email' => ['required', 'email']
         ]);
@@ -79,13 +78,13 @@ class SendPasswordResetAction extends Action
         });
         if ($result !== true) {
             throw new \RuntimeException(
-                $translation->Get('error_send_password_reset_failed'),
+                "Sending password reset link failed.",
                 StatusCode::InternalServerError->value
             );
         }
     Success:
         return [
-            'message' => $translation->Get('success_password_reset_link_sent')
+            'message' => "A password reset link has been sent to your email address."
         ];
     }
 
@@ -122,18 +121,24 @@ class SendPasswordResetAction extends Action
         string $resetCode
     ): bool
     {
+        $appName = Config::Instance()->OptionOrDefault('AppName', '');
+        $actionUrl = Resource::Instance()->PageUrl('reset-password')
+            ->Extend($resetCode)->__toString();
         return $this->sendTransactionalEmail(
             $email,
             $displayName,
-            Resource::Instance()
-                ->PageUrl('reset-password')
-                ->Extend($resetCode)
-                ->__toString(),
+            $actionUrl,
             [
-                'masthead' => 'email_reset_password_masthead',
-                'intro' => 'email_reset_password_intro',
-                'buttonText' => 'email_reset_password_button_text',
-                'securityNotice' => 'email_reset_password_security_notice'
+                'heroText' =>
+                    "Reset your password",
+                'introText' =>
+                    "Follow the link below to choose a new password.",
+                'buttonText' =>
+                    "Reset My Password",
+                'disclaimerText' =>
+                    "You received this email because a password reset was"
+                  . " requested for your account on {$appName}. If you did"
+                  . " not request this, you can safely ignore this email."
             ]
         );
     }

@@ -18,7 +18,6 @@ use \Harmonia\Core\CPath;
 use \Harmonia\Logger;
 use \Peneus\Resource;
 use \Peneus\Systems\MailerSystem\Mailer;
-use \Peneus\Translation;
 
 /**
  * Sends an email based on the "transactional-email.html" template.
@@ -32,10 +31,10 @@ trait TransactionalEmailSender
      *   The recipient's display name.
      * @param string $actionUrl
      *   The URL for the call-to-action (CTA) button in the email.
-     * @param array $translationKeys
-     *   An associative array of translation keys to use in the email template.
-     *   Expected keys include: "masthead", "intro", "buttonText", and
-     *   "securityNotice".
+     * @param array<string, string> $substitutions
+     *   The substitutions to replace placeholders in the email template.
+     *   Expected keys are: "heroText", "introText", "buttonText", and
+     *   "disclaimerText".
      * @return bool
      *   Returns `true` if the email was sent successfully, `false` otherwise.
      */
@@ -43,7 +42,7 @@ trait TransactionalEmailSender
         string $emailAddress,
         string $displayName,
         string $actionUrl,
-        array $translationKeys
+        array $substitutions
     ): bool
     {
         $resource = Resource::Instance();
@@ -58,41 +57,23 @@ trait TransactionalEmailSender
             Logger::Instance()->Error('Email template could not be read.');
             return false;
         }
-
         $config = Config::Instance();
-        $language = $config->OptionOrDefault('Language', 'en');
-        $appName = $config->OptionOrDefault('AppName', '');
-        $supportEmail = $config->OptionOrDefault('SupportEmail', '');
-
-        $translation = Translation::Instance();
         $html = \strtr($template, [
-            '{{Language}}' =>
-                $language,
-            '{{Title}}' =>
-                $translation->Get($translationKeys['masthead']),
-            '{{MastheadText}}' =>
-                $translation->Get($translationKeys['masthead']),
-            '{{GreetingText}}' =>
-                $translation->Get('email_common_greeting', $displayName),
-            '{{IntroText}}' =>
-                $translation->Get($translationKeys['intro']),
-            '{{ActionUrl}}' =>
-                $actionUrl,
-            '{{ButtonText}}' =>
-                $translation->Get($translationKeys['buttonText']),
-            '{{SecurityNoticeText}}' =>
-                $translation->Get($translationKeys['securityNotice'], $appName),
-            '{{ContactUsText}}' =>
-                $translation->Get('email_common_contact_us'),
-            '{{SupportEmail}}' =>
-                $supportEmail,
-            '{{CopyrightText}}' =>
-                $translation->Get('email_common_copyright', $this->currentYear(), $appName),
+            '{{AppName}}' => $config->OptionOrDefault('AppName', ''),
+            '{{Language}}' => $config->OptionOrDefault('Language', 'en'),
+            '{{Title}}' => $substitutions['heroText'],
+            '{{HeroText}}' => $substitutions['heroText'],
+            '{{UserName}}' => $displayName,
+            '{{IntroText}}' => $substitutions['introText'],
+            '{{ActionUrl}}' => $actionUrl,
+            '{{ButtonText}}' => $substitutions['buttonText'],
+            '{{DisclaimerText}}' => $substitutions['disclaimerText'],
+            '{{SupportEmail}}' => $config->OptionOrDefault('SupportEmail', ''),
+            '{{CurrentYear}}' => $this->currentYear(),
         ]);
-
         return $this->newMailer()
             ->SetAddress($emailAddress)
-            ->SetSubject($translation->Get($translationKeys['masthead']))
+            ->SetSubject($substitutions['heroText'])
             ->SetBody($html)
             ->Send();
     }

@@ -15,7 +15,6 @@ namespace Peneus\Api\Handlers;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\StatusCode;
-use \Peneus\Translation;
 
 /**
  * Base class for API action handlers.
@@ -54,7 +53,7 @@ abstract class Handler
         $action = $this->createAction($actionName);
         if ($action === null) {
             throw new \RuntimeException(
-                Translation::Instance()->Get('error_action_not_found', $actionName),
+                "Action not found: {$actionName}",
                 StatusCode::NotFound->value
             );
         }

@@ -84,7 +84,7 @@ class LoginAction extends Action
             if (!$this->updateLastLoginTime($account)) {
                 throw new \RuntimeException('Failed to update last login time.');
             }
-            if (!$this->establishSessionIntegrity($account)) {
+            if (!AccountService::Instance()->EstablishSessionIntegrity($account)) {
                 throw new \RuntimeException('Failed to establish session integrity.');
             }
             CookieService::Instance()->DeleteCsrfCookie();
@@ -108,18 +108,6 @@ class LoginAction extends Action
         );
     }
 
-    protected function findAccountRole(int $accountId): ?Role
-    {
-        $accountRole = AccountRole::FindFirst(
-            condition: 'accountId = :accountId',
-            bindings: ['accountId' => $accountId]
-        );
-        if ($accountRole === null) {
-            return null;
-        }
-        return Role::tryFrom($accountRole->role);
-    }
-
     protected function verifyPassword(Account $account, string $password): bool
     {
         return SecurityService::Instance()->VerifyPassword(
@@ -132,31 +120,6 @@ class LoginAction extends Action
     {
         $account->timeLastLogin = new \DateTime(); // now
         return $account->Save();
-    }
-
-    protected function establishSessionIntegrity(Account $account): bool
-    {
-        $integrity = SecurityService::Instance()->GenerateCsrfToken();
-        try {
-            $session = Session::Instance()
-                ->Start()
-                ->Clear()
-                ->RenewId()
-                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
-                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY, $account->id);
-            $role = $this->findAccountRole($account->id);
-            if ($role !== null) {
-                $session->Set(AccountService::ACCOUNT_ROLE_SESSION_KEY, $role->value);
-            }
-            $session->Close();
-            CookieService::Instance()->SetCookie(
-                AccountService::Instance()->IntegrityCookieName(),
-                $integrity->CookieValue()
-            );
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
     }
 
     protected function createLogoutAction(): LogoutAction

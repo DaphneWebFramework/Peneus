@@ -83,7 +83,7 @@ class SignInWithGoogleAction extends Action
             if (!$account->Save()) {
                 throw new \RuntimeException('Failed to save account.');
             }
-            if (!$this->establishSessionIntegrity($account)) {
+            if (!AccountService::Instance()->EstablishSessionIntegrity($account)) {
                 throw new \RuntimeException('Failed to establish session integrity.');
             }
             $this->deleteCsrfCookie();
@@ -268,61 +268,6 @@ class SignInWithGoogleAction extends Action
         $account->timeActivated = $timeActivated ?? new \DateTime();
         $account->timeLastLogin = null;
         return $account;
-    }
-
-    /**
-     * @param Account $account
-     * @return bool
-     *
-     * @todo This method is identical to the one in `LoginAction`. Move it to
-     * the `AccountService` class and use from both actions.
-     *
-     * @codeCoverageIgnore
-     */
-    protected function establishSessionIntegrity(Account $account): bool
-    {
-        $integrity = SecurityService::Instance()->GenerateCsrfToken();
-        try {
-            $session = Session::Instance()
-                ->Start()
-                ->Clear()
-                ->RenewId()
-                ->Set(AccountService::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
-                ->Set(AccountService::ACCOUNT_ID_SESSION_KEY, $account->id);
-            $role = $this->findAccountRole($account->id);
-            if ($role !== null) {
-                $session->Set(AccountService::ACCOUNT_ROLE_SESSION_KEY, $role->value);
-            }
-            $session->Close();
-            CookieService::Instance()->SetCookie(
-                AccountService::Instance()->IntegrityCookieName(),
-                $integrity->CookieValue()
-            );
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
-     * @param int $accountId
-     * @return Role|null
-     *
-     * @todo This method is called only by `establishSessionIntegrity` and will
-     * be moved to `AccountService` in the future.
-     *
-     * @codeCoverageIgnore
-     */
-    protected function findAccountRole(int $accountId): ?Role
-    {
-        $accountRole = AccountRole::FindFirst(
-            condition: 'accountId = :accountId',
-            bindings: ['accountId' => $accountId]
-        );
-        if ($accountRole === null) {
-            return null;
-        }
-        return Role::tryFrom($accountRole->role);
     }
 
     /**

@@ -15,10 +15,12 @@ namespace Peneus\Services;
 use \Harmonia\Patterns\Singleton;
 
 use \Harmonia\Services\CookieService;
+use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
 use \Peneus\Api\Guards\TokenGuard;
 use \Peneus\Api\Hooks\IAccountDeletionHook;
 use \Peneus\Model\Account;
+use \Peneus\Model\AccountRole;
 use \Peneus\Model\Role;
 
 /**
@@ -27,13 +29,9 @@ use \Peneus\Model\Role;
 class AccountService extends Singleton
 {
     /**
-     * Hooks that will be called before an account is deleted.
-     *
-     * @var IAccountDeletionHook[]
+     * The suffix used for the integrity cookie name.
      */
-    private array $deletionHooks = [];
-
-    #region public -------------------------------------------------------------
+    private const INTEGRITY_COOKIE_NAME_SUFFIX = 'INTEGRITY';
 
     /**
      * The session storage key for the session integrity token.
@@ -41,7 +39,7 @@ class AccountService extends Singleton
      * This token ensures that the session is valid and prevents session
      * hijacking by verifying its integrity against its corresponding cookie.
      */
-    public const INTEGRITY_TOKEN_SESSION_KEY = 'INTEGRITY_TOKEN';
+    private const INTEGRITY_TOKEN_SESSION_KEY = 'INTEGRITY_TOKEN';
 
     /**
      * The session storage key for the logged-in user's account ID.
@@ -49,7 +47,7 @@ class AccountService extends Singleton
      * This key stores the user's account ID after successful login and is
      * used to retrieve the associated account details.
      */
-    public const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';
+    private const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';
 
     /**
      * The session storage key for the logged-in user's account role.
@@ -58,7 +56,16 @@ class AccountService extends Singleton
      * used to determine the user's permissions and access levels within the
      * application.
      */
-    public const ACCOUNT_ROLE_SESSION_KEY = 'ACCOUNT_ROLE';
+    private const ACCOUNT_ROLE_SESSION_KEY = 'ACCOUNT_ROLE';
+
+    /**
+     * Hooks that will be called before an account is deleted.
+     *
+     * @var IAccountDeletionHook[]
+     */
+    private array $deletionHooks = [];
+
+    #region public -------------------------------------------------------------
 
     /**
      * Regular expression pattern for validating display names.
@@ -83,7 +90,49 @@ class AccountService extends Singleton
      */
     public function IntegrityCookieName(): string
     {
-        return CookieService::Instance()->AppSpecificCookieName('INTEGRITY');
+        return CookieService::Instance()->
+            AppSpecificCookieName(self::INTEGRITY_COOKIE_NAME_SUFFIX);
+    }
+
+    /**
+     * Establishes session integrity for a newly logged-in account.
+     *
+     * This method binds the server-side session to the authenticated user by
+     * generating a cryptographically strong integrity token, storing it in the
+     * session, and setting its corresponding cookie on the client. The token is
+     * later verified on each request to detect and prevent session hijacking or
+     * fixation attacks. In addition, the method stores the account ID and role
+     * in the session to support authorization checks.
+     *
+     * @param Account $account
+     *   The authenticated account for which to establish session integrity.
+     * @return bool
+     *   Returns `true` if the session integrity was successfully established,
+     *   or `false` if an error occurred during the process.
+     */
+    public function EstablishSessionIntegrity(Account $account): bool
+    {
+        $integrity = SecurityService::Instance()->GenerateCsrfToken();
+        try {
+            $session = Session::Instance()
+                ->Start()
+                ->Clear()
+                ->RenewId()
+                ->Set(self::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
+                ->Set(self::ACCOUNT_ID_SESSION_KEY, $account->id);
+            $role = $this->findAccountRole($account->id);
+            if ($role !== null) {
+                $session->Set(self::ACCOUNT_ROLE_SESSION_KEY, $role->value);
+            }
+            $session->Close();
+            CookieService::Instance()->SetCookie(
+                $this->IntegrityCookieName(),
+                $integrity->CookieValue()
+            );
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     /**
@@ -166,6 +215,26 @@ class AccountService extends Singleton
     #region protected ----------------------------------------------------------
 
     /**
+     * Finds the role of an account from the database.
+     *
+     * @param int $accountId
+     *   The ID of the account to find the role of.
+     * @return ?Role
+     *   The role of the account, or `null` if not found.
+     */
+    protected function findAccountRole(int $accountId): ?Role
+    {
+        $accountRole = AccountRole::FindFirst(
+            condition: 'accountId = :accountId',
+            bindings: ['accountId' => $accountId]
+        );
+        if ($accountRole === null) {
+            return null;
+        }
+        return Role::tryFrom($accountRole->role);
+    }
+
+    /**
      * Verifies the integrity of the session.
      *
      * This method ensures that the session is legitimate by checking if
@@ -183,7 +252,10 @@ class AccountService extends Singleton
         if ($integrityToken === null) {
             return false;
         }
-        $guard = $this->createTokenGuard($integrityToken, $this->IntegrityCookieName());
+        $guard = $this->createTokenGuard(
+            $integrityToken,
+            $this->IntegrityCookieName()
+        );
         return $guard->Verify();
     }
 

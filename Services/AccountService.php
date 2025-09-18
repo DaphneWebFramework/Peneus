@@ -183,7 +183,7 @@ class AccountService extends Singleton
         if ($integrityToken === null) {
             return false;
         }
-        $guard = new TokenGuard($integrityToken, $this->IntegrityCookieName());
+        $guard = $this->createTokenGuard($integrityToken, $this->IntegrityCookieName());
         return $guard->Verify();
     }
 
@@ -205,6 +205,18 @@ class AccountService extends Singleton
             return null;
         }
         return Account::FindById($accountId);
+    }
+
+    /**
+     * @param string $token
+     * @param string $cookieName
+     * @return TokenGuard
+     *
+     * @codeCoverageIgnore
+     */
+    protected function createTokenGuard(string $token, string $cookieName): TokenGuard
+    {
+        return new TokenGuard($token, $cookieName);
     }
 
     #endregion protected

@@ -56,7 +56,7 @@ class SignInWithGoogleAction extends Action
         // 1
         if ($this->isAccountLoggedIn()) {
             throw new \RuntimeException(
-                'You are already logged in.',
+                "You are already logged in.",
                 StatusCode::Conflict->value
             );
         }
@@ -67,13 +67,13 @@ class SignInWithGoogleAction extends Action
         $claims = $this->decodeCredential($credential);
         if ($claims === null) {
             throw new \RuntimeException(
-                'Invalid credential.',
+                "Invalid credential.",
                 StatusCode::Unauthorized->value
             );
         }
         if (!$this->validateClaims($claims)) {
             throw new \RuntimeException(
-                'Invalid claims.',
+                "Invalid claims.",
                 StatusCode::Unauthorized->value
             );
         }
@@ -93,7 +93,7 @@ class SignInWithGoogleAction extends Action
         if ($result !== true) {
             $this->logOut();
             throw new \RuntimeException(
-                'Login failed.',
+                "Login failed.",
                 StatusCode::InternalServerError->value
             );
         }

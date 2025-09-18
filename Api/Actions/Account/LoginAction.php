@@ -20,6 +20,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
 use \Harmonia\Systems\DatabaseSystem\Database;
+use \Harmonia\Systems\ValidationSystem\DataAccessor;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Model\Account;
@@ -52,12 +53,62 @@ class LoginAction extends Action
      */
     protected function onExecute(): mixed
     {
-        if (AccountService::Instance()->LoggedInAccount() !== null) {
+        // 1
+        if ($this->isAccountLoggedIn()) {
             throw new \RuntimeException(
                 "You are already logged in.",
                 StatusCode::Conflict->value
             );
         }
+        // 2
+        $dataAccessor = $this->validateRequest();
+        $email = $dataAccessor->GetField('email');
+        $password = $dataAccessor->GetField('password');
+        // 3
+        $account = $this->findAccount($email);
+        if ($account === null || !$this->verifyPassword($account, $password)) {
+            throw new \RuntimeException(
+                "Incorrect email address or password.",
+                StatusCode::Unauthorized->value
+            );
+        }
+        $account->timeLastLogin = new \DateTime(); // now
+        // 4
+        $result = Database::Instance()->WithTransaction(function() use($account) {
+            if (!$account->Save()) {
+                throw new \RuntimeException('Failed to save account.');
+            }
+            if (!AccountService::Instance()->EstablishSessionIntegrity($account)) {
+                throw new \RuntimeException('Failed to establish session integrity.');
+            }
+            $this->deleteCsrfCookie();
+            return true;
+        });
+        // 5
+        if ($result !== true) {
+            $this->logOut();
+            throw new \RuntimeException(
+                "Login failed.",
+                StatusCode::InternalServerError->value
+            );
+        }
+        return null;
+    }
+
+    /**
+     * @return bool
+     */
+    protected function isAccountLoggedIn(): bool
+    {
+        return AccountService::Instance()->LoggedInAccount() !== null;
+    }
+
+    /**
+     * @return DataAccessor
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): DataAccessor
+    {
         $validator = new Validator([
             'email' => [
                 'required',
@@ -70,36 +121,13 @@ class LoginAction extends Action
                 'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
             ]
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $email = $dataAccessor->GetField('email');
-        $password = $dataAccessor->GetField('password');
-        $account = $this->findAccount($email);
-        if ($account === null || !$this->verifyPassword($account, $password)) {
-            throw new \RuntimeException(
-                "Incorrect email address or password.",
-                StatusCode::Unauthorized->value
-            );
-        }
-        $result = Database::Instance()->WithTransaction(function() use($account) {
-            if (!$this->updateLastLoginTime($account)) {
-                throw new \RuntimeException('Failed to update last login time.');
-            }
-            if (!AccountService::Instance()->EstablishSessionIntegrity($account)) {
-                throw new \RuntimeException('Failed to establish session integrity.');
-            }
-            CookieService::Instance()->DeleteCsrfCookie();
-            return true;
-        });
-        if ($result !== true) {
-            $this->createLogoutAction()->Execute();
-            throw new \RuntimeException(
-                "Login failed.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        return null;
+        return $validator->Validate(Request::Instance()->FormParams());
     }
 
+    /**
+     * @param string $email
+     * @return ?Account
+     */
     protected function findAccount(string $email): ?Account
     {
         return Account::FindFirst(
@@ -108,6 +136,11 @@ class LoginAction extends Action
         );
     }
 
+    /**
+     * @param Account $account
+     * @param string $password
+     * @return bool
+     */
     protected function verifyPassword(Account $account, string $password): bool
     {
         return SecurityService::Instance()->VerifyPassword(
@@ -116,14 +149,23 @@ class LoginAction extends Action
         );
     }
 
-    protected function updateLastLoginTime(Account $account): bool
+    /**
+     * @return void
+     * @throws \RuntimeException
+     */
+    protected function deleteCsrfCookie(): void
     {
-        $account->timeLastLogin = new \DateTime(); // now
-        return $account->Save();
+        CookieService::Instance()->DeleteCsrfCookie();
     }
 
-    protected function createLogoutAction(): LogoutAction
+    /**
+     * @return void
+     *
+     * @codeCoverageIgnore
+     */
+    protected function logOut(): void
     {
-        return new LogoutAction;
+        $action = new LogoutAction();
+        $action->Execute();
     }
 }

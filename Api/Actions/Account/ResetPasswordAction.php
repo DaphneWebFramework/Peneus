@@ -19,6 +19,7 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
+use \Harmonia\Systems\ValidationSystem\DataAccessor;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
@@ -51,22 +52,7 @@ class ResetPasswordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $validator = new Validator([
-            'resetCode' => [
-                'required',
-                'regex:' . SecurityService::TOKEN_PATTERN
-            ],
-            'newPassword' => [
-                'required',
-                'string',
-                'minLength:' . SecurityService::PASSWORD_MIN_LENGTH,
-                'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
-            ]
-        ], [
-            'resetCode.required' => "Reset code is required.",
-            'resetCode.regex' => "Reset code format is invalid."
-        ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
+        $dataAccessor = $this->validateRequest();
         $resetCode = $dataAccessor->GetField('resetCode');
         $newPassword = $dataAccessor->GetField('newPassword');
         $passwordReset = $this->findPasswordReset($resetCode);
@@ -106,6 +92,34 @@ class ResetPasswordAction extends Action
         ];
     }
 
+    /**
+     * @return DataAccessor
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): DataAccessor
+    {
+        $validator = new Validator([
+            'resetCode' => [
+                'required',
+                'regex:' . SecurityService::Instance()->TokenPattern()
+            ],
+            'newPassword' => [
+                'required',
+                'string',
+                'minLength:' . SecurityService::PASSWORD_MIN_LENGTH,
+                'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
+            ]
+        ], [
+            'resetCode.required' => "Reset code is required.",
+            'resetCode.regex' => "Reset code format is invalid."
+        ]);
+        return $validator->Validate(Request::Instance()->FormParams());
+    }
+
+    /**
+     * @param string $resetCode
+     * @return PasswordReset|null
+     */
     protected function findPasswordReset(string $resetCode): ?PasswordReset
     {
         return PasswordReset::FindFirst(
@@ -114,11 +128,20 @@ class ResetPasswordAction extends Action
         );
     }
 
+    /**
+     * @param int $accountId
+     * @return Account|null
+     */
     protected function findAccount(int $accountId): ?Account
     {
         return Account::FindById($accountId);
     }
 
+    /**
+     * @param Account $account
+     * @param string $newPassword
+     * @return bool
+     */
     protected function updatePassword(Account $account, string $newPassword): bool
     {
         $account->passwordHash =

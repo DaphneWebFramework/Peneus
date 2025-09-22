@@ -88,7 +88,7 @@ trait EntityValidationRulesProvider
                 ],
                 'activationCode' => [
                     'required',
-                    'regex:' . SecurityService::TOKEN_PATTERN
+                    'regex:' . SecurityService::Instance()->TokenPattern()
                 ],
                 'timeRegistered' => [
                     'required',
@@ -103,7 +103,7 @@ trait EntityValidationRulesProvider
                 ],
                 'resetCode' => [
                     'required',
-                    'regex:' . SecurityService::TOKEN_PATTERN
+                    'regex:' . SecurityService::Instance()->TokenPattern()
                 ],
                 'timeRequested' => [
                     'required',

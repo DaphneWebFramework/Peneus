@@ -19,6 +19,7 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
+use \Harmonia\Systems\ValidationSystem\DataAccessor;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
@@ -43,16 +44,7 @@ class ActivateAction extends Action
      */
     protected function onExecute(): mixed
     {
-        $validator = new Validator([
-            'activationCode' => [
-                'required',
-                'regex:' . SecurityService::TOKEN_PATTERN
-            ]
-        ], [
-            'activationCode.required' => "Activation code is required.",
-            'activationCode.regex' => "Activation code format is invalid."
-        ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
+        $dataAccessor = $this->validateRequest();
         $activationCode = $dataAccessor->GetField('activationCode');
         $pendingAccount = $this->findPendingAccount($activationCode);
         if ($pendingAccount === null) {
@@ -91,6 +83,28 @@ class ActivateAction extends Action
         ];
     }
 
+    /**
+     * @return DataAccessor
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): DataAccessor
+    {
+        $validator = new Validator([
+            'activationCode' => [
+                'required',
+                'regex:' . SecurityService::Instance()->TokenPattern()
+            ]
+        ], [
+            'activationCode.required' => "Activation code is required.",
+            'activationCode.regex' => "Activation code format is invalid."
+        ]);
+        return $validator->Validate(Request::Instance()->FormParams());
+    }
+
+    /**
+     * @param string $activationCode
+     * @return PendingAccount|null
+     */
     protected function findPendingAccount(string $activationCode): ?PendingAccount
     {
         return PendingAccount::FindFirst(
@@ -99,6 +113,10 @@ class ActivateAction extends Action
         );
     }
 
+    /**
+     * @param string $email
+     * @return bool
+     */
     protected function isEmailAlreadyRegistered(string $email): bool
     {
         return 0 !== Account::Count(
@@ -107,6 +125,11 @@ class ActivateAction extends Action
         );
     }
 
+    /**
+     * @param PendingAccount $pendingAccount
+     * @param \DateTime|null $timeActivated
+     * @return Account
+     */
     protected function createAccountFromPendingAccount(
         PendingAccount $pendingAccount,
         ?\DateTime $timeActivated = null

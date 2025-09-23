@@ -28,7 +28,7 @@ class FormTokenGuard extends TokenGuard
     /**
      * The name of the form field that contains the CSRF token submitted.
      */
-    public const CSRF_TOKEN_NAME = 'csrfToken';
+    public const CSRF_FIELD_NAME = 'csrfToken';
 
     /**
      * Constructs a new instance using the form-submitted CSRF token and the
@@ -37,7 +37,7 @@ class FormTokenGuard extends TokenGuard
     public function __construct()
     {
         parent::__construct(
-            Request::Instance()->FormParams()->GetOrDefault(self::CSRF_TOKEN_NAME, ''),
+            Request::Instance()->FormParams()->GetOrDefault(self::CSRF_FIELD_NAME, ''),
             CookieService::Instance()->CsrfCookieName()
         );
     }

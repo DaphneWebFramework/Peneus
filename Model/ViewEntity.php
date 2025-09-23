@@ -30,6 +30,8 @@ abstract class ViewEntity extends Entity
      *
      * @return string
      *   A `SELECT` query that defines the logical contents of the view.
+     *
+     * @codeCoverageIgnore
      */
     abstract public static function ViewDefinition(): string;
 }

@@ -34,28 +34,63 @@ class RegisterAction extends Action
 {
     use TransactionalEmailSender;
 
+    private readonly Request $request;
+    private readonly Database $database;
+    private readonly Config $config;
+    private readonly Resource $resource;
+    private readonly SecurityService $securityService;
+    private readonly CookieService $cookieService;
+
     /**
-     * Executes the account registration process by validating user input,
-     * checking for duplicate email addresses, creating a pending account record,
-     * and sending an activation email with an activation code.
-     *
-     * On failure, the database transaction is rolled back and an exception is
-     * thrown.
-     *
-     * @return array<string, string>
-     *   An associative array with a 'message' key containing a localized
-     *   success message to display to the user.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+        $this->database = Database::Instance();
+        $this->config = Config::Instance();
+        $this->resource = Resource::Instance();
+        $this->securityService = SecurityService::Instance();
+        $this->cookieService = CookieService::Instance();
+    }
+
+    /**
+     * @return array{message: string}
      * @throws \RuntimeException
-     *   If the email address field is missing or invalid, if the password field
-     *   is missing or invalid due to length limits, if the display name field
-     *   is missing or does not match the required pattern, if the email address
-     *   is already registered, if the email address is already awaiting activation,
-     *   if the pending account cannot be created, if the activation email cannot
-     *   be sent, or if the CSRF cookie cannot be deleted.
-     *
-     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
+    {
+        // 1
+        $data = $this->validateRequest();
+        // 2
+        $this->ensureNotRegistered($data->email);
+        $this->ensureNotPending($data->email);
+        // 3
+        try {
+            $this->database->WithTransaction(fn() =>
+                $this->doRegister($data->email, $data->password, $data->displayName)
+            );
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Account registration failed.",
+                StatusCode::InternalServerError->value,
+                $e
+            );
+        }
+        // 4
+        $this->cookieService->DeleteCsrfCookie();
+        return [
+            'message' =>
+                "An account activation link has been sent to your email address."
+        ];
+    }
+
+    /**
+     * @return object{email: string, password: string, displayName: string}
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): \stdClass
     {
         $validator = new Validator([
             'email' => [
@@ -77,106 +112,136 @@ class RegisterAction extends Action
                 . " with a letter or number and may only contain letters,"
                 . " numbers, spaces, dots, hyphens, and apostrophes."
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $email = $dataAccessor->GetField('email');
-        $password = $dataAccessor->GetField('password');
-        $displayName = $dataAccessor->GetField('displayName');
-        if ($this->isEmailAlreadyRegistered($email)) {
-            throw new \RuntimeException(
-                "This email address is already registered.",
-                StatusCode::Conflict->value
-            );
-        }
-        if ($this->isEmailAlreadyPending($email)) {
-            throw new \RuntimeException(
-                "This email address is already awaiting activation.",
-                StatusCode::Conflict->value
-            );
-        }
-        $result = Database::Instance()->WithTransaction(function()
-            use($email, $password, $displayName)
-        {
-            $activationCode = SecurityService::Instance()->GenerateToken();
-            if (!$this->createPendingAccount($email, $password, $displayName, $activationCode)) {
-                throw new \RuntimeException('Failed to create pending account.');
-            }
-            if (!$this->sendActivationEmail($email, $displayName, $activationCode)) {
-                throw new \RuntimeException('Failed to send activation email.');
-            }
-            CookieService::Instance()->DeleteCsrfCookie();
-            return true;
-        });
-        if ($result !== true) {
-            throw new \RuntimeException(
-                "Account registration failed.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        return [
-            'message' => "An account activation link has been sent to your email address."
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'email' => $da->GetField('email'),
+            'password' => $da->GetField('password'),
+            'displayName' => $da->GetField('displayName')
         ];
     }
 
-    protected function isEmailAlreadyRegistered(string $email): bool
+    /**
+     * @param string $email
+     * @throws \RuntimeException
+     */
+    protected function ensureNotRegistered(string $email): void
     {
-        return 0 !== Account::Count(
+        if (0 !== Account::Count(
             condition: 'email = :email',
             bindings: ['email' => $email]
-        );
+        )) {
+            throw new \RuntimeException(
+                "This account is already registered.",
+                StatusCode::Conflict->value
+            );
+        }
     }
 
-    protected function isEmailAlreadyPending(string $email): bool
+    /**
+     * @param string $email
+     * @throws \RuntimeException
+     */
+    protected function ensureNotPending(string $email): void
     {
-        return 0 !== PendingAccount::Count(
+        if (0 !== PendingAccount::Count(
             condition: 'email = :email',
             bindings: ['email' => $email]
-        );
+        )) {
+            throw new \RuntimeException(
+                "This account is already awaiting activation.",
+                StatusCode::Conflict->value
+            );
+        }
     }
 
-    protected function createPendingAccount(
+    /**
+     * @param string $email
+     * @param string $password
+     * @param string $displayName
+     * @throws \RuntimeException
+     */
+    protected function doRegister(
+        string $email,
+        string $password,
+        string $displayName
+    ): void
+    {
+        // 1
+        $activationCode = $this->securityService->GenerateToken();
+        // 2
+        $pa = $this->constructPendingAccount(
+            $email,
+            $password,
+            $displayName,
+            $activationCode
+        );
+        if (!$pa->Save()) {
+            throw new \RuntimeException("Failed to save pending account.");
+        }
+        // 3
+        if (!$this->sendEmail($email, $displayName, $activationCode)) {
+            throw new \RuntimeException("Failed to send email.");
+        }
+    }
+
+    /**
+     * @param string $email
+     * @param string $password
+     * @param string $displayName
+     * @param string $activationCode
+     * @return PendingAccount
+     */
+    protected function constructPendingAccount(
         string $email,
         string $password,
         string $displayName,
-        string $activationCode,
-        ?\DateTime $timeRegistered = null
-    ): bool
+        string $activationCode
+    ): PendingAccount
     {
-        $pendingAccount = new PendingAccount();
-        $pendingAccount->email = $email;
-        $pendingAccount->passwordHash =
-            SecurityService::Instance()->HashPassword($password);
-        $pendingAccount->displayName = $displayName;
-        $pendingAccount->activationCode = $activationCode;
-        $pendingAccount->timeRegistered = $timeRegistered ?? new \DateTime();
-        return $pendingAccount->Save();
+        $pa = new PendingAccount();
+        $pa->email = $email;
+        $pa->passwordHash = $this->securityService->HashPassword($password);
+        $pa->displayName = $displayName;
+        $pa->activationCode = $activationCode;
+        $pa->timeRegistered = new \DateTime(); // now
+        return $pa;
     }
 
-    protected function sendActivationEmail(
+    /**
+     * @param string $email
+     * @param string $displayName
+     * @param string $activationCode
+     * @return bool
+     */
+    protected function sendEmail(
         string $email,
         string $displayName,
         string $activationCode
     ): bool
     {
-        $appName = Config::Instance()->OptionOrDefault('AppName', '');
-        $actionUrl = Resource::Instance()->PageUrl('activate-account')
-            ->Extend($activationCode)->__toString();
+        $appName = $this->config->OptionOrDefault('AppName', '');
+        $actionUrl = $this->resource
+            ->PageUrl('activate-account')
+            ->Extend($activationCode)
+            ->__toString();
+        $substitutions = [
+            'heroText' =>
+                "Welcome to {$appName}!",
+            'introText' =>
+                "You're almost there! Just click the button below to"
+              . " activate your account.",
+            'buttonText' =>
+                "Activate My Account",
+            'disclaimerText' =>
+                "You received this email because your email address was"
+              . " used to register on {$appName}. If this wasn't you, you"
+              . " can safely ignore this email."
+        ];
         return $this->sendTransactionalEmail(
             $email,
             $displayName,
             $actionUrl,
-            [
-                'heroText' =>
-                    "Welcome to {$appName}!",
-                'introText' =>
-                    "You're almost there! Just click the button below to"
-                  . " activate your account.",
-                'buttonText' =>
-                    "Activate My Account",
-                'disclaimerText' =>
-                    "You received this email because your email address was"
-                  . " used to register on {$appName}. If this wasn't you, you"
-                  . " can safely ignore this email."
-            ]
+            $substitutions
         );
     }
 }

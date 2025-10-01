@@ -13,7 +13,6 @@
 namespace Peneus\Api\Guards;
 
 use \Harmonia\Http\Request;
-use \Harmonia\Services\Security\CsrfToken;
 use \Harmonia\Services\SecurityService;
 
 /**
@@ -51,11 +50,13 @@ class TokenGuard implements IGuard
      */
     public function Verify(): bool
     {
-        $cookieValue = Request::Instance()->Cookies()->Get($this->cookieName);
-        if ($cookieValue === null) {
+        $request = Request::Instance();
+        if (!$request->Cookies()->Has($this->cookieName)) {
             return false;
         }
-        return SecurityService::Instance()->VerifyCsrfToken(
-            new CsrfToken($this->token, $cookieValue));
+        return SecurityService::Instance()->VerifyCsrfPair(
+            $this->token,
+            $request->Cookies()->Get($this->cookieName)
+        );
     }
 }

@@ -36,7 +36,7 @@ class AccountRoleDeletionHook implements IAccountDeletionHook
         );
         foreach ($accountRoles as $accountRole) {
             if (!$accountRole->Delete()) {
-                throw new \RuntimeException('Failed to delete account role.');
+                throw new \RuntimeException("Failed to delete account role.");
             }
         }
     }

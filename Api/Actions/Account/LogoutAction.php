@@ -14,30 +14,32 @@ namespace Peneus\Api\Actions\Account;
 
 use \Peneus\Api\Actions\Action;
 
-use \Harmonia\Services\CookieService;
-use \Harmonia\Session;
 use \Peneus\Services\AccountService;
 
 /**
- * Logs out the current user.
+ * Logs out the currently logged-in user.
  */
 class LogoutAction extends Action
 {
+    private readonly AccountService $accountService;
+
     /**
-     * Executes the logout process by deleting the session integrity cookie and
-     * destroying the user's session.
-     *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->accountService = AccountService::Instance();
+    }
+
+    /**
+     * @return null
      * @throws \RuntimeException
-     *   If the session integrity cookie cannot be deleted, or if the session
-     *   cannot be destroyed.
      */
     protected function onExecute(): mixed
     {
-        CookieService::Instance()->DeleteCookie(
-            AccountService::Instance()->IntegrityCookieName());
-        Session::Instance()->Start()->Destroy();
+        $this->accountService->DeleteSession();
+        $this->accountService->DeletePersistentLogin();
         return null;
     }
 }

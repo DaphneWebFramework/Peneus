@@ -18,52 +18,121 @@ use \Harmonia\Config;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
-use \Harmonia\Services\SecurityService;
-use \Harmonia\Session;
 use \Harmonia\Systems\DatabaseSystem\Database;
-use \Harmonia\Systems\ValidationSystem\DataAccessor;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Actions\Account\LogoutAction;
 use \Peneus\Model\Account;
-use \Peneus\Model\AccountRole;
-use \Peneus\Model\Role;
 use \Peneus\Resource;
 use \Peneus\Services\AccountService;
 
 /**
- * Signs in a user with a Google account.
+ * Authenticates a user with Google Sign-In credentials.
+ *
+ * If no matching account exists, it first creates a new account and then
+ * proceeds with the sign-in. The account is created with an empty password
+ * hash. A persistent login session is always established for the user.
  */
 class SignInWithGoogleAction extends Action
 {
+    private const GOOGLE_OAUTH2_CLIENT_ID_PATTERN =
+        '/^[0-9a-zA-Z\-]+\.apps\.googleusercontent\.com$/';
+
+    private readonly Request $request;
+    private readonly Database $database;
+    private readonly Config $config;
+    private readonly Resource $resource;
+    private readonly AccountService $accountService;
+    private readonly CookieService $cookieService;
+
     /**
-     * Executes the sign-in process by validating and decoding the user's
-     * Google account details, checking for existing accounts, and creating
-     * a new account if one does not already exist.
-     *
-     * The newly created account is saved with an empty password hash.
-     *
-     * @return array<string, string>
-     *   An associative array with a 'redirectUrl' key indicating where the user
-     *   should be redirected after a successful sign-in.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+        $this->database = Database::Instance();
+        $this->config = Config::Instance();
+        $this->resource = Resource::Instance();
+        $this->accountService = AccountService::Instance();
+        $this->cookieService = CookieService::Instance();
+    }
+
+    /**
+     * @return array{redirectUrl: string}
      * @throws \RuntimeException
-     *   If the user is already logged in, if the credential field is missing or
-     *   invalid, if the credentials cannot be decoded, if the claims cannot be
-     *   validated, if the account cannot be saved, if the session cannot be
-     *   established, or if the CSRF cookie cannot be deleted.
      */
     protected function onExecute(): mixed
     {
         // 1
-        if ($this->isAccountLoggedIn()) {
+        $this->ensureNotLoggedIn();
+        // 2
+        $data = $this->validateRequest();
+        // 3
+        $data = $this->decodeAndValidateCredential($data->credential);
+        // 4
+        $account = $this->findOrConstructAccount(
+            $data->email,
+            $data->displayName
+        );
+        // 5
+        try {
+            $this->database->WithTransaction(fn() =>
+                $this->doLogIn($account)
+            );
+        } catch (\Throwable $e) {
+            $this->logOut();
+            throw new \RuntimeException(
+                "Login failed.",
+                StatusCode::InternalServerError->value,
+                $e
+            );
+        }
+        // 6
+        $this->cookieService->DeleteCsrfCookie();
+        return [
+            'redirectUrl' => $this->resource->PageUrl('home')
+        ];
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
+    protected function ensureNotLoggedIn(): void
+    {
+        if (null !== $this->accountService->LoggedInAccount()) {
             throw new \RuntimeException(
                 "You are already logged in.",
                 StatusCode::Conflict->value
             );
         }
-        // 2
-        $dataAccessor = $this->validateRequest();
-        $credential = $dataAccessor->GetField('credential');
-        // 3
+    }
+
+    /**
+     * @return object{credential: string}
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): \stdClass
+    {
+        $validator = new Validator([
+            'credential' => [
+                'required',
+                'string',
+                'minLength:1'
+            ]
+        ]);
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'credential' => $da->GetField('credential')
+        ];
+    }
+
+    /**
+     * @param string $credential
+     * @return object{email: string, displayName: string}
+     * @throws \RuntimeException
+     */
+    protected function decodeAndValidateCredential(string $credential): \stdClass
+    {
         $claims = $this->decodeCredential($credential);
         if ($claims === null) {
             throw new \RuntimeException(
@@ -71,64 +140,21 @@ class SignInWithGoogleAction extends Action
                 StatusCode::Unauthorized->value
             );
         }
-        if (!$this->validateClaims($claims)) {
+        try {
+            $data = $this->validateClaims($claims);
+        } catch (\Throwable $e) {
             throw new \RuntimeException(
                 "Invalid claims.",
-                StatusCode::Unauthorized->value
+                StatusCode::Unauthorized->value,
+                $e
             );
         }
-        // 4
-        $result = Database::Instance()->WithTransaction(function() use($claims) {
-            $account = $this->findOrCreateAccount($claims['email'], $claims['name']);
-            if (!$account->Save()) {
-                throw new \RuntimeException('Failed to save account.');
-            }
-            if (!AccountService::Instance()->EstablishSessionIntegrity($account)) {
-                throw new \RuntimeException('Failed to establish session integrity.');
-            }
-            $this->deleteCsrfCookie();
-            return true;
-        });
-        // 5
-        if ($result !== true) {
-            $this->logOut();
-            throw new \RuntimeException(
-                "Login failed.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        // 6
-        return [
-            'redirectUrl' => $this->homePageUrl()
-        ];
-    }
-
-    /**
-     * @return bool
-     */
-    protected function isAccountLoggedIn(): bool
-    {
-        return AccountService::Instance()->LoggedInAccount() !== null;
-    }
-
-    /**
-     * @return DataAccessor
-     * @throws \RuntimeException
-     */
-    protected function validateRequest(): DataAccessor
-    {
-        $validator = new Validator([
-            'credential' => ['required', 'string', 'minLength:1']
-        ]);
-        return $validator->Validate(Request::Instance()->FormParams());
+        return $data;
     }
 
     /**
      * @param string $credential
-     * @return array<string, scalar>|null
-     *
-     * @todo After implementing `Harmonia\Http\Client`, update this code and
-     * write proper tests.
+     * @return ?array<string, mixed>
      *
      * @codeCoverageIgnore
      */
@@ -147,99 +173,101 @@ class SignInWithGoogleAction extends Action
         if ($response === false || $statusCode !== 200) {
             return null;
         }
-        $decoded = \json_decode($response, true);
-        if (!\is_array($decoded)) {
+        $claims = \json_decode($response, true);
+        if (!\is_array($claims)) {
             return null;
         }
-        return $decoded;
+        return $claims;
     }
 
     /**
-     * @param array<string, scalar> $claims
-     * @return bool
+     * @param array<string, mixed> $claims
+     * @return object{email: string, displayName: string}
+     * @throws \RuntimeException
      */
-    protected function validateClaims(array $claims): bool
+    protected function validateClaims(array $claims): \stdClass
     {
-        return $this->validateIssuer($claims['iss'])
-            && $this->validateAudience($claims['azp'], $claims['aud'])
-            && $this->validateTimeWindow($claims['nbf'], $claims['exp'])
-            && $this->validateEmailVerified($claims['email_verified']);
+        // 1
+        $clientId = $this->config->Option('Google.OAuth2.ClientID');
+        if (!\is_string($clientId) ||
+            !\preg_match(self::GOOGLE_OAUTH2_CLIENT_ID_PATTERN, $clientId)
+        ) {
+            throw new \RuntimeException("Missing or invalid Google OAuth 2.0 client ID.");
+        }
+        // 2
+        $validator = new Validator([
+            'iss' => ['required', 'string', fn($value) => \in_array($value, [
+                'https://accounts.google.com', 'accounts.google.com'], true)],
+            'aud' => ['required', 'string', fn($value) => $value === $clientId],
+            'sub' => ['required', 'string', 'minLength:1', 'maxLength:255'],
+            'exp' => ['required', 'integer', fn($value) => \time() <= (int)$value],
+            'email_verified' => ['required', 'string', fn($value) => $value === 'true'],
+            'email' => ['required', 'email'],
+            'name' => ['required', 'string']
+        ]);
+        $da = $validator->Validate($claims);
+        // 3
+        $email = $da->GetField('email');
+        $displayName = $this->normalizeDisplayName(
+            $da->GetField('name'),
+            $email,
+            $da->GetField('sub')
+        );
+        // 4
+        return (object)[
+            'email' => $email,
+            'displayName' => $displayName
+        ];
     }
 
     /**
-     * @param string $issuer
-     * @return bool
+     * @param string $name
+     * @param string $email
+     * @param string $sub
+     * @return string
      */
-    protected function validateIssuer(string $issuer): bool
+    protected function normalizeDisplayName(
+        string $name,
+        string $email,
+        string $sub
+    ): string
     {
-        return \in_array($issuer, [
-            'https://accounts.google.com',
-            'accounts.google.com'
-        ], true);
-    }
-
-    /**
-     * @param string $authorizedParty
-     * @param string $audience
-     * @return bool
-     */
-    protected function validateAudience(
-        string $authorizedParty,
-        string $audience
-    ): bool
-    {
-        $clientId = Config::Instance()->Option('Google.Auth.ClientID');
-        return $authorizedParty === $clientId && $audience === $clientId;
-    }
-
-    /**
-     * @param string $notBefore
-     * @param string $expiry
-     * @param int|null $now
-     * @return bool
-     */
-    protected function validateTimeWindow(
-        string $notBefore,
-        string $expiry,
-        ?int $now = null
-    ): bool
-    {
-        $now = $now ?? \time();
-        return (int)$notBefore <= $now && $now <= (int)$expiry;
-    }
-
-    /**
-     * @param string $emailVerified
-     * @return bool
-     */
-    protected function validateEmailVerified(string $emailVerified): bool
-    {
-        return $emailVerified === 'true';
+        // 1
+        $name = \trim($name);
+        if (\preg_match(AccountService::DISPLAY_NAME_PATTERN, $name)) {
+            return $name;
+        }
+        // 2
+        $name = \strstr($email, '@', true);
+        if ($name !== false &&
+            \preg_match(AccountService::DISPLAY_NAME_PATTERN, $name)
+        ) {
+            return $name;
+        }
+        // 3
+        return 'User_' . substr($sub, 0, 45);
     }
 
     /**
      * @param string $email
      * @param string $displayName
-     * @param \DateTime|null $timeLastLogin
      * @return Account
      */
-    protected function findOrCreateAccount(
+    protected function findOrConstructAccount(
         string $email,
-        string $displayName,
-        ?\DateTime $timeLastLogin = null
+        string $displayName
     ): Account
     {
         $account = $this->findAccount($email);
         if ($account === null) {
-            $account = $this->createAccount($email, $displayName);
+            $account = $this->constructAccount($email, $displayName);
         }
-        $account->timeLastLogin = $timeLastLogin ?? new \DateTime();
         return $account;
     }
 
     /**
      * @param string $email
-     * @return bool
+     * @return ?Account
      */
     protected function findAccount(string $email): ?Account
     {
@@ -252,49 +280,42 @@ class SignInWithGoogleAction extends Action
     /**
      * @param string $email
      * @param string $displayName
-     * @param \DateTime|null $timeActivated
      * @return Account
      */
-    protected function createAccount(
+    protected function constructAccount(
         string $email,
-        string $displayName,
-        ?\DateTime $timeActivated = null
+        string $displayName
     ): Account
     {
         $account = new Account();
         $account->email = $email;
         $account->passwordHash = '';
         $account->displayName = $displayName;
-        $account->timeActivated = $timeActivated ?? new \DateTime();
+        $account->timeActivated = new \DateTime(); // now
         $account->timeLastLogin = null;
         return $account;
     }
 
     /**
-     * @return void
+     * @param Account $account
      * @throws \RuntimeException
      */
-    protected function deleteCsrfCookie(): void
+    protected function doLogIn(Account $account): void
     {
-        CookieService::Instance()->DeleteCsrfCookie();
+        $account->timeLastLogin = new \DateTime(); // now
+        if (!$account->Save()) {
+            throw new \RuntimeException("Failed to save account.");
+        }
+        $this->accountService->CreateSession($account);
+        $this->accountService->CreatePersistentLogin($account);
     }
 
     /**
-     * @return void
-     *
-     * @codeCoverageIgnore
+     * @throws \RuntimeException
      */
     protected function logOut(): void
     {
-        $action = new LogoutAction();
-        $action->Execute();
-    }
-
-    /**
-     * @return string
-     */
-    protected function homePageUrl(): string
-    {
-        return (string)Resource::Instance()->PageUrl('home');
+        $this->accountService->DeleteSession();
+        $this->accountService->DeletePersistentLogin();
     }
 }

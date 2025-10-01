@@ -92,8 +92,8 @@ class Dispatcher implements IShutdownListener
                     ->SetBody(self::toJson($result));
             }
         } catch (\Exception $e) {
-            $statusCode =
-                StatusCode::tryFrom($e->getCode()) ?? StatusCode::BadRequest;
+            $statusCode = StatusCode::tryFrom($e->getCode())
+                ?? StatusCode::InternalServerError;
             $this->response
                 ->SetStatusCode($statusCode)
                 ->SetHeader('Content-Type', 'application/json')

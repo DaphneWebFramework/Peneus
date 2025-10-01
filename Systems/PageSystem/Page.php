@@ -548,9 +548,9 @@ class Page
      */
     public function CsrfTokenValue(): string
     {
-        $csrfToken = SecurityService::Instance()->GenerateCsrfToken();
-        CookieService::Instance()->SetCsrfCookie($csrfToken->CookieValue());
-        return $csrfToken->Token();
+        [$token, $cookieValue] = SecurityService::Instance()->GenerateCsrfPair();
+        CookieService::Instance()->SetCsrfCookie($cookieValue);
+        return $token;
     }
 
     #endregion CSRF

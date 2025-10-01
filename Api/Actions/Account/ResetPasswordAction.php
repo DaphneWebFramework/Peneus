@@ -19,89 +19,74 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
-use \Harmonia\Systems\ValidationSystem\DataAccessor;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Resource;
 
 /**
- * Resets a user's password using a previously issued reset code.
+ * Changes a user's password after verifying a previously issued reset code.
  */
 class ResetPasswordAction extends Action
 {
+    private readonly Request $request;
+    private readonly Database $database;
+    private readonly Resource $resource;
+    private readonly SecurityService $securityService;
+    private readonly CookieService $cookieService;
+
     /**
-     * Executes the password reset process by validating input, verifying the
-     * reset code, updating the user's password, deleting the reset record,
-     * and clearing the CSRF cookie.
-     *
-     * On failure, the database transaction is rolled back and an exception is
-     * thrown.
-     *
-     * @return array<string, string>
-     *   An associative array with a 'redirectUrl' key indicating where the user
-     *   should be redirected after a successful password reset.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+        $this->database = Database::Instance();
+        $this->resource = Resource::Instance();
+        $this->securityService = SecurityService::Instance();
+        $this->cookieService = CookieService::Instance();
+    }
+
+    /**
+     * @return array{redirectUrl: string}
      * @throws \RuntimeException
-     *   If the reset code field is missing or invalid, if the password field is
-     *   missing or invalid due to length limits, if no matching reset record is
-     *   found, if the account does not exist, if the password cannot be updated,
-     *   if the reset record cannot be deleted, or if the CSRF cookie cannot be
-     *   deleted.
-     *
-     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
     {
-        $dataAccessor = $this->validateRequest();
-        $resetCode = $dataAccessor->GetField('resetCode');
-        $newPassword = $dataAccessor->GetField('newPassword');
-        $passwordReset = $this->findPasswordReset($resetCode);
-        if ($passwordReset === null) {
-            throw new \RuntimeException(
-                "No password reset record found for the given code.",
-                StatusCode::NotFound->value
+        // 1
+        $data = $this->validateRequest();
+        // 2
+        [$account, $pr] = $this->findAccountAndPasswordReset($data->resetCode);
+        // 3
+        try {
+            $this->database->WithTransaction(fn() =>
+                $this->doReset($account, $data->newPassword, $pr)
             );
-        }
-        $account = $this->findAccount($passwordReset->accountId);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "No account is associated with the password reset record.",
-                StatusCode::NotFound->value
-            );
-        }
-        $result = Database::Instance()->WithTransaction(function()
-            use($account, $newPassword, $passwordReset)
-        {
-            if (!$this->updatePassword($account, $newPassword)) {
-                throw new \RuntimeException('Failed to update account password.');
-            }
-            if (!$passwordReset->Delete()) {
-                throw new \RuntimeException('Failed to delete password reset record.');
-            }
-            CookieService::Instance()->DeleteCsrfCookie();
-            return true;
-        });
-        if ($result !== true) {
+        } catch (\Throwable $e) {
             throw new \RuntimeException(
                 "Password reset failed.",
-                StatusCode::InternalServerError->value
+                StatusCode::InternalServerError->value,
+                $e
             );
         }
+        // 4
+        $this->cookieService->DeleteCsrfCookie();
         return [
-            'redirectUrl' => Resource::Instance()->LoginPageUrl('home')
+            'redirectUrl' => $this->resource->LoginPageUrl('home')
         ];
     }
 
     /**
-     * @return DataAccessor
+     * @return object{resetCode: string, newPassword: string}
      * @throws \RuntimeException
      */
-    protected function validateRequest(): DataAccessor
+    protected function validateRequest(): \stdClass
     {
         $validator = new Validator([
             'resetCode' => [
                 'required',
-                'regex:' . SecurityService::Instance()->TokenPattern()
+                'regex:' . SecurityService::TOKEN_DEFAULT_PATTERN
             ],
             'newPassword' => [
                 'required',
@@ -113,12 +98,35 @@ class ResetPasswordAction extends Action
             'resetCode.required' => "Reset code is required.",
             'resetCode.regex' => "Reset code format is invalid."
         ]);
-        return $validator->Validate(Request::Instance()->FormParams());
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'resetCode' => $da->GetField('resetCode'),
+            'newPassword' => $da->GetField('newPassword')
+        ];
     }
 
     /**
      * @param string $resetCode
-     * @return PasswordReset|null
+     * @return array{0: Account, 1: PasswordReset}
+     * @throws \RuntimeException
+     */
+    protected function findAccountAndPasswordReset(string $resetCode): array
+    {
+        $pr = $this->findPasswordReset($resetCode);
+        if ($pr === null ||
+            ($account = $this->findAccount($pr->accountId)) === null
+        ) {
+            throw new \RuntimeException(
+                "This password reset request is no longer valid.",
+                StatusCode::BadRequest->value
+            );
+        }
+        return [$account, $pr];
+    }
+
+    /**
+     * @param string $resetCode
+     * @return ?PasswordReset
      */
     protected function findPasswordReset(string $resetCode): ?PasswordReset
     {
@@ -130,7 +138,7 @@ class ResetPasswordAction extends Action
 
     /**
      * @param int $accountId
-     * @return Account|null
+     * @return ?Account
      */
     protected function findAccount(int $accountId): ?Account
     {
@@ -140,12 +148,21 @@ class ResetPasswordAction extends Action
     /**
      * @param Account $account
      * @param string $newPassword
-     * @return bool
+     * @param PasswordReset $pr
+     * @throws \RuntimeException
      */
-    protected function updatePassword(Account $account, string $newPassword): bool
+    protected function doReset(
+        Account $account,
+        string $newPassword,
+        PasswordReset $pr
+    ): void
     {
-        $account->passwordHash =
-            SecurityService::Instance()->HashPassword($newPassword);
-        return $account->Save();
+        $account->passwordHash = $this->securityService->HashPassword($newPassword);
+        if (!$account->Save()) {
+            throw new \RuntimeException("Failed to save account.");
+        }
+        if (!$pr->Delete()) {
+            throw new \RuntimeException("Failed to delete password reset.");
+        }
     }
 }

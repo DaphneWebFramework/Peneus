@@ -13,61 +13,91 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\DatabaseSystem\Database;
-use \Peneus\Api\Actions\Account\LogoutAction;
+use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
 
 /**
- * Deletes the currently logged-in account along with associated records.
+ * Deletes the currently logged-in account.
+ *
+ * Aside from the account table, all associated records in related tables
+ * are removed, and the user is fully logged out.
  */
 class DeleteAction extends Action
 {
+    private readonly Database $database;
+    private readonly AccountService $accountService;
+
     /**
-     * Executes the account deletion process in a database transaction.
-     *
-     * The method first checks whether a user is logged in. Then it invokes all
-     * registered account deletion hooks for cleanup, deletes the account, and
-     * finally logs the user out.
-     *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->database = Database::Instance();
+        $this->accountService = AccountService::Instance();
+    }
+
+    /**
+     * @return null
      * @throws \RuntimeException
-     *   If the user is not logged in, if any hook cleanup fails, or if the
-     *   account cannot be deleted.
      */
     protected function onExecute(): mixed
     {
-        $accountService = AccountService::Instance();
-        $account = $accountService->LoggedInAccount();
+        // 1
+        $account = $this->ensureLoggedIn();
+        // 2
+        try {
+            $this->database->WithTransaction(fn() =>
+                $this->doDelete($account)
+            );
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(
+                "Account deletion failed.",
+                StatusCode::InternalServerError->value,
+                $e
+            );
+        }
+        // 3
+        $this->logOut();
+        return null;
+    }
+
+    /**
+     * @return Account
+     * @throws \RuntimeException
+     */
+    protected function ensureLoggedIn(): Account
+    {
+        $account = $this->accountService->LoggedInAccount();
         if ($account === null) {
             throw new \RuntimeException(
                 "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
             );
         }
-        $result = Database::Instance()->WithTransaction(function()
-            use($accountService, $account)
-        {
-            foreach ($accountService->DeletionHooks() as $hook) {
-                $hook->OnDeleteAccount($account);
-            }
-            if (!$account->Delete()) {
-                throw new \RuntimeException('Failed to delete account.');
-            }
-            return true;
-        });
-        if ($result !== true) {
-            throw new \RuntimeException(
-                "Account deletion failed.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        $this->logOut();
-        return null;
+        return $account;
     }
 
-    /** @codeCoverageIgnore */
+    /**
+     * @param Account $account
+     * @throws \RuntimeException
+     */
+    protected function doDelete(Account $account): void
+    {
+        foreach ($this->accountService->DeletionHooks() as $hook) {
+            $hook->OnDeleteAccount($account);
+        }
+        if (!$account->Delete()) {
+            throw new \RuntimeException('Failed to delete account.');
+        }
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
     protected function logOut(): void
     {
-        (new LogoutAction)->Execute();
+        $this->accountService->DeleteSession();
+        $this->accountService->DeletePersistentLogin();
     }
 }

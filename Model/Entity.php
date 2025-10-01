@@ -676,9 +676,10 @@ abstract class Entity implements \JsonSerializable
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
             // 1
-            if (!$reflectionProperty->isPublic()
-             || $reflectionProperty->isStatic()
-             || $reflectionProperty->isReadOnly()) {
+            if (!$reflectionProperty->isPublic() ||
+                $reflectionProperty->isStatic() ||
+                $reflectionProperty->isReadOnly()
+            ) {
                 continue;
             }
             // 2

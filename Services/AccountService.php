@@ -14,13 +14,15 @@ namespace Peneus\Services;
 
 use \Harmonia\Patterns\Singleton;
 
+use \Harmonia\Http\Request;
+use \Harmonia\Server;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
-use \Peneus\Api\Guards\TokenGuard;
 use \Peneus\Api\Hooks\IAccountDeletionHook;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
+use \Peneus\Model\PersistentLogin;
 use \Peneus\Model\Role;
 
 /**
@@ -29,41 +31,34 @@ use \Peneus\Model\Role;
 class AccountService extends Singleton
 {
     /**
-     * The suffix used for the integrity cookie name.
-     */
-    private const INTEGRITY_COOKIE_NAME_SUFFIX = 'INTEGRITY';
-
-    /**
-     * The session storage key for the session integrity token.
+     * The duration of the persistent login.
      *
-     * This token ensures that the session is valid and prevents session
-     * hijacking by verifying its integrity against its corresponding cookie.
-     */
-    private const INTEGRITY_TOKEN_SESSION_KEY = 'INTEGRITY_TOKEN';
-
-    /**
-     * The session storage key for the logged-in user's account ID.
+     * The value is a relative interval string that can be passed directly to
+     * the PHP `DateTime` constructor (e.g. `'+1 month'`, `'+30 days'`).
      *
-     * This key stores the user's account ID after successful login and is
-     * used to retrieve the associated account details.
+     * @link https://www.php.net/manual/en/datetime.formats.php
+     * @todo Make this configurable rather than hardcoded.
      */
-    private const ACCOUNT_ID_SESSION_KEY = 'ACCOUNT_ID';
+    private const PERSISTENT_LOGIN_DURATION = '+1 month';
 
-    /**
-     * The session storage key for the logged-in user's account role.
-     *
-     * This key stores the user's account role after successful login and is
-     * used to determine the user's permissions and access levels within the
-     * application.
-     */
-    private const ACCOUNT_ROLE_SESSION_KEY = 'ACCOUNT_ROLE';
+    /** @var IAccountDeletionHook[] */
+    private array $deletionHooks;
 
-    /**
-     * Hooks that will be called before an account is deleted.
-     *
-     * @var IAccountDeletionHook[]
-     */
-    private array $deletionHooks = [];
+    private readonly SecurityService $securityService;
+    private readonly CookieService $cookieService;
+    private readonly Session $session;
+    private readonly Request $request;
+    private readonly Server $server;
+
+    protected function __construct()
+    {
+        $this->deletionHooks = [];
+        $this->securityService = SecurityService::Instance();
+        $this->cookieService = CookieService::Instance();
+        $this->session = Session::Instance();
+        $this->request = Request::Instance();
+        $this->server = Server::Instance();
+    }
 
     #region public -------------------------------------------------------------
 
@@ -77,112 +72,145 @@ class AccountService extends Singleton
     public const DISPLAY_NAME_PATTERN = "/^[\p{L}\p{N}][\p{L}\p{N} .\-']{1,49}$/u";
 
     /**
-     * Returns the name of the session integrity cookie.
+     * Creates a new session for an authenticated user.
      *
-     * This cookie stores a hashed version of the session integrity token,
-     * ensuring that the session has not been hijacked or tampered with.
-     *
-     * The generated name includes the application name to avoid conflicts
-     * when multiple applications share the same framework.
-     *
-     * @return string
-     *   The session integrity cookie name.
+     * @param Account $account
+     *   The account of an authenticated user.
+     * @throws \RuntimeException
+     *   If an error occurs while establishing the session or setting the
+     *   associated cookie.
      */
-    public function IntegrityCookieName(): string
+    public function CreateSession(Account $account): void
     {
-        return CookieService::Instance()->
-            AppSpecificCookieName(self::INTEGRITY_COOKIE_NAME_SUFFIX);
+        // 1
+        [$token, $cookieValue] = $this->securityService->GenerateCsrfPair();
+        // 2
+        $this->session
+            ->Start()
+            ->Clear()
+            ->RenewId()
+            ->Set('BINDING_TOKEN', $token)
+            ->Set('ACCOUNT_ID', $account->id);
+        $role = $this->findAccountRole($account->id);
+        if ($role !== null) {
+            $this->session->Set('ACCOUNT_ROLE', $role->value);
+        }
+        $this->session->Close();
+        // 3
+        $this->cookieService->SetCookie(
+            $this->sessionBindingCookieName(),
+            $cookieValue
+        );
     }
 
     /**
-     * Establishes session integrity for a newly logged-in account.
+     * Deletes the session of the currently logged-in user.
      *
-     * This method binds the server-side session to the authenticated user by
-     * generating a cryptographically strong integrity token, storing it in the
-     * session, and setting its corresponding cookie on the client. The token is
-     * later verified on each request to detect and prevent session hijacking or
-     * fixation attacks. In addition, the method stores the account ID and role
-     * in the session to support authorization checks.
+     * @throws \RuntimeException
+     *   If an error occurs while deleting the session or the associated cookie.
+     */
+    public function DeleteSession(): void
+    {
+        // 1
+        $this->cookieService->DeleteCookie($this->sessionBindingCookieName());
+        // 2
+        $this->session->Start()->Destroy();
+    }
+
+    /**
+     * Creates a new persistent login for an authenticated user.
      *
      * @param Account $account
-     *   The authenticated account for which to establish session integrity.
-     * @return bool
-     *   Returns `true` if the session integrity was successfully established,
-     *   or `false` if an error occurred during the process.
+     *   The account of an authenticated user.
+     * @throws \RuntimeException
+     *   If an error occurs while storing the persistent login or setting the
+     *   associated cookie.
+     *
+     * @todo Create a periodic cron job to delete expired records:
+     *   ```sql
+     *   DELETE FROM persistentlogin WHERE timeExpires < NOW()
+     *   ```
      */
-    public function EstablishSessionIntegrity(Account $account): bool
+    public function CreatePersistentLogin(Account $account): void
     {
-        $integrity = SecurityService::Instance()->GenerateCsrfToken();
-        try {
-            $session = Session::Instance()
-                ->Start()
-                ->Clear()
-                ->RenewId()
-                ->Set(self::INTEGRITY_TOKEN_SESSION_KEY, $integrity->Token())
-                ->Set(self::ACCOUNT_ID_SESSION_KEY, $account->id);
-            $role = $this->findAccountRole($account->id);
-            if ($role !== null) {
-                $session->Set(self::ACCOUNT_ROLE_SESSION_KEY, $role->value);
-            }
-            $session->Close();
-            CookieService::Instance()->SetCookie(
-                $this->IntegrityCookieName(),
-                $integrity->CookieValue()
+        // 1
+        $clientSignature = $this->clientSignature();
+        // 2
+        $pl = $this->findPersistentLoginForReuse(
+            $account->id,
+            $clientSignature
+        );
+        if ($pl === null) {
+            $pl = $this->constructPersistentLogin(
+                $account->id,
+                $clientSignature
             );
-            return true;
-        } catch (\Exception $e) {
-            return false;
+        }
+        // 3
+        $this->issuePersistentLogin($pl);
+    }
+
+    /**
+     * Deletes the persistent login of the currently logged-in user.
+     *
+     * @throws \RuntimeException
+     *   If an error occurs while deleting the persistent login or the
+     *   associated cookie.
+     */
+    public function DeletePersistentLogin(): void
+    {
+        $cookieName = $this->persistentLoginCookieName();
+        // 1
+        $this->cookieService->DeleteCookie($cookieName);
+        // 2
+        if (!$this->request->Cookies()->Has($cookieName)) {
+            return;
+        }
+        $cookieValue = $this->request->Cookies()->Get($cookieName);
+        [$lookupKey] = $this->parsePersistentLoginCookieValue($cookieValue);
+        if ($lookupKey === null) {
+            return;
+        }
+        $pl = $this->findPersistentLogin($lookupKey);
+        if ($pl === null) {
+            return;
+        }
+        if (!$pl->Delete()) {
+            throw new \RuntimeException("Failed to delete persistent login.");
         }
     }
 
     /**
-     * Retrieves the currently logged-in user's account.
+     * Retrieves the account of the currently logged-in user.
      *
-     * This method first verifies session integrity by checking whether the
-     * session integrity token matches its hashed counterpart stored in the
-     * cookie. If validation succeeds, the associated account is retrieved.
-     *
-     * If the session is compromised or no account is found, the session
-     * is destroyed to prevent unauthorized access.
+     * This method first tries to resolve the account from the session. If not
+     * found, it attempts to log in the user using the persistent login feature.
      *
      * @return ?Account
-     *   The logged-in user's account, or `null` if no user is logged in or
-     *   the session is compromised.
-     * @throws \RuntimeException
-     *   If the session cannot be started, closed, or destroyed.
+     *   The account of the currently logged-in user, or `null` if no valid
+     *   session or persistent login is available.
      */
     public function LoggedInAccount(): ?Account
     {
-        // Since the session will be used for read-only purposes, we close it
-        // immediately after loading the data to avoid locking issues, such as
-        // during concurrent AJAX calls.
-        $session = Session::Instance()->Start()->Close();
-        if (!$this->verifySessionIntegrity($session)) {
-            $session->Start()->Destroy();
-            return null;
+        $account = $this->accountFromSession();
+        if ($account !== null) {
+            return $account;
         }
-        $account = $this->retrieveLoggedInAccount($session);
-        if ($account === null) {
-            $session->Start()->Destroy();
-            return null;
-        }
-        return $account;
+        return $this->tryPersistentLogin();
     }
 
     /**
-     * Retrieves the role of the logged-in user's account.
+     * Retrieves the role of the currently logged-in user's account.
      *
      * @return ?Role
-     *   The role of the logged-in user's account, or `null` if not set in the
-     *   session.
-     * @throws \RuntimeException
-     *   If the session cannot be started or closed.
+     *   The role of the currently logged-in user's account, or `null` if no
+     *   user is currently logged in or if no role is assigned.
      */
     public function LoggedInAccountRole(): ?Role
     {
-        $session = Session::Instance()->Start()->Close();
-        $value = $session->Get(self::ACCOUNT_ROLE_SESSION_KEY);
-        if ($value === null) {
+        $this->session->Start()->Close();
+        $value = $this->session->Get('ACCOUNT_ROLE');
+        if (!\is_int($value)) {
             return null;
         }
         return Role::tryFrom($value);
@@ -215,12 +243,24 @@ class AccountService extends Singleton
     #region protected ----------------------------------------------------------
 
     /**
-     * Finds the role of an account from the database.
-     *
+     * @return string
+     */
+    protected function sessionBindingCookieName(): string
+    {
+        return $this->cookieService->AppSpecificCookieName('SB');
+    }
+
+    /**
+     * @return string
+     */
+    protected function persistentLoginCookieName(): string
+    {
+        return $this->cookieService->AppSpecificCookieName('PL');
+    }
+
+    /**
      * @param int $accountId
-     *   The ID of the account to find the role of.
-     * @return ?Role
-     *   The role of the account, or `null` if not found.
+     * @return Role|null
      */
     protected function findAccountRole(int $accountId): ?Role
     {
@@ -235,60 +275,228 @@ class AccountService extends Singleton
     }
 
     /**
-     * Verifies the integrity of the session.
-     *
-     * This method ensures that the session is legitimate by checking if
-     * the session integrity token matches its corresponding cookie value.
-     * If the values do not match, the session is considered compromised.
-     *
-     * @param Session $session
-     *   The started session instance.
-     * @return bool
-     *   Returns `true` if the session integrity check passes, `false` otherwise.
+     * @return Account|null
+     * @throws \RuntimeException
      */
-    protected function verifySessionIntegrity(Session $session): bool
+    protected function accountFromSession(): ?Account
     {
-        $integrityToken = $session->Get(self::INTEGRITY_TOKEN_SESSION_KEY);
-        if ($integrityToken === null) {
-            return false;
+        $this->session->Start()->Close();
+        if (!$this->validateSession()) {
+            $this->session->Start()->Destroy();
+            return null;
         }
-        $guard = $this->createTokenGuard(
-            $integrityToken,
-            $this->IntegrityCookieName()
-        );
-        return $guard->Verify();
+        $account = $this->resolveAccountFromSession();
+        if ($account === null) {
+            $this->session->Start()->Destroy();
+            return null;
+        }
+        return $account;
     }
 
     /**
-     * Retrieves the logged-in user's account object.
-     *
-     * This method fetches the account ID stored in the session and looks up
-     * the corresponding account in the database.
-     *
-     * @param Session $session
-     *   The started session instance.
-     * @return ?Account
-     *   The `Account` instance of the logged-in user, or `null` if not found.
+     * @return bool
      */
-    protected function retrieveLoggedInAccount(Session $session): ?Account
+    protected function validateSession(): bool
     {
-        $accountId = $session->Get(self::ACCOUNT_ID_SESSION_KEY);
-        if ($accountId === null) {
+        $token = $this->session->Get('BINDING_TOKEN');
+        if (!\is_string($token)) {
+            return false;
+        }
+        $cookieName = $this->sessionBindingCookieName();
+        if (!$this->request->Cookies()->Has($cookieName)) {
+            return false;
+        }
+        $cookieValue = $this->request->Cookies()->Get($cookieName);
+        return $this->securityService->VerifyCsrfPair($token, $cookieValue);
+    }
+
+    /**
+     * @return Account|null
+     */
+    protected function resolveAccountFromSession(): ?Account
+    {
+        $accountId = $this->session->Get('ACCOUNT_ID');
+        if (!\is_int($accountId)) {
             return null;
         }
+        return $this->findAccount($accountId);
+    }
+
+    /**
+     * @param int $accountId
+     * @return Account|null
+     */
+    protected function findAccount(int $accountId): ?Account
+    {
         return Account::FindById($accountId);
     }
 
     /**
-     * @param string $token
-     * @param string $cookieName
-     * @return TokenGuard
-     *
-     * @codeCoverageIgnore
+     * @return Account|null
+     * @throws \RuntimeException
      */
-    protected function createTokenGuard(string $token, string $cookieName): TokenGuard
+    protected function tryPersistentLogin(): ?Account
     {
-        return new TokenGuard($token, $cookieName);
+        // 1
+        $cookieName = $this->persistentLoginCookieName();
+        if (!$this->request->Cookies()->Has($cookieName)) {
+            return null;
+        }
+        $cookieValue = $this->request->Cookies()->Get($cookieName);
+        [$lookupKey, $token] = $this->parsePersistentLoginCookieValue($cookieValue);
+        if ($lookupKey === null || $token === null) {
+            return null;
+        }
+        // 2
+        $pl = $this->findPersistentLogin($lookupKey);
+        if ($pl === null ||
+            $pl->clientSignature !== $this->clientSignature() ||
+            !$this->securityService->VerifyPassword($token, $pl->tokenHash) ||
+            $pl->timeExpires < $this->currentTime()
+        ) {
+            return null;
+        }
+        // 3
+        $account = $this->findAccount($pl->accountId);
+        if ($account === null) {
+            return null;
+        }
+        $this->CreateSession($account);
+        // 4
+        $this->issuePersistentLogin($pl); // Rotate
+
+        return $account;
+    }
+
+    /**
+     * @param string $lookupKey
+     * @return PersistentLogin|null
+     */
+    protected function findPersistentLogin(string $lookupKey): ?PersistentLogin
+    {
+        return PersistentLogin::FindFirst(
+            condition: 'lookupKey = :lookupKey',
+            bindings: ['lookupKey' => $lookupKey]
+        );
+    }
+
+    /**
+     * The purpose of this method is to avoid leaving behind orphaned records
+     * when a user clears their cookies. If the same account logs in again with
+     * the same browser and from the same IP address (as identified by client
+     * signature), we reuse the existing record instead of creating a new one.
+     *
+     * @param int $accountId
+     * @param string $clientSignature
+     * @return PersistentLogin|null
+     */
+    protected function findPersistentLoginForReuse(
+        int $accountId,
+        string $clientSignature
+    ): ?PersistentLogin
+    {
+        return PersistentLogin::FindFirst(
+            condition:
+                'accountId = :accountId AND clientSignature = :clientSignature',
+            bindings: [
+                'accountId' => $accountId,
+                'clientSignature' => $clientSignature
+            ]
+        );
+    }
+
+    /**
+     * @param int $accountId
+     * @param string $clientSignature
+     * @return PersistentLogin
+     */
+    protected function constructPersistentLogin(
+        int $accountId,
+        string $clientSignature
+    ): PersistentLogin
+    {
+        $pl = new PersistentLogin();
+        $pl->accountId = $accountId;
+        $pl->clientSignature = $clientSignature;
+        return $pl;
+    }
+
+    /**
+     * @param PersistentLogin $pl
+     * @throws \RuntimeException
+     */
+    protected function issuePersistentLogin(PersistentLogin $pl): void
+    {
+        // 1
+        $token = $this->securityService->GenerateToken();
+        // 2
+        $pl->lookupKey = $this->securityService->GenerateToken(8); // 64 bits
+        $pl->tokenHash = $this->securityService->HashPassword($token);
+        $pl->timeExpires = $this->expiryTime();
+        if (!$pl->Save()) {
+            throw new \RuntimeException("Failed to save persistent login.");
+        }
+        // 3
+        $this->cookieService->SetCookie(
+            $this->persistentLoginCookieName(),
+            $this->makePersistentLoginCookieValue($pl->lookupKey, $token),
+            $pl->timeExpires->getTimestamp()
+        );
+    }
+
+    /**
+     * @param string $lookupKey
+     * @param string $token
+     * @return string
+     */
+    protected function makePersistentLoginCookieValue(
+        string $lookupKey,
+        string $token
+    ): string
+    {
+        return "{$lookupKey}.{$token}";
+    }
+
+    /**
+     * @param string $cookieValue
+     * @return array{0: string|null, 1: string|null}
+     */
+    protected function parsePersistentLoginCookieValue(
+        string $cookieValue
+    ): array
+    {
+        $parts = \explode('.', $cookieValue, 2) + [null, null];
+        return \array_map(
+            static fn($part) => $part === '' ? null : $part,
+            $parts
+        );
+    }
+
+    /**
+     * @return string
+     */
+    protected function clientSignature(): string
+    {
+        $clientAddress = $this->server->ClientAddress();
+        $userAgent = $this->request->Headers()->GetOrDefault('user-agent', '');
+        $hash = \hash('md5', "{$clientAddress}\0{$userAgent}", true);
+        return \rtrim(\base64_encode($hash), '=');
+    }
+
+    /**
+     * @return \DateTime
+     */
+    protected function currentTime(): \DateTime
+    {
+        return new \DateTime();
+    }
+
+    /**
+     * @return \DateTime
+     */
+    protected function expiryTime(): \DateTime
+    {
+        return new \DateTime(self::PERSISTENT_LOGIN_DURATION);
     }
 
     #endregion protected

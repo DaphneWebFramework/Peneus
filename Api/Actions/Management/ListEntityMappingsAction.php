@@ -79,6 +79,10 @@ class ListEntityMappingsAction extends Action
                 ];
             }
         }
+        \usort(
+            $data,
+            fn($a, $b) => \strcmp($a['entityClass'], $b['entityClass'])
+        );
         return [
             'data' => $data
         ];

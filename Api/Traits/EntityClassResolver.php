@@ -16,6 +16,7 @@ use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Model\PendingAccount;
+use \Peneus\Model\PersistentLogin;
 
 /**
  * Provides entity class resolution logic based on a table name string.
@@ -28,6 +29,7 @@ trait EntityClassResolver
         AccountRole::class,
         PasswordReset::class,
         PendingAccount::class,
+        PersistentLogin::class,
     ];
 
     /**

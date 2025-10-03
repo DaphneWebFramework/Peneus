@@ -17,6 +17,7 @@ use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Model\PendingAccount;
+use \Peneus\Model\PersistentLogin;
 use \Peneus\Model\Role;
 use \Peneus\Services\AccountService;
 
@@ -109,6 +110,29 @@ trait EntityValidationRulesProvider
                     'required',
                     'datetime:Y-m-d H:i:s'
                 ],
+            ],
+            PersistentLogin::class => [
+                'accountId' => [
+                    'required',
+                    'integer:strict',
+                    'min:1'
+                ],
+                'clientSignature' => [
+                    'required',
+                    'regex:/^[0-9a-zA-Z]{22}$/'
+                ],
+                'lookupKey' => [
+                    'required',
+                    'regex:/^[0-9a-fA-F]{16}$/'
+                ],
+                'tokenHash' => [
+                    'required',
+                    'regex:' . SecurityService::PASSWORD_HASH_PATTERN
+                ],
+                'timeExpires' => [
+                    'required',
+                    'datetime:Y-m-d H:i:s'
+                ]
             ],
             default => throw new \InvalidArgumentException(
                 "Unsupported entity class: $entityClass"),

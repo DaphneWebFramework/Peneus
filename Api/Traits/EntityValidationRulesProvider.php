@@ -119,7 +119,7 @@ trait EntityValidationRulesProvider
                 ],
                 'clientSignature' => [
                     'required',
-                    'regex:/^[0-9a-zA-Z]{22}$/'
+                    'regex:/^[0-9a-zA-Z+\/]{22,24}$/'
                 ],
                 'lookupKey' => [
                     'required',

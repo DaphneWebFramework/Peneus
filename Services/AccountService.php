@@ -194,6 +194,7 @@ class AccountService extends Singleton
     {
         $account = $this->accountFromSession();
         if ($account !== null) {
+            $this->rotatePersistentLoginIfNeeded($account->id);
             return $account;
         }
         return $this->tryPersistentLogin();
@@ -363,9 +364,32 @@ class AccountService extends Singleton
         }
         $this->CreateSession($account);
         // 4
-        $this->issuePersistentLogin($pl); // Rotate
+        $this->session
+            ->Start()
+            ->Set('NEEDS_PL_ROTATION', true)
+            ->Close();
 
         return $account;
+    }
+
+    /**
+     * @param int $accountId
+     * @throws \RuntimeException
+     */
+    protected function rotatePersistentLoginIfNeeded(int $accountId): void
+    {
+        $this->session->Start();
+        if ($this->session->Has('NEEDS_PL_ROTATION')) {
+            $pl = $this->findPersistentLoginForReuse(
+                $accountId,
+                $this->clientSignature()
+            );
+            if ($pl) {
+                $this->issuePersistentLogin($pl);
+            }
+            $this->session->Remove('NEEDS_PL_ROTATION');
+        }
+        $this->session->Close();
     }
 
     /**
@@ -432,7 +456,7 @@ class AccountService extends Singleton
         // 2
         $pl->lookupKey = $this->securityService->GenerateToken(8); // 64 bits
         $pl->tokenHash = $this->securityService->HashPassword($token);
-        $pl->timeExpires = $this->expiryTime();
+        $pl->timeExpires = $this->persistentLoginExpiryTime();
         if (!$pl->Save()) {
             throw new \RuntimeException("Failed to save persistent login.");
         }
@@ -494,7 +518,7 @@ class AccountService extends Singleton
     /**
      * @return \DateTime
      */
-    protected function expiryTime(): \DateTime
+    protected function persistentLoginExpiryTime(): \DateTime
     {
         return new \DateTime(self::PERSISTENT_LOGIN_DURATION);
     }

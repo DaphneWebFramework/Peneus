@@ -435,9 +435,9 @@ class Page
      *   An `AccountView` object associated with the logged-in user, or `null`
      *   if no user is logged in.
      */
-    public function LoggedInAccount(): ?AccountView
+    public function SessionAccount(): ?AccountView
     {
-        return $this->authManager->LoggedInAccount();
+        return $this->authManager->SessionAccount();
     }
 
     /**

@@ -123,7 +123,7 @@ class AccountService extends Singleton
      *   The account of the currently logged-in user, or `null` if no valid
      *   session or persistent login entry is available.
      */
-    public function LoggedInAccount(): ?AccountView
+    public function SessionAccount(): ?AccountView
     {
         $accountView = $this->accountFromSession();
         if ($accountView !== null) {

@@ -27,14 +27,14 @@ use \Peneus\Services\AccountService;
  */
 class AuthManager
 {
-    private readonly CachedValue $loggedInAccount;
+    private readonly CachedValue $sessionAccount;
 
     /**
      * Constructs a new instance with uncached account state.
      */
     public function __construct()
     {
-        $this->loggedInAccount = new CachedValue();
+        $this->sessionAccount = new CachedValue();
     }
 
     /**
@@ -46,10 +46,10 @@ class AuthManager
      *   An `AccountView` object associated with the logged-in user, or `null`
      *   if no user is logged in.
      */
-    public function LoggedInAccount(): ?AccountView
+    public function SessionAccount(): ?AccountView
     {
-        return $this->loggedInAccount->Get(fn() =>
-            AccountService::Instance()->LoggedInAccount()
+        return $this->sessionAccount->Get(fn() =>
+            AccountService::Instance()->SessionAccount()
         );
     }
 
@@ -67,7 +67,7 @@ class AuthManager
      */
     public function RequireLogin(Role $minimumRole = Role::None): void
     {
-        $accountView = $this->LoggedInAccount();
+        $accountView = $this->SessionAccount();
         if ($accountView === null) {
             $this->redirect(Resource::Instance()->LoginPageUrl());
         } else if (!Role::Parse($accountView->role)->AtLeast($minimumRole)) {

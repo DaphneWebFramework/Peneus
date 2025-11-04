@@ -22,6 +22,7 @@ use \Peneus\Services\AccountService;
 class SessionGuard implements IGuard
 {
     private readonly Role $minimumRole;
+    private readonly AccountService $accountService;
 
     /**
      * Constructs a new instance with an optional minimum role.
@@ -34,6 +35,7 @@ class SessionGuard implements IGuard
     public function __construct(Role $minimumRole = Role::None)
     {
         $this->minimumRole = $minimumRole;
+        $this->accountService = AccountService::Instance();
     }
 
     /**
@@ -46,7 +48,7 @@ class SessionGuard implements IGuard
      */
     public function Verify(): bool
     {
-        $accountView = AccountService::Instance()->LoggedInAccount();
+        $accountView = $this->accountService->SessionAccount();
         if ($accountView === null) {
             return false;
         }

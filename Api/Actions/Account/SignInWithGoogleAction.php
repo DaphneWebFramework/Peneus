@@ -99,7 +99,7 @@ class SignInWithGoogleAction extends Action
      */
     protected function ensureNotLoggedIn(): void
     {
-        if (null !== $this->accountService->LoggedInAccount()) {
+        if (null !== $this->accountService->SessionAccount()) {
             throw new \RuntimeException(
                 "You are already logged in.",
                 StatusCode::Conflict->value

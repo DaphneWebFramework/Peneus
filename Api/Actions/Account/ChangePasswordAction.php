@@ -70,7 +70,7 @@ class ChangePasswordAction extends Action
      */
     protected function ensureLoggedIn(): AccountView
     {
-        $accountView = $this->accountService->LoggedInAccount();
+        $accountView = $this->accountService->SessionAccount();
         if ($accountView === null) {
             throw new \RuntimeException(
                 "You do not have permission to perform this action.",

@@ -118,6 +118,5 @@ class DeleteAction extends Action
     protected function logOut(): void
     {
         $this->accountService->DeleteSession();
-        $this->accountService->DeletePersistentLogin();
     }
 }

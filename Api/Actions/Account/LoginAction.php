@@ -172,10 +172,7 @@ class LoginAction extends Action
         if (!$account->Save()) {
             throw new \RuntimeException("Failed to save account.");
         }
-        $this->accountService->CreateSession($account->id);
-        if ($keepLoggedIn) {
-            $this->accountService->CreatePersistentLogin($account->id);
-        }
+        $this->accountService->CreateSession($account->id, $keepLoggedIn);
     }
 
     /**
@@ -184,6 +181,5 @@ class LoginAction extends Action
     protected function logOut(): void
     {
         $this->accountService->DeleteSession();
-        $this->accountService->DeletePersistentLogin();
     }
 }

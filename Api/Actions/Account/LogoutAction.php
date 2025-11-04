@@ -39,7 +39,6 @@ class LogoutAction extends Action
     protected function onExecute(): mixed
     {
         $this->accountService->DeleteSession();
-        $this->accountService->DeletePersistentLogin();
         return null;
     }
 }

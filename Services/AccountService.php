@@ -64,11 +64,15 @@ class AccountService extends Singleton
      *
      * @param int $accountId
      *   The account ID of an authenticated user.
+     * @param bool $persistent
+     *   (Optional) If `true`, a persistent login record will also be created
+     *   and the associated cookie set. Defaults to `false`.
      * @throws \RuntimeException
-     *   If an error occurs while establishing the session or setting the
-     *   associated cookie.
+     *   If an error occurs while establishing the session, setting the
+     *   session‑binding cookie, storing the persistent login record, or
+     *   setting the persistent login cookie.
      */
-    public function CreateSession(int $accountId): void
+    public function CreateSession(int $accountId, bool $persistent = false): void
     {
         // 1
         [$token, $cookieValue] = $this->securityService->GenerateCsrfPair();
@@ -85,13 +89,19 @@ class AccountService extends Singleton
             $this->sessionBindingCookieName(),
             $cookieValue
         );
+        // 4
+        if ($persistent) {
+            $this->plm->Create($accountId);
+        }
     }
 
     /**
      * Deletes the session of the currently logged-in user.
      *
      * @throws \RuntimeException
-     *   If an error occurs while deleting the session or the associated cookie.
+     *   If an error occurs while deleting the session, removing the session-binding
+     *   cookie, deleting the persistent login record, or removing the persistent
+     *   login cookie.
      */
     public function DeleteSession(): void
     {
@@ -99,31 +109,7 @@ class AccountService extends Singleton
         $this->cookieService->DeleteCookie($this->sessionBindingCookieName());
         // 2
         $this->session->Start()->Destroy();
-    }
-
-    /**
-     * Creates a new persistent login entry for an authenticated user.
-     *
-     * @param int $accountId
-     *   The account ID of an authenticated user.
-     * @throws \RuntimeException
-     *   If an error occurs while storing the persistent login record or setting
-     *   the associated cookie.
-     */
-    public function CreatePersistentLogin(int $accountId): void
-    {
-        $this->plm->Create($accountId);
-    }
-
-    /**
-     * Deletes the persistent login entry of the currently logged-in user.
-     *
-     * @throws \RuntimeException
-     *   If an error occurs while deleting the persistent login record or the
-     *   associated cookie.
-     */
-    public function DeletePersistentLogin(): void
-    {
+        // 3
         $this->plm->Delete();
     }
 

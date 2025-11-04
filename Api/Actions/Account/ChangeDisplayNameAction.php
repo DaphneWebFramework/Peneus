@@ -18,6 +18,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
+use \Peneus\Model\AccountView;
 use \Peneus\Services\AccountService;
 
 /**
@@ -25,21 +26,74 @@ use \Peneus\Services\AccountService;
  */
 class ChangeDisplayNameAction extends Action
 {
+    private readonly Request $request;
+    private readonly AccountService $accountService;
+
     /**
-     * Executes the display name change process by validating the new display
-     * name, retrieving the currently logged-in account, and saving the updated
-     * value.
-     *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+        $this->accountService = AccountService::Instance();
+    }
+
+    /**
+     * @return null
      * @throws \RuntimeException
-     *   If the display name field is missing or does not match the required
-     *   pattern, if the user is not logged in, or if the account cannot be
-     *   saved.
-     *
-     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
+    {
+        // 1
+        $accountView = $this->ensureLoggedIn();
+        // 2
+        $account = $this->findAccount($accountView->id);
+        // 3
+        $payload = $this->validateRequest();
+        // 4
+        $this->doChange($account, $payload);
+        return null;
+    }
+
+    /**
+     * @return AccountView
+     * @throws \RuntimeException
+     */
+    protected function ensureLoggedIn(): AccountView
+    {
+        $accountView = $this->accountService->LoggedInAccount();
+        if ($accountView === null) {
+            throw new \RuntimeException(
+                "You do not have permission to perform this action.",
+                StatusCode::Unauthorized->value
+            );
+        }
+        return $accountView;
+    }
+
+    /**
+     * @param int $id
+     * @return Account
+     * @throws \RuntimeException
+     */
+    protected function findAccount(int $id): Account
+    {
+        $account = Account::FindById($id);
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Account not found.",
+                StatusCode::NotFound->value
+            );
+        }
+        return $account;
+    }
+
+    /**
+     * @return object{displayName: string}
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): \stdClass
     {
         $validator = new Validator([
             'displayName' => [
@@ -51,35 +105,22 @@ class ChangeDisplayNameAction extends Action
                 . " with a letter or number and may only contain letters,"
                 . " numbers, spaces, dots, hyphens, and apostrophes."
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $displayName = $dataAccessor->GetField('displayName');
-        $accountView = AccountService::Instance()->LoggedInAccount();
-        if ($accountView === null) {
-            throw new \RuntimeException(
-                "You do not have permission to perform this action.",
-                StatusCode::Unauthorized->value
-            );
-        }
-        $account = $this->findAccount($accountView->id);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "Account not found.",
-                StatusCode::NotFound->value
-            );
-        }
-        $account->displayName = $displayName;
-        if (!$account->Save()) {
-            throw new \RuntimeException(
-                "Failed to change display name.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        return null;
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'displayName' => $da->GetField('displayName')
+        ];
     }
 
-    /** @codeCoverageIgnore */
-    protected function findAccount(int $id): ?Account
+    /**
+     * @param Account $account
+     * @param object{displayName: string} $payload
+     * @throws \RuntimeException
+     */
+    protected function doChange(Account $account, object $payload): void
     {
-        return Account::FindById($id);
+        $account->displayName = $payload->displayName;
+        if (!$account->Save()) {
+            throw new \RuntimeException("Failed to change display name.");
+        }
     }
 }

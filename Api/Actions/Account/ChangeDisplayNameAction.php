@@ -52,7 +52,7 @@ class ChangeDisplayNameAction extends Action
         // 3
         $payload = $this->validateRequest();
         // 4
-        $this->doChange($account, $payload);
+        $this->doChange($account, $payload->displayName);
         return null;
     }
 
@@ -113,12 +113,12 @@ class ChangeDisplayNameAction extends Action
 
     /**
      * @param Account $account
-     * @param object{displayName: string} $payload
+     * @param string $displayName
      * @throws \RuntimeException
      */
-    protected function doChange(Account $account, object $payload): void
+    protected function doChange(Account $account, string $displayName): void
     {
-        $account->displayName = $payload->displayName;
+        $account->displayName = $displayName;
         if (!$account->Save()) {
             throw new \RuntimeException("Failed to change display name.");
         }

@@ -19,6 +19,7 @@ use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
+use \Peneus\Model\AccountView;
 use \Peneus\Services\AccountService;
 
 /**
@@ -26,19 +27,81 @@ use \Peneus\Services\AccountService;
  */
 class ChangePasswordAction extends Action
 {
+    private readonly Request $request;
+    private readonly AccountService $accountService;
+    private readonly SecurityService $securityService;
+
     /**
-     * Executes the password change process by validating the input,
-     * verifying the current password, and saving the updated hash.
-     *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+        $this->accountService = AccountService::Instance();
+        $this->securityService = SecurityService::Instance();
+    }
+
+    /**
+     * @return null
      * @throws \RuntimeException
-     *   If the input is invalid, the user is not logged in, the current
-     *   password is incorrect, or the save operation fails.
-     *
-     * @todo Define custom error messages for each validation rule.
      */
     protected function onExecute(): mixed
+    {
+        // 1
+        $accountView = $this->ensureLoggedIn();
+        // 2
+        $account = $this->findAccount($accountView->id);
+        // 3
+        $payload = $this->validateRequest();
+        // 4
+        $this->verifyCurrentPassword(
+            $payload->currentPassword,
+            $account->passwordHash
+        );
+        // 5
+        $this->doChange($account, $payload->newPassword);
+        return null;
+    }
+
+    /**
+     * @return AccountView
+     * @throws \RuntimeException
+     */
+    protected function ensureLoggedIn(): AccountView
+    {
+        $accountView = $this->accountService->LoggedInAccount();
+        if ($accountView === null) {
+            throw new \RuntimeException(
+                "You do not have permission to perform this action.",
+                StatusCode::Unauthorized->value
+            );
+        }
+        return $accountView;
+    }
+
+    /**
+     * @param int $id
+     * @return Account
+     * @throws \RuntimeException
+     */
+    protected function findAccount(int $id): Account
+    {
+        $account = Account::FindById($id);
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Account not found.",
+                StatusCode::NotFound->value
+            );
+        }
+        return $account;
+    }
+
+    /**
+     * @return object{currentPassword: string, newPassword: string}
+     * @throws \RuntimeException
+     */
+    protected function validateRequest(): \stdClass
     {
         $validator = new Validator([
             'currentPassword' => [
@@ -54,43 +117,45 @@ class ChangePasswordAction extends Action
                 'maxLength:' . SecurityService::PASSWORD_MAX_LENGTH
             ]
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
-        $currentPassword = $dataAccessor->GetField('currentPassword');
-        $newPassword = $dataAccessor->GetField('newPassword');
-        $accountView = AccountService::Instance()->LoggedInAccount();
-        if ($accountView === null) {
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'currentPassword' => $da->GetField('currentPassword'),
+            'newPassword' => $da->GetField('newPassword')
+        ];
+    }
+
+    /**
+     * @param string $currentPassword
+     * @param string $passwordHash
+     * @throws \RuntimeException
+     */
+    protected function verifyCurrentPassword(
+        string $currentPassword,
+        string $passwordHash
+    ): void
+    {
+        if (!$this->securityService->VerifyPassword(
+            $currentPassword,
+            $passwordHash
+        )) {
             throw new \RuntimeException(
-                "You do not have permission to perform this action.",
+                "Current password is incorrect.",
                 StatusCode::Unauthorized->value
             );
         }
-        $account = $this->findAccount($accountView->id);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "Account not found.",
-                StatusCode::NotFound->value
-            );
-        }
-        $securityService = SecurityService::Instance();
-        if (!$securityService->VerifyPassword($currentPassword, $account->passwordHash)) {
-            throw new \RuntimeException(
-                "Current password is incorrect.",
-                StatusCode::Forbidden->value
-            );
-        }
-        $account->passwordHash = $securityService->HashPassword($newPassword);
-        if (!$account->Save()) {
-            throw new \RuntimeException(
-                "Failed to change password.",
-                StatusCode::InternalServerError->value
-            );
-        }
-        return null;
     }
 
-    /** @codeCoverageIgnore */
-    protected function findAccount(int $id): ?Account
+    /**
+     * @param Account $account
+     * @param string $newPassword
+     * @throws \RuntimeException
+     */
+    protected function doChange(Account $account, string $newPassword): void
     {
-        return Account::FindById($id);
+        $account->passwordHash =
+            $this->securityService->HashPassword($newPassword);
+        if (!$account->Save()) {
+            throw new \RuntimeException("Failed to change password.");
+        }
     }
 }

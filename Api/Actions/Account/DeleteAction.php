@@ -84,6 +84,7 @@ class DeleteAction extends Action
     /**
      * @param int $id
      * @return Account
+     * @throws \RuntimeException
      */
     protected function findAccount(int $id): Account
     {
@@ -107,7 +108,7 @@ class DeleteAction extends Action
             $hook->OnDeleteAccount($account);
         }
         if (!$account->Delete()) {
-            throw new \RuntimeException('Failed to delete account.');
+            throw new \RuntimeException("Failed to delete account.");
         }
     }
 

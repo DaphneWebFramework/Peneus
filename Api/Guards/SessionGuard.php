@@ -21,26 +21,24 @@ use \Peneus\Services\AccountService;
  */
 class SessionGuard implements IGuard
 {
-    private readonly ?Role $minimumRole;
+    private readonly Role $minimumRole;
 
     /**
      * Constructs a new instance with an optional minimum role.
      *
-     * @param ?Role $minimumRole
-     *   (Optional) The minimum role required for the request. If not provided,
-     *   the guard will only check if the user is logged in without enforcing a
-     *   specific role. If a role is provided, the guard will ensure that the
-     *   logged-in user's role meets or exceeds this minimum requirement.
+     * @param Role $minimumRole
+     *   (Optional) The minimum role required for the request. Defaults to
+     *   `Role::None`. When `Role::None` is specified, only login status is
+     *   enforced.
      */
-    public function __construct(?Role $minimumRole = null)
+    public function __construct(Role $minimumRole = Role::None)
     {
         $this->minimumRole = $minimumRole;
     }
 
     /**
-     * Verifies that the request is from a logged-in user.
-     *
-     * If a minimum role is set, also ensures the user has at least that role.
+     * Verifies that the request is from a logged-in user and optionally
+     * enforces a minimum role requirement.
      *
      * @return bool
      *   Returns `true` if the user is logged in and satisfies the role
@@ -48,16 +46,10 @@ class SessionGuard implements IGuard
      */
     public function Verify(): bool
     {
-        $accountService = AccountService::Instance();
-        if ($accountService->LoggedInAccount() === null) {
+        $accountView = AccountService::Instance()->LoggedInAccount();
+        if ($accountView === null) {
             return false;
         }
-        if ($this->minimumRole !== null) {
-            $role = $accountService->LoggedInAccountRole();
-            if ($role === null || $role->value < $this->minimumRole->value) {
-                return false;
-            }
-        }
-        return true;
+        return Role::Parse($accountView->role)->AtLeast($this->minimumRole);
     }
 }

@@ -19,9 +19,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
 use \Peneus\Api\Hooks\IAccountDeletionHook;
-use \Peneus\Model\Account;
-use \Peneus\Model\AccountRole;
-use \Peneus\Model\Role;
+use \Peneus\Model\AccountView;
 
 /**
  * Provides account-related utilities.
@@ -80,12 +78,8 @@ class AccountService extends Singleton
             ->Clear()
             ->RenewId()
             ->Set('BINDING_TOKEN', $token)
-            ->Set('ACCOUNT_ID', $accountId);
-        $role = $this->findAccountRole($accountId);
-        if ($role !== null) {
-            $this->session->Set('ACCOUNT_ROLE', $role->value);
-        }
-        $this->session->Close();
+            ->Set('ACCOUNT_ID', $accountId)
+            ->Close();
         // 3
         $this->cookieService->SetCookie(
             $this->sessionBindingCookieName(),
@@ -108,13 +102,13 @@ class AccountService extends Singleton
     }
 
     /**
-     * Creates a new persistent login for an authenticated user.
+     * Creates a new persistent login entry for an authenticated user.
      *
      * @param int $accountId
      *   The account ID of an authenticated user.
      * @throws \RuntimeException
-     *   If an error occurs while storing the persistent login or setting the
-     *   associated cookie.
+     *   If an error occurs while storing the persistent login record or setting
+     *   the associated cookie.
      */
     public function CreatePersistentLogin(int $accountId): void
     {
@@ -122,10 +116,10 @@ class AccountService extends Singleton
     }
 
     /**
-     * Deletes the persistent login of the currently logged-in user.
+     * Deletes the persistent login entry of the currently logged-in user.
      *
      * @throws \RuntimeException
-     *   If an error occurs while deleting the persistent login or the
+     *   If an error occurs while deleting the persistent login record or the
      *   associated cookie.
      */
     public function DeletePersistentLogin(): void
@@ -139,35 +133,18 @@ class AccountService extends Singleton
      * This method first tries to resolve the account from the session. If not
      * found, it attempts to log in the user using the persistent login feature.
      *
-     * @return ?Account
+     * @return ?AccountView
      *   The account of the currently logged-in user, or `null` if no valid
-     *   session or persistent login is available.
+     *   session or persistent login entry is available.
      */
-    public function LoggedInAccount(): ?Account
+    public function LoggedInAccount(): ?AccountView
     {
-        $account = $this->accountFromSession();
-        if ($account !== null) {
-            $this->rotatePersistentLoginIfNeeded($account->id);
-            return $account;
+        $accountView = $this->accountFromSession();
+        if ($accountView !== null) {
+            $this->rotatePersistentLoginIfNeeded($accountView->id);
+            return $accountView;
         }
         return $this->tryPersistentLogin();
-    }
-
-    /**
-     * Retrieves the role of the currently logged-in user's account.
-     *
-     * @return ?Role
-     *   The role of the currently logged-in user's account, or `null` if no
-     *   user is currently logged in or if no role is assigned.
-     */
-    public function LoggedInAccountRole(): ?Role
-    {
-        $this->session->Start()->Close();
-        $value = $this->session->Get('ACCOUNT_ROLE');
-        if (!\is_int($value)) {
-            return null;
-        }
-        return Role::tryFrom($value);
     }
 
     /**
@@ -205,38 +182,31 @@ class AccountService extends Singleton
     }
 
     /**
-     * @param int $accountId
-     * @return Role|null
+     * @param int $id
+     * @return AccountView|null
      */
-    protected function findAccountRole(int $accountId): ?Role
+    protected function findAccountView(int $id): ?AccountView
     {
-        $accountRole = AccountRole::FindFirst(
-            condition: 'accountId = :accountId',
-            bindings: ['accountId' => $accountId]
-        );
-        if ($accountRole === null) {
-            return null;
-        }
-        return Role::tryFrom($accountRole->role);
+        return AccountView::FindById($id);
     }
 
     /**
-     * @return Account|null
+     * @return AccountView|null
      * @throws \RuntimeException
      */
-    protected function accountFromSession(): ?Account
+    protected function accountFromSession(): ?AccountView
     {
         $this->session->Start()->Close();
         if (!$this->validateSession()) {
             $this->session->Start()->Destroy();
             return null;
         }
-        $account = $this->resolveAccountFromSession();
-        if ($account === null) {
+        $accountView = $this->resolveAccountFromSession();
+        if ($accountView === null) {
             $this->session->Start()->Destroy();
             return null;
         }
-        return $account;
+        return $accountView;
     }
 
     /**
@@ -257,31 +227,22 @@ class AccountService extends Singleton
     }
 
     /**
-     * @return Account|null
+     * @return AccountView|null
      */
-    protected function resolveAccountFromSession(): ?Account
+    protected function resolveAccountFromSession(): ?AccountView
     {
         $accountId = $this->session->Get('ACCOUNT_ID');
         if (!\is_int($accountId)) {
             return null;
         }
-        return $this->findAccount($accountId);
+        return $this->findAccountView($accountId);
     }
 
     /**
-     * @param int $accountId
-     * @return Account|null
-     */
-    protected function findAccount(int $accountId): ?Account
-    {
-        return Account::FindById($accountId);
-    }
-
-    /**
-     * @return Account|null
+     * @return AccountView|null
      * @throws \RuntimeException
      */
-    protected function tryPersistentLogin(): ?Account
+    protected function tryPersistentLogin(): ?AccountView
     {
         // 1
         $accountId = $this->plm->Resolve();
@@ -289,19 +250,20 @@ class AccountService extends Singleton
             return null;
         }
         // 2
-        $account = $this->findAccount($accountId);
-        if ($account === null) {
+        $accountView = $this->findAccountView($accountId);
+        if ($accountView === null) {
             return null;
         }
+        // 3
         $this->CreateSession($accountId);
-        // 3. It is important to set the rotation flag after session creation,
+        // 4. It is important to set the rotation flag after session creation,
         //    so it survives the clear.
         $this->session
             ->Start()
             ->Set('PL_ROTATE_NEEDED', true)
             ->Close();
-
-        return $account;
+        // 5
+        return $accountView;
     }
 
     /**

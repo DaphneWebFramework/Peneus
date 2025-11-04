@@ -18,6 +18,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
 
 /**
@@ -56,11 +57,18 @@ class ChangePasswordAction extends Action
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $currentPassword = $dataAccessor->GetField('currentPassword');
         $newPassword = $dataAccessor->GetField('newPassword');
-        $account = AccountService::Instance()->LoggedInAccount();
-        if ($account === null) {
+        $accountView = AccountService::Instance()->LoggedInAccount();
+        if ($accountView === null) {
             throw new \RuntimeException(
                 "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
+            );
+        }
+        $account = $this->findAccount($accountView->id);
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Account not found.",
+                StatusCode::NotFound->value
             );
         }
         $securityService = SecurityService::Instance();
@@ -73,10 +81,16 @@ class ChangePasswordAction extends Action
         $account->passwordHash = $securityService->HashPassword($newPassword);
         if (!$account->Save()) {
             throw new \RuntimeException(
-                "Password change failed.",
+                "Failed to change password.",
                 StatusCode::InternalServerError->value
             );
         }
         return null;
+    }
+
+    /** @codeCoverageIgnore */
+    protected function findAccount(int $id): ?Account
+    {
+        return Account::FindById($id);
     }
 }

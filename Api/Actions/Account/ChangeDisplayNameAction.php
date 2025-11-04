@@ -17,6 +17,7 @@ use \Peneus\Api\Actions\Action;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
 
 /**
@@ -52,20 +53,33 @@ class ChangeDisplayNameAction extends Action
         ]);
         $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
         $displayName = $dataAccessor->GetField('displayName');
-        $account = AccountService::Instance()->LoggedInAccount();
-        if ($account === null) {
+        $accountView = AccountService::Instance()->LoggedInAccount();
+        if ($accountView === null) {
             throw new \RuntimeException(
                 "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
             );
         }
+        $account = $this->findAccount($accountView->id);
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Account not found.",
+                StatusCode::NotFound->value
+            );
+        }
         $account->displayName = $displayName;
         if (!$account->Save()) {
             throw new \RuntimeException(
-                "Display name change failed.",
+                "Failed to change display name.",
                 StatusCode::InternalServerError->value
             );
         }
         return null;
+    }
+
+    /** @codeCoverageIgnore */
+    protected function findAccount(int $id): ?Account
+    {
+        return Account::FindById($id);
     }
 }

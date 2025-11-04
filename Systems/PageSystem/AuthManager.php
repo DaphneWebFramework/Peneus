@@ -16,7 +16,7 @@ use \Harmonia\Core\CUrl;
 use \Harmonia\Http\Response;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Patterns\CachedValue;
-use \Peneus\Model\Account;
+use \Peneus\Model\AccountView;
 use \Peneus\Model\Role;
 use \Peneus\Resource;
 use \Peneus\Services\AccountService;
@@ -28,7 +28,6 @@ use \Peneus\Services\AccountService;
 class AuthManager
 {
     private readonly CachedValue $loggedInAccount;
-    private readonly CachedValue $loggedInAccountRole;
 
     /**
      * Constructs a new instance with uncached account state.
@@ -36,7 +35,6 @@ class AuthManager
     public function __construct()
     {
         $this->loggedInAccount = new CachedValue();
-        $this->loggedInAccountRole = new CachedValue();
     }
 
     /**
@@ -44,30 +42,14 @@ class AuthManager
      *
      * The result is cached after the first retrieval.
      *
-     * @return ?Account
-     *   An `Account` object associated with the logged-in user, or `null` if
-     *   no user is logged in.
+     * @return ?AccountView
+     *   An `AccountView` object associated with the logged-in user, or `null`
+     *   if no user is logged in.
      */
-    public function LoggedInAccount(): ?Account
+    public function LoggedInAccount(): ?AccountView
     {
         return $this->loggedInAccount->Get(fn() =>
             AccountService::Instance()->LoggedInAccount()
-        );
-    }
-
-    /**
-     * Returns the role associated with the currently logged-in user's account.
-     *
-     * The result is cached after the first retrieval.
-     *
-     * @return Role
-     *   The role of the current user, or `Role::None` if no user is logged in
-     *   or a role is not explicitly assigned to the account.
-     */
-    public function LoggedInAccountRole(): Role
-    {
-        return $this->loggedInAccountRole->Get(fn() =>
-            AccountService::Instance()->LoggedInAccountRole() ?? Role::None
         );
     }
 
@@ -85,10 +67,10 @@ class AuthManager
      */
     public function RequireLogin(Role $minimumRole = Role::None): void
     {
-        if ($this->LoggedInAccount() === null) {
+        $accountView = $this->LoggedInAccount();
+        if ($accountView === null) {
             $this->redirect(Resource::Instance()->LoginPageUrl());
-        }
-        if ($this->LoggedInAccountRole()->value < $minimumRole->value) {
+        } else if (!Role::Parse($accountView->role)->AtLeast($minimumRole)) {
             $this->redirect(Resource::Instance()->ErrorPageUrl(StatusCode::Unauthorized));
         }
     }

@@ -14,6 +14,7 @@ use \Peneus\Api\Actions\Action;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Peneus\Model\Account;
+use \Peneus\Model\AccountView;
 use \Peneus\Services\AccountService;
 
 /**
@@ -44,35 +45,53 @@ class DeleteAction extends Action
     protected function onExecute(): mixed
     {
         // 1
-        $account = $this->ensureLoggedIn();
+        $accountView = $this->ensureLoggedIn();
         // 2
+        $account = $this->findAccount($accountView->id);
+        // 3
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doDelete($account)
             );
         } catch (\Throwable $e) {
             throw new \RuntimeException(
-                "Account deletion failed.",
+                "Failed to delete account.",
                 StatusCode::InternalServerError->value,
                 $e
             );
         }
-        // 3
+        // 4
         $this->logOut();
         return null;
     }
 
     /**
-     * @return Account
+     * @return AccountView
      * @throws \RuntimeException
      */
-    protected function ensureLoggedIn(): Account
+    protected function ensureLoggedIn(): AccountView
     {
-        $account = $this->accountService->LoggedInAccount();
-        if ($account === null) {
+        $accountView = $this->accountService->LoggedInAccount();
+        if ($accountView === null) {
             throw new \RuntimeException(
                 "You do not have permission to perform this action.",
                 StatusCode::Unauthorized->value
+            );
+        }
+        return $accountView;
+    }
+
+    /**
+     * @param int $id
+     * @return Account
+     */
+    protected function findAccount(int $id): Account
+    {
+        $account = Account::FindById($id);
+        if ($account === null) {
+            throw new \RuntimeException(
+                "Account not found.",
+                StatusCode::NotFound->value
             );
         }
         return $account;

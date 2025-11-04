@@ -18,7 +18,7 @@ use \Harmonia\Core\CSequentialArray;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Peneus\Api\Guards\FormTokenGuard;
-use \Peneus\Model\Account;
+use \Peneus\Model\AccountView;
 use \Peneus\Model\Role;
 
 /**
@@ -431,27 +431,13 @@ class Page
      *
      * The result is cached after the first retrieval.
      *
-     * @return ?Account
-     *   An `Account` object associated with the logged-in user, or `null` if
-     *   no user is logged in.
+     * @return ?AccountView
+     *   An `AccountView` object associated with the logged-in user, or `null`
+     *   if no user is logged in.
      */
-    public function LoggedInAccount(): ?Account
+    public function LoggedInAccount(): ?AccountView
     {
         return $this->authManager->LoggedInAccount();
-    }
-
-    /**
-     * Returns the role associated with the currently logged-in user's account.
-     *
-     * The result is cached after the first retrieval.
-     *
-     * @return Role
-     *   The role of the current user, or `Role::None` if no user is logged in
-     *   or a role is not explicitly assigned to the account.
-     */
-    public function LoggedInAccountRole(): Role
-    {
-        return $this->authManager->LoggedInAccountRole();
     }
 
     /**

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * Account.php
+ * AccountView.php
  *
  * (C) 2025 by Eylem Ugurel
  *

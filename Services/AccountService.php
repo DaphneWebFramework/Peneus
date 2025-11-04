@@ -15,14 +15,12 @@ namespace Peneus\Services;
 use \Harmonia\Patterns\Singleton;
 
 use \Harmonia\Http\Request;
-use \Harmonia\Server;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
 use \Peneus\Api\Hooks\IAccountDeletionHook;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
-use \Peneus\Model\PersistentLogin;
 use \Peneus\Model\Role;
 
 /**
@@ -30,34 +28,26 @@ use \Peneus\Model\Role;
  */
 class AccountService extends Singleton
 {
-    /**
-     * The duration of the persistent login.
-     *
-     * The value is a relative interval string that can be passed directly to
-     * the PHP `DateTime` constructor (e.g. `'+1 month'`, `'+30 days'`).
-     *
-     * @link https://www.php.net/manual/en/datetime.formats.php
-     * @todo Make this configurable rather than hardcoded.
-     */
-    private const PERSISTENT_LOGIN_DURATION = '+1 month';
-
     /** @var IAccountDeletionHook[] */
     private array $deletionHooks;
 
+    private readonly PersistentLoginManager $plm;
     private readonly SecurityService $securityService;
     private readonly CookieService $cookieService;
     private readonly Session $session;
     private readonly Request $request;
-    private readonly Server $server;
 
-    protected function __construct()
+    /**
+     * @param PersistentLoginManager|null $plm
+     */
+    protected function __construct(?PersistentLoginManager $plm = null)
     {
         $this->deletionHooks = [];
+        $this->plm = $plm ?? new PersistentLoginManager();
         $this->securityService = SecurityService::Instance();
         $this->cookieService = CookieService::Instance();
         $this->session = Session::Instance();
         $this->request = Request::Instance();
-        $this->server = Server::Instance();
     }
 
     #region public -------------------------------------------------------------
@@ -125,29 +115,10 @@ class AccountService extends Singleton
      * @throws \RuntimeException
      *   If an error occurs while storing the persistent login or setting the
      *   associated cookie.
-     *
-     * @todo Create a periodic cron job to delete expired records:
-     *   ```sql
-     *   DELETE FROM persistentlogin WHERE timeExpires < NOW()
-     *   ```
      */
     public function CreatePersistentLogin(Account $account): void
     {
-        // 1
-        $clientSignature = $this->clientSignature();
-        // 2
-        $pl = $this->findPersistentLoginForReuse(
-            $account->id,
-            $clientSignature
-        );
-        if ($pl === null) {
-            $pl = $this->constructPersistentLogin(
-                $account->id,
-                $clientSignature
-            );
-        }
-        // 3
-        $this->issuePersistentLogin($pl);
+        $this->plm->Create($account->id);
     }
 
     /**
@@ -159,25 +130,7 @@ class AccountService extends Singleton
      */
     public function DeletePersistentLogin(): void
     {
-        $cookieName = $this->persistentLoginCookieName();
-        // 1
-        $this->cookieService->DeleteCookie($cookieName);
-        // 2
-        if (!$this->request->Cookies()->Has($cookieName)) {
-            return;
-        }
-        $cookieValue = $this->request->Cookies()->Get($cookieName);
-        [$lookupKey] = $this->parsePersistentLoginCookieValue($cookieValue);
-        if ($lookupKey === null) {
-            return;
-        }
-        $pl = $this->findPersistentLogin($lookupKey);
-        if ($pl === null) {
-            return;
-        }
-        if (!$pl->Delete()) {
-            throw new \RuntimeException("Failed to delete persistent login.");
-        }
+        $this->plm->Delete();
     }
 
     /**
@@ -249,14 +202,6 @@ class AccountService extends Singleton
     protected function sessionBindingCookieName(): string
     {
         return $this->cookieService->AppSpecificCookieName('SB');
-    }
-
-    /**
-     * @return string
-     */
-    protected function persistentLoginCookieName(): string
-    {
-        return $this->cookieService->AppSpecificCookieName('PL');
     }
 
     /**
@@ -339,34 +284,21 @@ class AccountService extends Singleton
     protected function tryPersistentLogin(): ?Account
     {
         // 1
-        $cookieName = $this->persistentLoginCookieName();
-        if (!$this->request->Cookies()->Has($cookieName)) {
-            return null;
-        }
-        $cookieValue = $this->request->Cookies()->Get($cookieName);
-        [$lookupKey, $token] = $this->parsePersistentLoginCookieValue($cookieValue);
-        if ($lookupKey === null || $token === null) {
+        $accountId = $this->plm->Resolve();
+        if ($accountId === null) {
             return null;
         }
         // 2
-        $pl = $this->findPersistentLogin($lookupKey);
-        if ($pl === null ||
-            $pl->clientSignature !== $this->clientSignature() ||
-            !$this->securityService->VerifyPassword($token, $pl->tokenHash) ||
-            $pl->timeExpires < $this->currentTime()
-        ) {
-            return null;
-        }
-        // 3
-        $account = $this->findAccount($pl->accountId);
+        $account = $this->findAccount($accountId);
         if ($account === null) {
             return null;
         }
         $this->CreateSession($account);
-        // 4
+        // 3. It is important to set the rotation flag after session creation,
+        //    so it survives the clear.
         $this->session
             ->Start()
-            ->Set('NEEDS_PL_ROTATION', true)
+            ->Set('PL_ROTATE_NEEDED', true)
             ->Close();
 
         return $account;
@@ -379,148 +311,11 @@ class AccountService extends Singleton
     protected function rotatePersistentLoginIfNeeded(int $accountId): void
     {
         $this->session->Start();
-        if ($this->session->Has('NEEDS_PL_ROTATION')) {
-            $pl = $this->findPersistentLoginForReuse(
-                $accountId,
-                $this->clientSignature()
-            );
-            if ($pl) {
-                $this->issuePersistentLogin($pl);
-            }
-            $this->session->Remove('NEEDS_PL_ROTATION');
+        if ($this->session->Has('PL_ROTATE_NEEDED')) {
+            $this->plm->Rotate($accountId);
+            $this->session->Remove('PL_ROTATE_NEEDED');
         }
         $this->session->Close();
-    }
-
-    /**
-     * @param string $lookupKey
-     * @return PersistentLogin|null
-     */
-    protected function findPersistentLogin(string $lookupKey): ?PersistentLogin
-    {
-        return PersistentLogin::FindFirst(
-            condition: 'lookupKey = :lookupKey',
-            bindings: ['lookupKey' => $lookupKey]
-        );
-    }
-
-    /**
-     * The purpose of this method is to avoid leaving behind orphaned records
-     * when a user clears their cookies. If the same account logs in again with
-     * the same browser and from the same IP address (as identified by client
-     * signature), we reuse the existing record instead of creating a new one.
-     *
-     * @param int $accountId
-     * @param string $clientSignature
-     * @return PersistentLogin|null
-     */
-    protected function findPersistentLoginForReuse(
-        int $accountId,
-        string $clientSignature
-    ): ?PersistentLogin
-    {
-        return PersistentLogin::FindFirst(
-            condition:
-                'accountId = :accountId AND clientSignature = :clientSignature',
-            bindings: [
-                'accountId' => $accountId,
-                'clientSignature' => $clientSignature
-            ]
-        );
-    }
-
-    /**
-     * @param int $accountId
-     * @param string $clientSignature
-     * @return PersistentLogin
-     */
-    protected function constructPersistentLogin(
-        int $accountId,
-        string $clientSignature
-    ): PersistentLogin
-    {
-        $pl = new PersistentLogin();
-        $pl->accountId = $accountId;
-        $pl->clientSignature = $clientSignature;
-        return $pl;
-    }
-
-    /**
-     * @param PersistentLogin $pl
-     * @throws \RuntimeException
-     */
-    protected function issuePersistentLogin(PersistentLogin $pl): void
-    {
-        // 1
-        $token = $this->securityService->GenerateToken();
-        // 2
-        $pl->lookupKey = $this->securityService->GenerateToken(8); // 64 bits
-        $pl->tokenHash = $this->securityService->HashPassword($token);
-        $pl->timeExpires = $this->persistentLoginExpiryTime();
-        if (!$pl->Save()) {
-            throw new \RuntimeException("Failed to save persistent login.");
-        }
-        // 3
-        $this->cookieService->SetCookie(
-            $this->persistentLoginCookieName(),
-            $this->makePersistentLoginCookieValue($pl->lookupKey, $token),
-            $pl->timeExpires->getTimestamp()
-        );
-    }
-
-    /**
-     * @param string $lookupKey
-     * @param string $token
-     * @return string
-     */
-    protected function makePersistentLoginCookieValue(
-        string $lookupKey,
-        string $token
-    ): string
-    {
-        return "{$lookupKey}.{$token}";
-    }
-
-    /**
-     * @param string $cookieValue
-     * @return array{0: string|null, 1: string|null}
-     */
-    protected function parsePersistentLoginCookieValue(
-        string $cookieValue
-    ): array
-    {
-        $parts = \explode('.', $cookieValue, 2) + [null, null];
-        return \array_map(
-            static fn($part) => $part === '' ? null : $part,
-            $parts
-        );
-    }
-
-    /**
-     * @return string
-     */
-    protected function clientSignature(): string
-    {
-        $clientAddress = $this->server->ClientAddress();
-        $userAgent = $this->request->Headers()->GetOrDefault('user-agent', '');
-        $hash = \hash('md5', "{$clientAddress}\0{$userAgent}", true);
-        return \rtrim(\base64_encode($hash), '=');
-    }
-
-    /**
-     * @return \DateTime
-     */
-    protected function currentTime(): \DateTime
-    {
-        return new \DateTime();
-    }
-
-    /**
-     * @return \DateTime
-     */
-    protected function persistentLoginExpiryTime(): \DateTime
-    {
-        return new \DateTime(self::PERSISTENT_LOGIN_DURATION);
     }
 
     #endregion protected

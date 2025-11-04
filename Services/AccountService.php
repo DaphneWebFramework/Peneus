@@ -64,13 +64,13 @@ class AccountService extends Singleton
     /**
      * Creates a new session for an authenticated user.
      *
-     * @param Account $account
-     *   The account of an authenticated user.
+     * @param int $accountId
+     *   The account ID of an authenticated user.
      * @throws \RuntimeException
      *   If an error occurs while establishing the session or setting the
      *   associated cookie.
      */
-    public function CreateSession(Account $account): void
+    public function CreateSession(int $accountId): void
     {
         // 1
         [$token, $cookieValue] = $this->securityService->GenerateCsrfPair();
@@ -80,8 +80,8 @@ class AccountService extends Singleton
             ->Clear()
             ->RenewId()
             ->Set('BINDING_TOKEN', $token)
-            ->Set('ACCOUNT_ID', $account->id);
-        $role = $this->findAccountRole($account->id);
+            ->Set('ACCOUNT_ID', $accountId);
+        $role = $this->findAccountRole($accountId);
         if ($role !== null) {
             $this->session->Set('ACCOUNT_ROLE', $role->value);
         }
@@ -110,15 +110,15 @@ class AccountService extends Singleton
     /**
      * Creates a new persistent login for an authenticated user.
      *
-     * @param Account $account
-     *   The account of an authenticated user.
+     * @param int $accountId
+     *   The account ID of an authenticated user.
      * @throws \RuntimeException
      *   If an error occurs while storing the persistent login or setting the
      *   associated cookie.
      */
-    public function CreatePersistentLogin(Account $account): void
+    public function CreatePersistentLogin(int $accountId): void
     {
-        $this->plm->Create($account->id);
+        $this->plm->Create($accountId);
     }
 
     /**
@@ -293,7 +293,7 @@ class AccountService extends Singleton
         if ($account === null) {
             return null;
         }
-        $this->CreateSession($account);
+        $this->CreateSession($accountId);
         // 3. It is important to set the rotation flag after session creation,
         //    so it survives the clear.
         $this->session

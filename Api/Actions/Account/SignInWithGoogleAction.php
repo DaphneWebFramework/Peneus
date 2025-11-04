@@ -306,8 +306,8 @@ class SignInWithGoogleAction extends Action
         if (!$account->Save()) {
             throw new \RuntimeException("Failed to save account.");
         }
-        $this->accountService->CreateSession($account);
-        $this->accountService->CreatePersistentLogin($account);
+        $this->accountService->CreateSession($account->id);
+        $this->accountService->CreatePersistentLogin($account->id);
     }
 
     /**

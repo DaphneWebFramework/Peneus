@@ -172,9 +172,9 @@ class LoginAction extends Action
         if (!$account->Save()) {
             throw new \RuntimeException("Failed to save account.");
         }
-        $this->accountService->CreateSession($account);
+        $this->accountService->CreateSession($account->id);
         if ($keepLoggedIn) {
-            $this->accountService->CreatePersistentLogin($account);
+            $this->accountService->CreatePersistentLogin($account->id);
         }
     }
 

@@ -125,7 +125,7 @@ class AccountService extends Singleton
      */
     public function SessionAccount(): ?AccountView
     {
-        $accountView = $this->accountFromSession();
+        $accountView = $this->loadAccountFromSession();
         if ($accountView !== null) {
             $this->rotatePersistentLoginIfNeeded($accountView->id);
             return $accountView;
@@ -171,7 +171,7 @@ class AccountService extends Singleton
      * @param int $id
      * @return AccountView|null
      */
-    protected function findAccountView(int $id): ?AccountView
+    protected function findAccountById(int $id): ?AccountView
     {
         return AccountView::FindById($id);
     }
@@ -180,14 +180,14 @@ class AccountService extends Singleton
      * @return AccountView|null
      * @throws \RuntimeException
      */
-    protected function accountFromSession(): ?AccountView
+    protected function loadAccountFromSession(): ?AccountView
     {
         $this->session->Start()->Close();
-        if (!$this->validateSession()) {
+        if (!$this->isValidSession()) {
             $this->session->Start()->Destroy();
             return null;
         }
-        $accountView = $this->resolveAccountFromSession();
+        $accountView = $this->findAccountByIdFromSession();
         if ($accountView === null) {
             $this->session->Start()->Destroy();
             return null;
@@ -198,7 +198,7 @@ class AccountService extends Singleton
     /**
      * @return bool
      */
-    protected function validateSession(): bool
+    protected function isValidSession(): bool
     {
         $token = $this->session->Get('BINDING_TOKEN');
         if (!\is_string($token)) {
@@ -215,13 +215,13 @@ class AccountService extends Singleton
     /**
      * @return AccountView|null
      */
-    protected function resolveAccountFromSession(): ?AccountView
+    protected function findAccountByIdFromSession(): ?AccountView
     {
         $accountId = $this->session->Get('ACCOUNT_ID');
         if (!\is_int($accountId)) {
             return null;
         }
-        return $this->findAccountView($accountId);
+        return $this->findAccountById($accountId);
     }
 
     /**
@@ -236,12 +236,13 @@ class AccountService extends Singleton
             return null;
         }
         // 2
-        $accountView = $this->findAccountView($accountId);
+        $accountView = $this->findAccountById($accountId);
         if ($accountView === null) {
             return null;
         }
-        // 3
-        $this->CreateSession($accountId);
+        // 3. Re‑establish a regular (non‑persistent) session for the account
+        //    recovered via persistent login.
+        $this->CreateSession($accountId, false);
         // 4. It is important to set the rotation flag after session creation,
         //    so it survives the clear.
         $this->session

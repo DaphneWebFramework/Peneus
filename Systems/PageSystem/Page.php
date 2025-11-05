@@ -15,11 +15,16 @@ namespace Peneus\Systems\PageSystem;
 use \Harmonia\Config;
 use \Harmonia\Core\CArray;
 use \Harmonia\Core\CSequentialArray;
+use \Harmonia\Core\CUrl;
+use \Harmonia\Http\Response;
+use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Peneus\Api\Guards\FormTokenGuard;
 use \Peneus\Model\AccountView;
 use \Peneus\Model\Role;
+use \Peneus\Resource;
+use \Peneus\Services\AccountService;
 
 /**
  * Represents a web page and manages its basic properties and rendering flow.
@@ -50,8 +55,13 @@ class Page
     private readonly LibraryManager $libraryManager;
     private readonly PageManifest $pageManifest;
     private readonly MetaCollection $metaCollection;
-    private readonly AuthManager $authManager;
     private readonly CArray $properties;
+
+    private readonly Config $config;
+    private readonly Resource $resource;
+    private readonly AccountService $accountService;
+    private readonly SecurityService $securityService;
+    private readonly CookieService $cookieService;
 
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
@@ -79,25 +89,25 @@ class Page
      * @param ?MetaCollection $metaCollection
      *   (Optional) The meta collection to use. If not specified, a default
      *   instance is created.
-     * @param ?AuthManager $authManager
-     *   (Optional) The authentication manager to use. If not specified, a
-     *   default instance is created.
      */
     public function __construct(
         string $directory,
         ?Renderer $renderer = null,
         ?LibraryManager $libraryManager = null,
         ?PageManifest $pageManifest = null,
-        ?MetaCollection $metaCollection = null,
-        ?AuthManager $authManager = null
+        ?MetaCollection $metaCollection = null
     ) {
         $this->id = \basename($directory);
         $this->renderer = $renderer ?? new Renderer();
         $this->libraryManager = $libraryManager ?? new LibraryManager();
         $this->pageManifest = $pageManifest ?? new PageManifest($this->id);
         $this->metaCollection = $metaCollection ?? new MetaCollection();
-        $this->authManager = $authManager ?? new AuthManager();
         $this->properties = new CArray();
+        $this->config = Config::Instance();
+        $this->resource = Resource::Instance();
+        $this->accountService = AccountService::Instance();
+        $this->securityService = SecurityService::Instance();
+        $this->cookieService = CookieService::Instance();
     }
 
     /**
@@ -176,7 +186,7 @@ class Page
      */
     public function Title(): string
     {
-        $appName = Config::Instance()->OptionOrDefault('AppName', '');
+        $appName = $this->config->OptionOrDefault('AppName', '');
         if ($appName === '') {
             return $this->title;
         }
@@ -429,15 +439,13 @@ class Page
     /**
      * Returns the currently logged-in user's account.
      *
-     * The result is cached after the first retrieval.
-     *
      * @return ?AccountView
      *   An `AccountView` object associated with the logged-in user, or `null`
      *   if no user is logged in.
      */
     public function SessionAccount(): ?AccountView
     {
-        return $this->authManager->SessionAccount();
+        return $this->accountService->SessionAccount();
     }
 
     /**
@@ -453,10 +461,22 @@ class Page
      *   `Role::None`.
      * @return self
      *   The current instance.
+     * @return never
+     *   If a redirect is made, this method does not return; it terminates
+     *   script execution.
      */
     public function RequireLogin(Role $minimumRole = Role::None): self
     {
-        $this->authManager->RequireLogin($minimumRole);
+        $accountView = $this->accountService->SessionAccount();
+        $redirectUrl = null;
+        if ($accountView === null) {
+            $redirectUrl = $this->resource->LoginPageUrl();
+        } else if (!Role::Parse($accountView->role)->AtLeast($minimumRole)) {
+            $redirectUrl = $this->resource->ErrorPageUrl(StatusCode::Unauthorized);
+        }
+        if ($redirectUrl !== null) {
+            $this->redirect($redirectUrl);
+        }
         return $this;
     }
 
@@ -534,8 +554,8 @@ class Page
      */
     public function CsrfTokenValue(): string
     {
-        [$token, $cookieValue] = SecurityService::Instance()->GenerateCsrfPair();
-        CookieService::Instance()->SetCsrfCookie($cookieValue);
+        [$token, $cookieValue] = $this->securityService->GenerateCsrfPair();
+        $this->cookieService->SetCsrfCookie($cookieValue);
         return $token;
     }
 
@@ -556,6 +576,12 @@ class Page
     {
         $output = \ob_get_clean();
         return $output === false ? '' : $output;
+    }
+
+    /** @codeCoverageIgnore */
+    protected function redirect(CUrl $url): void
+    {
+        Response::Redirect($url);
     }
 
     #endregion protected

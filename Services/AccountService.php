@@ -15,6 +15,7 @@ namespace Peneus\Services;
 use \Harmonia\Patterns\Singleton;
 
 use \Harmonia\Http\Request;
+use \Harmonia\Patterns\CachedValue;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
@@ -30,6 +31,7 @@ class AccountService extends Singleton
     private array $deletionHooks;
 
     private readonly PersistentLoginManager $plm;
+    private readonly CachedValue $cachedSessionAccount;
     private readonly SecurityService $securityService;
     private readonly CookieService $cookieService;
     private readonly Session $session;
@@ -42,6 +44,7 @@ class AccountService extends Singleton
     {
         $this->deletionHooks = [];
         $this->plm = $plm ?? new PersistentLoginManager();
+        $this->cachedSessionAccount = new CachedValue();
         $this->securityService = SecurityService::Instance();
         $this->cookieService = CookieService::Instance();
         $this->session = Session::Instance();
@@ -93,6 +96,8 @@ class AccountService extends Singleton
         if ($persistent) {
             $this->plm->Create($accountId);
         }
+        // 5
+        $this->cachedSessionAccount->Reset();
     }
 
     /**
@@ -111,6 +116,8 @@ class AccountService extends Singleton
         $this->session->Start()->Destroy();
         // 3
         $this->plm->Delete();
+        // 4
+        $this->cachedSessionAccount->Reset();
     }
 
     /**
@@ -119,18 +126,25 @@ class AccountService extends Singleton
      * This method first tries to resolve the account from the session. If not
      * found, it attempts to log in the user using the persistent login feature.
      *
+     * The result of this method is cached for the lifetime of the request,
+     * avoiding unnecessary database queries; subsequent calls return the same
+     * cached result (including `null`) until the cache is reset when session
+     * state changes (e.g. login or logout).
+     *
      * @return ?AccountView
      *   The account of the currently logged-in user, or `null` if no valid
      *   session or persistent login entry is available.
      */
     public function SessionAccount(): ?AccountView
     {
-        $accountView = $this->loadAccountFromSession();
-        if ($accountView !== null) {
-            $this->rotatePersistentLoginIfNeeded($accountView->id);
-            return $accountView;
-        }
-        return $this->tryPersistentLogin();
+        return $this->cachedSessionAccount->Get(function(): ?AccountView {
+            $accountView = $this->loadAccountFromSession();
+            if ($accountView !== null) {
+                $this->rotatePersistentLoginIfNeeded($accountView->id);
+                return $accountView;
+            }
+            return $this->tryPersistentLogin();
+        });
     }
 
     /**

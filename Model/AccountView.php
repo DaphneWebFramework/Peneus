@@ -15,6 +15,7 @@ namespace Peneus\Model;
 class AccountView extends ViewEntity
 {
     public string $email;
+    public bool $isLocal;
     public string $displayName;
     public \DateTime $timeActivated;
     public ?\DateTime $timeLastLogin;
@@ -26,6 +27,8 @@ class AccountView extends ViewEntity
         SELECT
             Account.id,
             Account.email,
+            CASE WHEN Account.passwordHash = ''
+                THEN 0 ELSE 1 END AS isLocal,
             Account.displayName,
             Account.timeActivated,
             Account.timeLastLogin,

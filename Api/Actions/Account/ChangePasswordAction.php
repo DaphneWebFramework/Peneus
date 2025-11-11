@@ -51,15 +51,17 @@ class ChangePasswordAction extends Action
         // 1
         $accountView = $this->ensureLoggedIn();
         // 2
-        $account = $this->findAccount($accountView->id);
+        $this->ensureLocalAccount($accountView);
         // 3
-        $payload = $this->validateRequest();
+        $account = $this->findAccount($accountView->id);
         // 4
+        $payload = $this->validateRequest();
+        // 5
         $this->verifyCurrentPassword(
             $payload->currentPassword,
             $account->passwordHash
         );
-        // 5
+        // 6
         $this->doChange($account, $payload->newPassword);
         return null;
     }
@@ -78,6 +80,20 @@ class ChangePasswordAction extends Action
             );
         }
         return $accountView;
+    }
+
+    /**
+     * @param AccountView $accountView
+     * @throws \RuntimeException
+     */
+    protected function ensureLocalAccount(AccountView $accountView): void
+    {
+        if (!$accountView->isLocal) {
+            throw new \RuntimeException(
+                "This account does not have a local password.",
+                StatusCode::Forbidden->value
+            );
+        }
     }
 
     /**

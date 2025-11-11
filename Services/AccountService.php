@@ -72,7 +72,7 @@ class AccountService extends Singleton
      *   and the associated cookie set. Defaults to `false`.
      * @throws \RuntimeException
      *   If an error occurs while establishing the session, setting the
-     *   session‑binding cookie, storing the persistent login record, or
+     *   session-binding cookie, storing the persistent login record, or
      *   setting the persistent login cookie.
      */
     public function CreateSession(int $accountId, bool $persistent = false): void
@@ -254,7 +254,7 @@ class AccountService extends Singleton
         if ($accountView === null) {
             return null;
         }
-        // 3. Re‑establish a regular (non‑persistent) session for the account
+        // 3. Re-establish a regular (non-persistent) session for the account
         //    recovered via persistent login.
         $this->CreateSession($accountId, false);
         // 4. It is important to set the rotation flag after session creation,

@@ -44,7 +44,7 @@ class Dispatcher implements IShutdownListener
      * The request must include `handler` and `action` query parameters. If a
      * handler cannot be found, the action is unknown, or another error occurs
      * during execution, the response body will contain a JSON-formatted string
-     * with an `error` property. Otherwise, the response body will contain the
+     * with a `message` property. Otherwise, the response body will contain the
      * action result as a JSON-formatted string.
      *
      * This method does not send the response. The final response is sent
@@ -83,7 +83,7 @@ class Dispatcher implements IShutdownListener
         try {
             $result = $handler->HandleAction($actionName);
             if ($result === null) {
-                $this->response->SetStatusCode(StatusCode::NoContent);
+                ; // Use Response defaults
             } elseif ($result instanceof Response) {
                 $this->response = $result;
             } else {
@@ -92,10 +92,9 @@ class Dispatcher implements IShutdownListener
                     ->SetBody(self::toJson($result));
             }
         } catch (\Exception $e) {
-            $statusCode = StatusCode::tryFrom($e->getCode())
-                ?? StatusCode::InternalServerError;
             $this->response
-                ->SetStatusCode($statusCode)
+                ->SetStatusCode(StatusCode::tryFrom($e->getCode())
+                    ?? StatusCode::InternalServerError)
                 ->SetHeader('Content-Type', 'application/json')
                 ->SetBody(self::toMessageJson($e->getMessage()));
         }

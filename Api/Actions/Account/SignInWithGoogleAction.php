@@ -75,14 +75,11 @@ class SignInWithGoogleAction extends Action
         // 1
         $this->ensureNotLoggedIn();
         // 2
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 3
-        $data = $this->decodeAndValidateCredential($data->credential);
+        $profile = $this->decodeAndValidateCredential($payload->credential);
         // 4
-        $account = $this->findOrConstructAccount(
-            $data->email,
-            $data->displayName
-        );
+        $account = $this->findOrConstructAccount($profile);
         // 5
         try {
             $this->database->WithTransaction(fn() =>
@@ -117,10 +114,12 @@ class SignInWithGoogleAction extends Action
     }
 
     /**
-     * @return object{credential: string}
+     * @return object{
+     *   credential: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'credential' => [
@@ -137,7 +136,10 @@ class SignInWithGoogleAction extends Action
 
     /**
      * @param string $credential
-     * @return object{email: string, displayName: string}
+     * @return object{
+     *   email: string,
+     *   displayName: string
+     * }
      * @throws \RuntimeException
      */
     protected function decodeAndValidateCredential(string $credential): \stdClass
@@ -150,7 +152,7 @@ class SignInWithGoogleAction extends Action
             );
         }
         try {
-            $data = $this->validateClaims($claims);
+            $profile = $this->validateClaims($claims);
         } catch (\Throwable $e) {
             throw new \RuntimeException(
                 "Invalid claims.",
@@ -158,7 +160,7 @@ class SignInWithGoogleAction extends Action
                 $e
             );
         }
-        return $data;
+        return $profile;
     }
 
     /**
@@ -183,7 +185,10 @@ class SignInWithGoogleAction extends Action
 
     /**
      * @param array<string, mixed> $claims
-     * @return object{email: string, displayName: string}
+     * @return object{
+     *   email: string,
+     *   displayName: string
+     * }
      * @throws \RuntimeException
      */
     protected function validateClaims(array $claims): \stdClass
@@ -250,18 +255,17 @@ class SignInWithGoogleAction extends Action
     }
 
     /**
-     * @param string $email
-     * @param string $displayName
+     * @param object{
+     *   email: string,
+     *   displayName: string
+     * } $profile
      * @return Account
      */
-    protected function findOrConstructAccount(
-        string $email,
-        string $displayName
-    ): Account
+    protected function findOrConstructAccount(\stdClass $profile): Account
     {
-        $account = $this->findAccount($email);
+        $account = $this->findAccount($profile->email);
         if ($account === null) {
-            $account = $this->constructAccount($email, $displayName);
+            $account = $this->constructAccount($profile);
         }
         return $account;
     }
@@ -279,19 +283,16 @@ class SignInWithGoogleAction extends Action
     }
 
     /**
-     * @param string $email
-     * @param string $displayName
+     * @param object{
+     *   email: string,
+     *   displayName: string
+     * } $profile
      * @return Account
      */
-    protected function constructAccount(
-        string $email,
-        string $displayName
-    ): Account
+    protected function constructAccount(\stdClass $profile): Account
     {
-        $account = new Account();
-        $account->email = $email;
-        $account->passwordHash = '';
-        $account->displayName = $displayName;
+        $account = new Account($profile);
+        $account->passwordHash = ''; // no local password
         $account->timeActivated = new \DateTime(); // now
         $account->timeLastLogin = null;
         return $account;

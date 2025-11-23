@@ -62,14 +62,14 @@ class RegisterAction extends Action
     protected function onExecute(): mixed
     {
         // 1
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 2
-        $this->ensureNotRegistered($data->email);
-        $this->ensureNotPending($data->email);
+        $this->ensureNotRegistered($payload->email);
+        $this->ensureNotPending($payload->email);
         // 3
         try {
             $this->database->WithTransaction(fn() =>
-                $this->doRegister($data->email, $data->password, $data->displayName)
+                $this->doRegister($payload)
             );
         } catch (\Throwable $e) {
             throw new \RuntimeException(
@@ -87,10 +87,14 @@ class RegisterAction extends Action
     }
 
     /**
-     * @return object{email: string, password: string, displayName: string}
+     * @return object{
+     *   email: string,
+     *   password: string,
+     *   displayName: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'email' => [
@@ -155,53 +159,48 @@ class RegisterAction extends Action
     }
 
     /**
-     * @param string $email
-     * @param string $password
-     * @param string $displayName
+     * @param object{
+     *   email: string,
+     *   password: string,
+     *   displayName: string
+     * }
      * @throws \RuntimeException
      */
-    protected function doRegister(
-        string $email,
-        string $password,
-        string $displayName
-    ): void
+    protected function doRegister(\stdClass $payload): void
     {
         // 1
         $activationCode = $this->securityService->GenerateToken();
         // 2
-        $pa = $this->constructPendingAccount(
-            $email,
-            $password,
-            $displayName,
-            $activationCode
-        );
+        $pa = $this->constructPendingAccount($payload, $activationCode);
         if (!$pa->Save()) {
             throw new \RuntimeException("Failed to save pending account.");
         }
         // 3
-        if (!$this->sendEmail($email, $displayName, $activationCode)) {
+        if (!$this->sendEmail(
+            $payload->email,
+            $payload->displayName,
+            $activationCode
+        )) {
             throw new \RuntimeException("Failed to send email.");
         }
     }
 
     /**
-     * @param string $email
-     * @param string $password
-     * @param string $displayName
+     * @param object{
+     *   email: string,
+     *   password: string,
+     *   displayName: string
+     * }
      * @param string $activationCode
      * @return PendingAccount
      */
     protected function constructPendingAccount(
-        string $email,
-        string $password,
-        string $displayName,
+        \stdClass $payload,
         string $activationCode
     ): PendingAccount
     {
-        $pa = new PendingAccount();
-        $pa->email = $email;
-        $pa->passwordHash = $this->securityService->HashPassword($password);
-        $pa->displayName = $displayName;
+        $pa = new PendingAccount($payload);
+        $pa->passwordHash = $this->securityService->HashPassword($payload->password);
         $pa->activationCode = $activationCode;
         $pa->timeRegistered = new \DateTime(); // now
         return $pa;

@@ -58,7 +58,7 @@ abstract class Entity implements \JsonSerializable
      * @param array|object|null $data
      *   (Optional) An associative array or an object containing values for the
      *   entity's public properties. Keys (for arrays) or property names (for
-     *   objects) must match the entity's public properties. If `id` is specified,
+     *   objects) must match the entity's property names. If `id` is specified,
      *   it is also assigned.
      * @throws \InvalidArgumentException
      *   If a property assignment fails due to an invalid value or type mismatch.
@@ -83,7 +83,7 @@ abstract class Entity implements \JsonSerializable
      * @param array|object $data
      *   An associative array or an object containing values for the entity's
      *   public properties. Keys (for arrays) or property names (for objects)
-     *   must match the entity's public properties. If `id` is specified, it is
+     *   must match the entity's property names. If `id` is specified, it is
      *   also assigned.
      * @throws \InvalidArgumentException
      *   If a property assignment fails due to an invalid value or type mismatch.

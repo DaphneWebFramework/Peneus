@@ -56,16 +56,16 @@ class LoginAction extends Action
         // 1
         $this->ensureNotLoggedIn();
         // 2
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 3
         $account = $this->findAndAuthenticateAccount(
-            $data->email,
-            $data->password
+            $payload->email,
+            $payload->password
         );
         // 4
         try {
             $this->database->WithTransaction(fn() =>
-                $this->doLogIn($account, $data->keepLoggedIn)
+                $this->doLogIn($account, $payload->keepLoggedIn)
             );
         } catch (\Throwable $e) {
             $this->logOut();
@@ -94,10 +94,14 @@ class LoginAction extends Action
     }
 
     /**
-     * @return object{email: string, password: string, keepLoggedIn: bool}
+     * @return object{
+     *   email: string,
+     *   password: string,
+     *   keepLoggedIn: bool
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'email' => [

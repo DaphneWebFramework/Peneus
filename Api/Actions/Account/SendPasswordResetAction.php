@@ -64,9 +64,9 @@ class SendPasswordResetAction extends Action
     protected function onExecute(): mixed
     {
         // 1
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 2
-        $account = $this->findAccount($data->email);
+        $account = $this->findAccount($payload->email);
         if ($account !== null) {
             // 3
             try {
@@ -90,10 +90,12 @@ class SendPasswordResetAction extends Action
     }
 
     /**
-     * @return object{email: string}
+     * @return object{
+     *   email: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'email' => [

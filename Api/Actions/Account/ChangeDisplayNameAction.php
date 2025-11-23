@@ -50,7 +50,7 @@ class ChangeDisplayNameAction extends Action
         // 2
         $account = $this->findAccount($accountView->id);
         // 3
-        $payload = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 4
         $this->doChange($account, $payload->displayName);
         return null;
@@ -90,10 +90,12 @@ class ChangeDisplayNameAction extends Action
     }
 
     /**
-     * @return object{displayName: string}
+     * @return object{
+     *   displayName: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'displayName' => [

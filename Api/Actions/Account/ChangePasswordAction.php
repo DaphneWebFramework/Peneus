@@ -55,7 +55,7 @@ class ChangePasswordAction extends Action
         // 3
         $account = $this->findAccount($accountView->id);
         // 4
-        $payload = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 5
         $this->verifyCurrentPassword(
             $payload->currentPassword,
@@ -114,10 +114,13 @@ class ChangePasswordAction extends Action
     }
 
     /**
-     * @return object{currentPassword: string, newPassword: string}
+     * @return object{
+     *   currentPassword: string,
+     *   newPassword: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'currentPassword' => [

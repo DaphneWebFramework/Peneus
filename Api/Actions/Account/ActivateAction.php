@@ -55,9 +55,9 @@ class ActivateAction extends Action
     protected function onExecute(): mixed
     {
         // 1
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 2
-        $pa = $this->findPendingAccount($data->activationCode);
+        $pa = $this->findPendingAccount($payload->activationCode);
         // 3
         $this->ensureNotRegistered($pa->email);
         // 4
@@ -80,10 +80,12 @@ class ActivateAction extends Action
     }
 
     /**
-     * @return object{activationCode: string}
+     * @return object{
+     *   activationCode: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'activationCode' => [
@@ -158,10 +160,8 @@ class ActivateAction extends Action
      */
     protected function constructAccount(PendingAccount $pa): Account
     {
-        $account = new Account();
-        $account->email = $pa->email;
-        $account->passwordHash = $pa->passwordHash;
-        $account->displayName = $pa->displayName;
+        $account = new Account($pa);
+        $account->id = 0; // reset the id hydrated from pending account
         $account->timeActivated = new \DateTime(); // now
         $account->timeLastLogin = null;
         return $account;

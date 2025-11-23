@@ -55,13 +55,13 @@ class ResetPasswordAction extends Action
     protected function onExecute(): mixed
     {
         // 1
-        $data = $this->validateRequest();
+        $payload = $this->validatePayload();
         // 2
-        [$account, $pr] = $this->findAccountAndPasswordReset($data->resetCode);
+        [$account, $pr] = $this->findAccountAndPasswordReset($payload->resetCode);
         // 3
         try {
             $this->database->WithTransaction(fn() =>
-                $this->doReset($account, $data->newPassword, $pr)
+                $this->doReset($account, $payload->newPassword, $pr)
             );
         } catch (\Throwable $e) {
             throw new \RuntimeException(
@@ -78,10 +78,13 @@ class ResetPasswordAction extends Action
     }
 
     /**
-     * @return object{resetCode: string, newPassword: string}
+     * @return object{
+     *   resetCode: string,
+     *   newPassword: string
+     * }
      * @throws \RuntimeException
      */
-    protected function validateRequest(): \stdClass
+    protected function validatePayload(): \stdClass
     {
         $validator = new Validator([
             'resetCode' => [

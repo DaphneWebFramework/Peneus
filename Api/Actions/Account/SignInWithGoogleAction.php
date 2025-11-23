@@ -15,6 +15,7 @@ namespace Peneus\Api\Actions\Account;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Config;
+use \Harmonia\Http\Client;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
@@ -35,7 +36,10 @@ class SignInWithGoogleAction extends Action
 {
     private const GOOGLE_OAUTH2_CLIENT_ID_PATTERN =
         '/^[0-9a-zA-Z\-]+\.apps\.googleusercontent\.com$/';
+    private const GOOGLE_OAUTH2_TOKENINFO_URL =
+        'https://oauth2.googleapis.com/tokeninfo?id_token=%s';
 
+    private readonly Client $client;
     private readonly Request $request;
     private readonly Database $database;
     private readonly Config $config;
@@ -45,10 +49,15 @@ class SignInWithGoogleAction extends Action
 
     /**
      * Constructs a new instance by initializing dependencies.
+     *
+     * @param ?Client $client
+     *   (Optional) The HTTP client to use. If not provided, a new default
+     *   instance is created.
      */
-    public function __construct()
+    public function __construct(?Client $client = null)
     {
         parent::__construct();
+        $this->client = $client ?? new Client();
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->config = Config::Instance();
@@ -154,26 +163,18 @@ class SignInWithGoogleAction extends Action
 
     /**
      * @param string $credential
-     * @return ?array<string, mixed>
-     *
-     * @codeCoverageIgnore
+     * @return array<string, mixed>|null
      */
     protected function decodeCredential(string $credential): ?array
     {
-        $credential = \urlencode($credential);
-        $url = "https://oauth2.googleapis.com/tokeninfo?id_token={$credential}";
-        $curl = \curl_init($url);
-        if ($curl === false) {
+        $url = sprintf(self::GOOGLE_OAUTH2_TOKENINFO_URL, $credential);
+        if (!$this->client->Url($url)->Send()) {
             return null;
         }
-        \curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        $response = \curl_exec($curl);
-        $statusCode = \curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        \curl_close($curl);
-        if ($response === false || $statusCode !== 200) {
+        if (200 !== $this->client->StatusCode()) {
             return null;
         }
-        $claims = \json_decode($response, true);
+        $claims = \json_decode($this->client->Body(), true);
         if (!\is_array($claims)) {
             return null;
         }

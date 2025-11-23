@@ -55,13 +55,15 @@ abstract class Entity implements \JsonSerializable
      * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
      * `'2025-03-15'`).
      *
-     * @param ?array $data
-     *   (Optional) An associative array of property values. Keys must match the
-     *   entity's public properties. If `id` is specified, it is also assigned.
+     * @param array|object|null $data
+     *   (Optional) An associative array or an object containing values for the
+     *   entity's public properties. Keys (for arrays) or property names (for
+     *   objects) must match the entity's public properties. If `id` is specified,
+     *   it is also assigned.
      * @throws \InvalidArgumentException
      *   If a property assignment fails due to an invalid value or type mismatch.
      */
-    public function __construct(?array $data = null)
+    public function __construct(array|object|null $data = null)
     {
         if ($data === null) {
             return;
@@ -78,14 +80,19 @@ abstract class Entity implements \JsonSerializable
      * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
      * `'2025-03-15'`).
      *
-     * @param array $data
-     *   An associative array of property values. Keys must match the entity's
-     *   public properties. If `id` is specified, it is also assigned.
+     * @param array|object $data
+     *   An associative array or an object containing values for the entity's
+     *   public properties. Keys (for arrays) or property names (for objects)
+     *   must match the entity's public properties. If `id` is specified, it is
+     *   also assigned.
      * @throws \InvalidArgumentException
      *   If a property assignment fails due to an invalid value or type mismatch.
      */
-    public function Populate(array $data): void
+    public function Populate(array|object $data): void
     {
+        if (\is_object($data)) {
+            $data = \get_object_vars($data);
+        }
         foreach ($this->properties() as $key => $metadata) {
             if (!\array_key_exists($key, $data)) {
                 continue;

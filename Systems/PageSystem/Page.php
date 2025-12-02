@@ -471,7 +471,7 @@ class Page
         $redirectUrl = null;
         if ($accountView === null) {
             $redirectUrl = $this->resource->LoginPageUrl();
-        } else if (!Role::Parse($accountView->role)->AtLeast($minimumRole)) {
+        } elseif (!Role::Parse($accountView->role)->AtLeast($minimumRole)) {
             $redirectUrl = $this->resource->ErrorPageUrl(StatusCode::Unauthorized);
         }
         if ($redirectUrl !== null) {

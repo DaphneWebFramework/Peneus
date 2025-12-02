@@ -12,9 +12,8 @@
 
 namespace Peneus\Api\Handlers;
 
-use \Peneus\Api\Actions\Action;
-
 use \Harmonia\Http\StatusCode;
+use \Peneus\Api\Actions\Action;
 
 /**
  * Base class for API action handlers.

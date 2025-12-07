@@ -77,7 +77,7 @@ class SignInWithGoogleAction extends Action
         // 2
         $payload = $this->validatePayload();
         // 3
-        $profile = $this->decodeAndValidateCredential($payload->credential);
+        $profile = $this->decodeProfile($payload->credential);
         // 4
         $account = $this->findOrConstructAccount($profile);
         // 5
@@ -142,7 +142,7 @@ class SignInWithGoogleAction extends Action
      * }
      * @throws \RuntimeException
      */
-    protected function decodeAndValidateCredential(string $credential): \stdClass
+    protected function decodeProfile(string $credential): \stdClass
     {
         $claims = $this->decodeCredential($credential);
         if ($claims === null) {

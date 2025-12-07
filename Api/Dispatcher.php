@@ -83,7 +83,7 @@ class Dispatcher implements IShutdownListener
         try {
             $result = $handler->HandleAction($actionName);
             if ($result === null) {
-                ; // Use Response defaults
+                ; // use Response defaults
             } elseif ($result instanceof Response) {
                 $this->response = $result;
             } else {

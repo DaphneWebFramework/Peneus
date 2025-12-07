@@ -56,7 +56,7 @@ class AccountService extends Singleton
     /**
      * Regular expression pattern for validating display names.
      *
-     * Matches a 2–50 character display name starting with a letter or number,
+     * Matches a 2-50 character display name starting with a letter or number,
      * allowing letters, numbers, spaces, dots, hyphens, and apostrophes, with
      * full Unicode support.
      */

@@ -53,7 +53,7 @@ class EditRecordAction extends Action
         // 2
         $entityClass = $this->resolveEntityClass($table);
         // 3
-        $validator = new Validator($this->validationRulesForEdit($entityClass));
+        $validator = new Validator($this->validationRulesForUpdate($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
         $id = $dataAccessor->GetField('id');
         // 4

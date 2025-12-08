@@ -14,23 +14,23 @@ namespace Peneus\Api\Traits;
 
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
-use \Peneus\Model\AccountView;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Model\PersistentLogin;
 
+use \Peneus\Api\DashboardRegistry;
+
 /**
- * Provides entity class resolution logic based on a table name string.
+ * Resolves entity class names based on database table names.
  */
 trait EntityClassResolver
 {
     /** @var class-string[] */
-    private array $allowedEntityClasses = [
+    private array $builtinEntityClasses = [
         Account::class,
         AccountRole::class,
-        AccountView::class,
-        PasswordReset::class,
         PendingAccount::class,
+        PasswordReset::class,
         PersistentLogin::class,
     ];
 
@@ -38,20 +38,31 @@ trait EntityClassResolver
      * Returns the fully qualified class name of the entity that matches the
      * provided table name.
      *
+     * The lookup prioritizes the built-in entity classes first, followed by the
+     * application-specific entity classes registered via the DashboardRegistry.
+     *
      * @param string $tableName
      *   The name of the table to resolve to an entity class.
      * @return class-string
      *   Fully qualified entity class name.
      * @throws \InvalidArgumentException
-     *   If no allowed entity matches the given table name.
+     *   If an entity class cannot be resolved for the given table name.
      */
     protected function resolveEntityClass(string $tableName): string
     {
-        foreach ($this->allowedEntityClasses as $class) {
+        // 1
+        foreach ($this->builtinEntityClasses as $class) {
             if ($tableName === $class::TableName()) {
                 return $class;
             }
         }
-        throw new \InvalidArgumentException("Table '$tableName' is not allowed.");
+        // 2
+        $class = DashboardRegistry::Instance()->EntityClassFor($tableName);
+        if ($class !== null) {
+            return $class;
+        }
+        // 3
+        throw new \InvalidArgumentException(
+            "Unable to resolve entity class for table: $tableName");
     }
 }

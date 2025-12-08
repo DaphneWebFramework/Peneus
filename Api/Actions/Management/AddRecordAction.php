@@ -54,7 +54,7 @@ class AddRecordAction extends Action
         // 2
         $entityClass = $this->resolveEntityClass($table);
         // 3
-        $validator = new Validator($this->validationRulesForAdd($entityClass));
+        $validator = new Validator($this->validationRulesForCreate($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
         // 4
         $entity = $this->createEntity($entityClass, $dataAccessor->Data());

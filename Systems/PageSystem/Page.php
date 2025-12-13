@@ -561,6 +561,26 @@ class Page
 
     #endregion CSRF
 
+    /**
+     * Executes a callback only if the given condition is met.
+     *
+     * @param bool $condition
+     *   The condition to check. If evaluates to `true`, the callback will be
+     *   executed.
+     * @param callable $callback
+     *   The callback to execute if the condition evaluates to `true`. It
+     *   receives the current `Page` object as its only argument.
+     * @return self
+     *   The current instance.
+     */
+    public function When(bool $condition, callable $callback): self
+    {
+        if ($condition) {
+            $callback($this);
+        }
+        return $this;
+    }
+
     #endregion public
 
     #region protected ----------------------------------------------------------

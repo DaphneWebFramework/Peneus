@@ -14,6 +14,7 @@ namespace Peneus\Api\Traits;
 
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountRole;
+use \Peneus\Model\AccountView;
 use \Peneus\Model\PasswordReset;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Model\PersistentLogin;
@@ -29,6 +30,7 @@ trait EntityClassResolver
     private array $builtinEntityClasses = [
         Account::class,
         AccountRole::class,
+        AccountView::class,
         PendingAccount::class,
         PasswordReset::class,
         PersistentLogin::class,

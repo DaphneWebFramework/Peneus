@@ -25,18 +25,18 @@ class AccountView extends ViewEntity
     {
         return <<<SQL
         SELECT
-            Account.id,
-            Account.email,
-            CASE WHEN Account.passwordHash = ''
+            account.id,
+            account.email,
+            CASE WHEN account.passwordHash = ''
                 THEN 0 ELSE 1 END AS isLocal,
-            Account.displayName,
-            Account.timeActivated,
-            Account.timeLastLogin,
-            AccountRole.role
+            account.displayName,
+            account.timeActivated,
+            account.timeLastLogin,
+            accountrole.role
         FROM
-            Account
+            account
         LEFT JOIN
-            AccountRole ON AccountRole.accountId = Account.id
+            accountrole ON accountrole.accountId = account.id
         SQL;
     }
 }

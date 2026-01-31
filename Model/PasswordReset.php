@@ -14,15 +14,6 @@ namespace Peneus\Model;
 
 /**
  * Stores one-time password reset requests initiated by users.
- *
- * ```sql
- * CREATE TABLE `passwordreset` (
- *   `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
- *   `accountId` INT NOT NULL,
- *   `resetCode` TEXT NOT NULL,
- *   `timeRequested` DATETIME NOT NULL
- * ) ENGINE = InnoDB;
- * ```
  */
 class PasswordReset extends Entity
 {

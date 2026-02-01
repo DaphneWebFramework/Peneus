@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * LoginAction.php
+ * LogInAction.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -26,7 +26,7 @@ use \Peneus\Services\AccountService;
 /**
  * Authenticates a user with email and password credentials.
  */
-class LoginAction extends Action
+class LogInAction extends Action
 {
     private readonly Request $request;
     private readonly Database $database;

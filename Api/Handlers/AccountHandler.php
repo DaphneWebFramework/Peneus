@@ -16,8 +16,8 @@ use \Peneus\Api\Actions\Account\ActivateAction;
 use \Peneus\Api\Actions\Account\ChangeDisplayNameAction;
 use \Peneus\Api\Actions\Account\ChangePasswordAction;
 use \Peneus\Api\Actions\Account\DeleteAction;
-use \Peneus\Api\Actions\Account\LoginAction;
-use \Peneus\Api\Actions\Account\LogoutAction;
+use \Peneus\Api\Actions\Account\LogInAction;
+use \Peneus\Api\Actions\Account\LogOutAction;
 use \Peneus\Api\Actions\Account\RegisterAction;
 use \Peneus\Api\Actions\Account\ResetPasswordAction;
 use \Peneus\Api\Actions\Account\SendPasswordResetAction;
@@ -41,9 +41,9 @@ class AccountHandler extends Handler
                 ->AddGuard(new FormTokenGuard),
             'activate' => (new ActivateAction)
                 ->AddGuard(new FormTokenGuard),
-            'login' => (new LoginAction)
+            'log-in' => (new LogInAction)
                 ->AddGuard(new FormTokenGuard),
-            'logout' => (new LogoutAction)
+            'log-out' => (new LogOutAction)
                 ->AddGuard(new SessionGuard),
             'send-password-reset' => (new SendPasswordResetAction)
                 ->AddGuard(new FormTokenGuard),

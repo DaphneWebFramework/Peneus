@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * LogoutAction.php
+ * LogOutAction.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -19,7 +19,7 @@ use \Peneus\Services\AccountService;
 /**
  * Logs out the currently logged-in user.
  */
-class LogoutAction extends Action
+class LogOutAction extends Action
 {
     private readonly AccountService $accountService;
 

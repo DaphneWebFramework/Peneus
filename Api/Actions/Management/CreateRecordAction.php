@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 /**
- * EditRecordAction.php
+ * CreateRecordAction.php
  *
  * (C) 2025 by Eylem Ugurel
  *
@@ -21,28 +21,29 @@ use \Peneus\Api\Traits\EntityValidationRulesProvider;
 use \Peneus\Model\Entity;
 
 /**
- * Updates an existing record in a specified table.
+ * Creates a new record in a specified table.
  */
-class EditRecordAction extends Action
+class CreateRecordAction extends Action
 {
     use EntityClassResolver;
     use EntityValidationRulesProvider;
 
     /**
-     * Executes the process of editing an existing record in a specified table.
+     * Executes the process of adding a new record to a specified table.
      *
      * Validates the table name from the query parameters and determines
      * the corresponding entity class. Then validates the request body against
-     * entity-specific rules. If the record is found, it is updated in the
-     * data store.
+     * entity-specific rules. If the record is created successfully, the
+     * identifier of the newly inserted record is returned.
      *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * @return array<string, int>
+     *   An associative array with the key 'id', containing the primary key of
+     *   the newly created record.
      * @throws \InvalidArgumentException
      *   If the table name is not recognized or the request body fails
      *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be found or updated in the data store.
+     *   If the record cannot be created in the data store.
      */
     protected function onExecute(): mixed
     {
@@ -53,30 +54,25 @@ class EditRecordAction extends Action
         // 2
         $entityClass = $this->resolveEntityClass($table);
         // 3
-        $validator = new Validator($this->validationRulesForUpdate($entityClass));
+        $validator = new Validator($this->validationRulesForCreate($entityClass));
         $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
-        $id = $dataAccessor->GetField('id');
         // 4
-        $entity = $this->findEntity($entityClass, $id);
-        if ($entity === null) {
-            throw new \RuntimeException(
-                "Record with ID $id not found in table '$table'.");
-        }
-        $entity->Populate($dataAccessor->Data());
+        $entity = $this->createEntity($entityClass, $dataAccessor->Data());
         if (!$entity->Save()) {
-            throw new \RuntimeException(
-                "Failed to edit record with ID $id in table '$table'.");
+            throw new \RuntimeException("Failed to add record to table '$table'.");
         }
-        return null;
+        return [ 'id' => $entity->id ];
     }
 
     /**
      * @param class-string $entityClass
-     * @param int $id
-     * @return ?Entity
+     * @param array<string, mixed> $data
+     * @return Entity
+     *
+     * @codeCoverageIgnore
      */
-    protected function findEntity(string $entityClass, int $id): ?Entity
+    protected function createEntity(string $entityClass, array $data): Entity
     {
-        return $entityClass::FindById($id);
+        return new $entityClass($data);
     }
 }

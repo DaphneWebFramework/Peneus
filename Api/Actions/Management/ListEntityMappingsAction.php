@@ -148,7 +148,7 @@ class ListEntityMappingsAction extends Action
     {
         if (!$entityPath->StartsWith($this->backendPath)) {
             throw new \InvalidArgumentException(
-                'Entity path must be within the backend directory.');
+                "Entity path must be within the backend directory.");
         }
         $relativePath = $entityPath->Middle($this->backendPath->Length());
         $pathInfo = $relativePath->Call('\pathinfo');

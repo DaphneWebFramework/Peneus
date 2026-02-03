@@ -70,7 +70,8 @@ class CreateRecordAction extends Action
         // 4
         $entity = $this->createEntity($entityClass, $dataAccessor->Data());
         if (!$entity->Save()) {
-            throw new \RuntimeException("Failed to add record to table '$table'.");
+            throw new \RuntimeException(
+                "Failed to add record to table '$table'.");
         }
         return [ 'id' => $entity->id ];
     }

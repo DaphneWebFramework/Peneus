@@ -28,6 +28,17 @@ class UpdateRecordAction extends Action
     use EntityClassResolver;
     use EntityValidationRulesProvider;
 
+    private readonly Request $request;
+
+    /**
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+    }
+
     /**
      * Executes the process of editing an existing record in a specified table.
      *
@@ -48,13 +59,13 @@ class UpdateRecordAction extends Action
     {
         // 1
         $validator = new Validator([ 'table' => ['required', 'string'] ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
+        $dataAccessor = $validator->Validate($this->request->QueryParams());
         $table = $dataAccessor->GetField('table');
         // 2
         $entityClass = $this->resolveEntityClass($table);
         // 3
         $validator = new Validator($this->validationRulesForUpdate($entityClass));
-        $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
+        $dataAccessor = $validator->Validate($this->request->JsonBody());
         $id = $dataAccessor->GetField('id');
         // 4
         $entity = $this->findEntity($entityClass, $id);

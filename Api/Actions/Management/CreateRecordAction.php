@@ -28,6 +28,17 @@ class CreateRecordAction extends Action
     use EntityClassResolver;
     use EntityValidationRulesProvider;
 
+    private readonly Request $request;
+
+    /**
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+    }
+
     /**
      * Executes the process of adding a new record to a specified table.
      *
@@ -49,13 +60,13 @@ class CreateRecordAction extends Action
     {
         // 1
         $validator = new Validator([ 'table' => ['required', 'string'] ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
+        $dataAccessor = $validator->Validate($this->request->QueryParams());
         $table = $dataAccessor->GetField('table');
         // 2
         $entityClass = $this->resolveEntityClass($table);
         // 3
         $validator = new Validator($this->validationRulesForCreate($entityClass));
-        $dataAccessor = $validator->Validate(Request::Instance()->JsonBody());
+        $dataAccessor = $validator->Validate($this->request->JsonBody());
         // 4
         $entity = $this->createEntity($entityClass, $dataAccessor->Data());
         if (!$entity->Save()) {

@@ -25,6 +25,17 @@ class ListRecordsAction extends Action
 {
     use EntityClassResolver;
 
+    private readonly Request $request;
+
+    /**
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+    }
+
     /**
      * Executes the process of listing records from a specified table with
      * support for pagination, filtering, and sorting.
@@ -57,7 +68,7 @@ class ListRecordsAction extends Action
                 return \in_array($value, ['asc', 'desc'], true);
             }]
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->QueryParams());
+        $dataAccessor = $validator->Validate($this->request->QueryParams());
         $table = $dataAccessor->GetField('table');
         $page = (int)$dataAccessor->GetFieldOrDefault('page', 1);
         $pageSize = (int)$dataAccessor->GetFieldOrDefault('pagesize', 10);

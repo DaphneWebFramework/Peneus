@@ -30,14 +30,19 @@ class ListEntityMappingsAction extends Action
     use IdentifierEscaper;
 
     private readonly CPath $backendPath;
+    private readonly CFileSystem $fileSystem;
+    private readonly Database $database;
 
     /**
-     * Constructs a new instance by initializing the backend path.
+     * Constructs a new instance by initializing the backend path and the
+     * dependencies.
      */
     public function __construct()
     {
         parent::__construct();
         $this->backendPath = Resource::Instance()->AppSubdirectoryPath('backend');
+        $this->fileSystem = CFileSystem::Instance();
+        $this->database = Database::Instance();
     }
 
     /**
@@ -123,7 +128,7 @@ class ListEntityMappingsAction extends Action
             return [];
         }
         $result = [];
-        $entityPaths = CFileSystem::Instance()->FindFiles(
+        $entityPaths = $this->fileSystem->FindFiles(
             $modelPath,
             '*.php',
             $recursive
@@ -187,7 +192,7 @@ class ListEntityMappingsAction extends Action
 
         $query = (new RawQuery)
             ->Sql("SHOW COLUMNS FROM `{$this->escapeIdentifier($tableName)}`");
-        $resultSet = Database::Instance()->Execute($query);
+        $resultSet = $this->database->Execute($query);
         if ($resultSet === null) {
             throw new \RuntimeException(
                 "Failed to retrieve columns for: $tableName");

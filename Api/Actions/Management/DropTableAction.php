@@ -23,6 +23,17 @@ use \Peneus\Model\Entity;
  */
 class DropTableAction extends Action
 {
+    private readonly Request $request;
+
+    /**
+     * Constructs a new instance by initializing dependencies.
+     */
+    public function __construct()
+    {
+        parent::__construct();
+        $this->request = Request::Instance();
+    }
+
     /**
      * Drops the table in the database corresponding to the given entity class.
      *
@@ -47,7 +58,7 @@ class DropTableAction extends Action
                 }
             ]
         ]);
-        $dataAccessor = $validator->Validate(Request::Instance()->FormParams());
+        $dataAccessor = $validator->Validate($this->request->FormParams());
         $entityClass = $dataAccessor->GetField('entityClass');
         // 2
         if (!$entityClass::DropTable()) {

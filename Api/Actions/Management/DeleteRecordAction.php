@@ -40,45 +40,51 @@ class DeleteRecordAction extends Action
     }
 
     /**
-     * Executes the process of deleting an existing record from a specified
-     * table.
-     *
-     * Validates the table name from the query parameters and determines
-     * the corresponding entity class. Then validates the request body against
-     * entity-specific rules. If the record is found, it is deleted from the
-     * data store.
-     *
-     * @return mixed
-     *   Always returns `null` if the operation is successful.
+     * @return null
      * @throws \InvalidArgumentException
-     *   If the table name is not recognized or the request body fails
-     *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be found or deleted from the data store.
      */
     protected function onExecute(): mixed
     {
         // 1
-        $validator = new Validator([ 'table' => ['required', 'string'] ]);
-        $dataAccessor = $validator->Validate($this->request->QueryParams());
-        $table = $dataAccessor->GetField('table');
+        $payload = $this->validatePayload();
         // 2
-        $entityClass = $this->resolveEntityClass($table);
-        // 3
-        $validator = new Validator($this->validationRulesForDelete());
-        $dataAccessor = $validator->Validate($this->request->JsonBody());
-        $id = $dataAccessor->GetField('id');
-        // 4
-        $entity = $this->findEntity($entityClass, $id);
+        $entity = $this->findEntity($payload->entityClass, $payload->data['id']);
         if ($entity === null) {
-            throw new \RuntimeException(
-                "Record with ID $id not found in table '$table'.");
+            throw new \RuntimeException("Record not found.");
         }
+        // 3
         if (!$entity->Delete()) {
-            throw new \RuntimeException(
-                "Failed to delete record with ID $id from table '$table'.");
+            throw new \RuntimeException("Failed to delete record.");
         }
         return null;
+    }
+
+    /**
+     * @return object{
+     *   entityClass: class-string,
+     *   data: array<string, mixed>
+     * }
+     * @throws \RuntimeException
+     */
+    protected function validatePayload(): \stdClass
+    {
+        // 1
+        $validator = new Validator([
+            'table' => ['required', 'string']
+        ]);
+        $da = $validator->Validate($this->request->QueryParams());
+        $entityClass = $this->resolveEntityClass($da->GetField('table'));
+        // 2
+        $validator = new Validator(
+            $this->validationRulesForDelete()
+        );
+        $da = $validator->Validate($this->request->JsonBody());
+        // 3
+        return (object)[
+            'entityClass' => $entityClass,
+            'data'        => $da->Data()
+        ];
     }
 
     /**

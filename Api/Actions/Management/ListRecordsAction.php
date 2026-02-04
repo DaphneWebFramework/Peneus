@@ -37,53 +37,25 @@ class ListRecordsAction extends Action
     }
 
     /**
-     * Executes the process of listing records from a specified table with
-     * support for pagination, filtering, and sorting.
-     *
-     * Validates and sanitizes incoming query parameters, determines the
-     * corresponding entity class, constructs the necessary conditions for
-     * search and ordering, and returns a paginated result set along with the
-     * total count of matched records.
-     *
-     * @return array<string, mixed>
-     *   An associative array containing two keys: 'data', which holds the array
-     *   of matched records for the current page, and 'total', which indicates
-     *   the total number of records matching the search criteria.
+     * @return array{
+     *   data: object[],
+     *   total: int
+     * }
      * @throws \InvalidArgumentException
-     *   If the table name is not among the allowed values, or if the sort key
-     *   does not match any of the table's columns.
      * @throws \RuntimeException
-     *   If the column metadata cannot be retrieved for the specified table.
      */
     protected function onExecute(): mixed
     {
         // 1
-        $validator = new Validator([
-            'table' => ['required', 'string'],
-            'page' => ['integer', 'min:1'],
-            'pagesize' => ['integer', 'min:1', 'max:100'],
-            'search' => ['string'],
-            'sortkey' => ['string'],
-            'sortdir' => ['string', function($value) {
-                return \in_array($value, ['asc', 'desc'], true);
-            }]
-        ]);
-        $dataAccessor = $validator->Validate($this->request->QueryParams());
-        $table = $dataAccessor->GetField('table');
-        $page = (int)$dataAccessor->GetFieldOrDefault('page', 1);
-        $pageSize = (int)$dataAccessor->GetFieldOrDefault('pagesize', 10);
-        $offset = ($page - 1) * $pageSize;
-        $search = $dataAccessor->GetFieldOrDefault('search', null);
-        $sortKey = $dataAccessor->GetFieldOrDefault('sortkey', null);
-        $sortDir = $dataAccessor->GetFieldOrDefault('sortdir', null);
+        $payload = $this->validatePayload();
         // 2
-        $entityClass = $this->resolveEntityClass($table);
+        $entityClass = $this->resolveEntityClass($payload->table);
         $columns = \array_column($entityClass::Metadata(), 'name');
         // 3
         $condition = null;
         $bindings = null;
-        if ($search !== null) {
-            $search = \strtr($search, [
+        if ($payload->search !== null) {
+            $search = \strtr($payload->search, [
                 '\\' => '\\\\',
                 '%'  => '\%',
                 '_'  => '\_'
@@ -99,15 +71,15 @@ class ListRecordsAction extends Action
         }
         // 4
         $orderBy = null;
-        if ($sortKey !== null) {
-            if (!\in_array($sortKey, $columns, true)) {
+        if ($payload->sortkey !== null) {
+            if (!\in_array($payload->sortkey, $columns, true)) {
                 throw new \InvalidArgumentException(
                     "Table '{$entityClass::TableName()}' does not have a "
-                  . "column named '$sortKey'.");
+                  . "column named '{$payload->sortkey}'.");
             }
-            $orderBy = "`$sortKey`";
-            if ($sortDir !== null) {
-                $orderBy .= ' ' . \strtoupper($sortDir);
+            $orderBy = "`{$payload->sortkey}`";
+            if ($payload->sortdir !== null) {
+                $orderBy .= ' ' . \strtoupper($payload->sortdir);
             }
         }
         // 5
@@ -116,13 +88,49 @@ class ListRecordsAction extends Action
                 condition: $condition,
                 bindings: $bindings,
                 orderBy: $orderBy,
-                limit: $pageSize,
-                offset: $offset
+                limit: $payload->limit,
+                offset: $payload->offset
             ),
             'total' => $entityClass::Count(
                 condition: $condition,
                 bindings: $bindings
             )
+        ];
+    }
+
+    /**
+     * @return object{
+     *   table: string,
+     *   limit: int,
+     *   offset: int,
+     *   search: ?string,
+     *   sortkey: ?string,
+     *   sortdir: ?string
+     * }
+     * @throws \RuntimeException
+     */
+    protected function validatePayload(): \stdClass
+    {
+        $validator = new Validator([
+            'table' => ['required', 'string'],
+            'page' => ['integer', 'min:1'],
+            'pagesize' => ['integer', 'min:1', 'max:100'],
+            'search' => ['string'],
+            'sortkey' => ['string'],
+            'sortdir' => ['string', function($value) {
+                return \in_array($value, ['asc', 'desc'], true);
+            }]
+        ]);
+        $da = $validator->Validate($this->request->QueryParams());
+        $page = (int)$da->GetFieldOrDefault('page', 1);
+        $pageSize = (int)$da->GetFieldOrDefault('pagesize', 10);
+        return (object)[
+            'table'   => $da->GetField('table'),
+            'limit'   => $pageSize,
+            'offset'  => ($page - 1) * $pageSize,
+            'search'  => $da->GetFieldOrDefault('search', null),
+            'sortkey' => $da->GetFieldOrDefault('sortkey', null),
+            'sortdir' => $da->GetFieldOrDefault('sortdir', null)
         ];
     }
 }

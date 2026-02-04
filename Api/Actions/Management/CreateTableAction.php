@@ -35,16 +35,29 @@ class CreateTableAction extends Action
     }
 
     /**
-     * Creates a table in the database corresponding to the given entity class.
-     *
      * @return null
-     *   Always returns `null` if the operation is successful.
      * @throws \RuntimeException
-     *   If the table could not be created for the specified entity class.
      */
     protected function onExecute(): mixed
     {
         // 1
+        $payload = $this->validatePayload();
+        // 2
+        if (!$payload->entityClass::CreateTable()) {
+            throw new \RuntimeException(
+                "Failed to create table for: {$payload->entityClass}");
+        }
+        return null;
+    }
+
+    /**
+     * @return object{
+     *   entityClass: class-string
+     * }
+     * @throws \RuntimeException
+     */
+    protected function validatePayload(): \stdClass
+    {
         $validator = new Validator([
             'entityClass' => [
                 'required',
@@ -58,13 +71,9 @@ class CreateTableAction extends Action
                 }
             ]
         ]);
-        $dataAccessor = $validator->Validate($this->request->FormParams());
-        $entityClass = $dataAccessor->GetField('entityClass');
-        // 2
-        if (!$entityClass::CreateTable()) {
-            throw new \RuntimeException(
-                "Failed to create table for: $entityClass");
-        }
-        return null;
+        $da = $validator->Validate($this->request->FormParams());
+        return (object)[
+            'entityClass' => $da->GetField('entityClass')
+        ];
     }
 }

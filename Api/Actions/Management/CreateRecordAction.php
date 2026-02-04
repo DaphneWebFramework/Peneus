@@ -40,50 +40,60 @@ class CreateRecordAction extends Action
     }
 
     /**
-     * Executes the process of adding a new record to a specified table.
-     *
-     * Validates the table name from the query parameters and determines
-     * the corresponding entity class. Then validates the request body against
-     * entity-specific rules. If the record is created successfully, the
-     * identifier of the newly inserted record is returned.
-     *
-     * @return array<string, int>
-     *   An associative array with the key 'id', containing the primary key of
-     *   the newly created record.
+     * @return array{
+     *   id: int
+     * }
      * @throws \InvalidArgumentException
-     *   If the table name is not recognized or the request body fails
-     *   validation.
      * @throws \RuntimeException
-     *   If the record cannot be created in the data store.
      */
     protected function onExecute(): mixed
     {
         // 1
-        $validator = new Validator([ 'table' => ['required', 'string'] ]);
-        $dataAccessor = $validator->Validate($this->request->QueryParams());
-        $table = $dataAccessor->GetField('table');
+        $payload = $this->validatePayload();
         // 2
-        $entityClass = $this->resolveEntityClass($table);
-        // 3
-        $validator = new Validator($this->validationRulesForCreate($entityClass));
-        $dataAccessor = $validator->Validate($this->request->JsonBody());
-        // 4
-        $entity = $this->createEntity($entityClass, $dataAccessor->Data());
+        $entity = $this->constructEntity($payload->entityClass, $payload->data);
         if (!$entity->Save()) {
-            throw new \RuntimeException(
-                "Failed to add record to table '$table'.");
+            throw new \RuntimeException("Failed to create record.");
         }
-        return [ 'id' => $entity->id ];
+        // 3
+        return [
+            'id' => $entity->id
+        ];
+    }
+
+    /**
+     * @return object{
+     *   entityClass: class-string,
+     *   data: array<string, mixed>
+     * }
+     * @throws \RuntimeException
+     */
+    protected function validatePayload(): \stdClass
+    {
+        // 1
+        $validator = new Validator([
+            'table' => ['required', 'string']
+        ]);
+        $da = $validator->Validate($this->request->QueryParams());
+        $entityClass = $this->resolveEntityClass($da->GetField('table'));
+        // 2
+        $validator = new Validator(
+            $this->validationRulesForCreate($entityClass)
+        );
+        $da = $validator->Validate($this->request->JsonBody());
+        // 3
+        return (object)[
+            'entityClass' => $entityClass,
+            'data'        => $da->Data()
+        ];
     }
 
     /**
      * @param class-string $entityClass
      * @param array<string, mixed> $data
      * @return Entity
-     *
-     * @codeCoverageIgnore
      */
-    protected function createEntity(string $entityClass, array $data): Entity
+    protected function constructEntity(string $entityClass, array $data): Entity
     {
         return new $entityClass($data);
     }

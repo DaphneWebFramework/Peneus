@@ -20,6 +20,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Hooks\ICaptchaHook;
 use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
 
@@ -28,6 +29,7 @@ use \Peneus\Services\AccountService;
  */
 class LogInAction extends Action
 {
+    private readonly ?ICaptchaHook $captchaHook;
     private readonly Request $request;
     private readonly Database $database;
     private readonly AccountService $accountService;
@@ -36,10 +38,14 @@ class LogInAction extends Action
 
     /**
      * Constructs a new instance by initializing dependencies.
+     *
+     * @param ICaptchaHook|null $captchaHook
+     *   (Optional) A hook for verifying captchas.
      */
-    public function __construct()
+    public function __construct(?ICaptchaHook $captchaHook = null)
     {
         parent::__construct();
+        $this->captchaHook = $captchaHook;
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->accountService = AccountService::Instance();
@@ -120,6 +126,7 @@ class LogInAction extends Action
             ]
         ]);
         $da = $validator->Validate($this->request->FormParams());
+        $this->captchaHook?->OnVerifyCaptcha();
         return (object)[
             'email' => $da->GetField('email'),
             'password' => $da->GetField('password'),

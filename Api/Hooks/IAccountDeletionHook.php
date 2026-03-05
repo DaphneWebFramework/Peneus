@@ -15,8 +15,7 @@ namespace Peneus\Api\Hooks;
 use \Peneus\Model\Account;
 
 /**
- * Interface for components that need to clean up data related to an account
- * before it is deleted.
+ * Interface for cleaning up data related to an account before it is deleted.
  */
 interface IAccountDeletionHook
 {

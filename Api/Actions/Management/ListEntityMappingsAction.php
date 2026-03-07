@@ -46,15 +46,16 @@ class ListEntityMappingsAction extends Action
     }
 
     /**
-     * Lists metadata about all entity classes and their table definitions.
-     *
-     * @return array<string, array<int, object>>
-     *   An associative array with key 'data' mapping to a list of objects. Each
-     *   object contains the entity class name, table name, table type ('table'
-     *   or 'view'), whether the table exists, and whether it is in sync with
-     *   the entity definition.
+     * @return array{
+     *   data: array{
+     *     entityClass: string,
+     *     tableName: string,
+     *     tableType: 'table'|'view',
+     *     tableExists: bool,
+     *     isSync: bool|null
+     *   }[]
+     * }
      * @throws \RuntimeException
-     *   If the table column metadata could not be retrieved from the database.
      */
     protected function onExecute(): mixed
     {

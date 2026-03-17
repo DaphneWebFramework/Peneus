@@ -66,6 +66,7 @@ class Page
     private string $title = '';
     private string $titleTemplate = '{{Title}} | {{AppName}}';
     private string $masterpage = '';
+    private string $canonicalSuffix = '';
     private string $content = '';
 
     #region public -------------------------------------------------------------
@@ -228,6 +229,42 @@ class Page
     public function Masterpage(): string
     {
         return $this->masterpage;
+    }
+
+    /**
+     * Sets the suffix appended to the page's canonical URL.
+     *
+     * This value represents the URL segment added after the page's base URL
+     * when generating the canonical URL. If not set, the canonical URL consists
+     * only of the page's base URL.
+     *
+     * @param string $canonicalSuffix
+     *   The suffix used when constructing the canonical URL.
+     * @return self
+     *   The current instance.
+     */
+    public function SetCanonicalSuffix(string $canonicalSuffix): self
+    {
+        $this->canonicalSuffix = $canonicalSuffix;
+        return $this;
+    }
+
+    /**
+     * Returns the canonical URL of the page.
+     *
+     * The canonical URL is constructed from the page's base URL and, if
+     * defined, the canonical suffix.
+     *
+     * @return string
+     *   The canonical URL of the page, always ending with a trailing slash.
+     */
+    public function CanonicalUrl(): string
+    {
+        $url = $this->resource->PageUrl($this->id);
+        if ($this->canonicalSuffix !== '') {
+            $url->Extend($this->canonicalSuffix);
+        }
+        return $url->EnsureTrailingSlash()->__toString();
     }
 
     /**

@@ -74,6 +74,8 @@ class Renderer
                 $page->Title(),
             "\t{{MetaTags}}" =>
                 $this->metaTags($page->MetaItems()),
+            "{{CanonicalUrl}}" =>
+                $page->CanonicalUrl(),
             "\t{{LibraryStylesheetLinks}}" =>
                 $this->libraryStylesheetLinks($libraries),
             "\t{{PageStylesheetLinks}}" =>

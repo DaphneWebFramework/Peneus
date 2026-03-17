@@ -262,7 +262,7 @@ class Page
     {
         $url = $this->resource->PageUrl($this->id);
         if ($this->canonicalSuffix !== '') {
-            $url->Extend($this->canonicalSuffix);
+            $url = $url->Extend($this->canonicalSuffix);
         }
         return $url->EnsureTrailingSlash()->__toString();
     }

@@ -17,8 +17,8 @@ use \Peneus\Api\Actions\Action;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
-use \Peneus\Model\AccountView;
 use \Peneus\Services\AccountService;
 
 /**
@@ -26,8 +26,9 @@ use \Peneus\Services\AccountService;
  */
 class ChangeDisplayNameAction extends Action
 {
+    use LoggedInEnsurer;
+
     private readonly Request $request;
-    private readonly AccountService $accountService;
 
     /**
      * Constructs a new instance by initializing dependencies.
@@ -36,7 +37,6 @@ class ChangeDisplayNameAction extends Action
     {
         parent::__construct();
         $this->request = Request::Instance();
-        $this->accountService = AccountService::Instance();
     }
 
     /**
@@ -54,22 +54,6 @@ class ChangeDisplayNameAction extends Action
         // 4
         $this->doChange($account, $payload->displayName);
         return null;
-    }
-
-    /**
-     * @return AccountView
-     * @throws \RuntimeException
-     */
-    protected function ensureLoggedIn(): AccountView
-    {
-        $accountView = $this->accountService->SessionAccount();
-        if ($accountView === null) {
-            throw new \RuntimeException(
-                "You do not have permission to perform this action.",
-                StatusCode::Unauthorized->value
-            );
-        }
-        return $accountView;
     }
 
     /**

@@ -18,17 +18,18 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountView;
-use \Peneus\Services\AccountService;
 
 /**
  * Changes the password of the currently logged-in account.
  */
 class ChangePasswordAction extends Action
 {
+    use LoggedInEnsurer;
+
     private readonly Request $request;
-    private readonly AccountService $accountService;
     private readonly SecurityService $securityService;
 
     /**
@@ -38,7 +39,6 @@ class ChangePasswordAction extends Action
     {
         parent::__construct();
         $this->request = Request::Instance();
-        $this->accountService = AccountService::Instance();
         $this->securityService = SecurityService::Instance();
     }
 
@@ -64,22 +64,6 @@ class ChangePasswordAction extends Action
         // 6
         $this->doChange($account, $payload->newPassword);
         return null;
-    }
-
-    /**
-     * @return AccountView
-     * @throws \RuntimeException
-     */
-    protected function ensureLoggedIn(): AccountView
-    {
-        $accountView = $this->accountService->SessionAccount();
-        if ($accountView === null) {
-            throw new \RuntimeException(
-                "You do not have permission to perform this action.",
-                StatusCode::Unauthorized->value
-            );
-        }
-        return $accountView;
     }
 
     /**

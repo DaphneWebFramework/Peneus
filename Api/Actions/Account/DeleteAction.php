@@ -13,8 +13,8 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\DatabaseSystem\Database;
+use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
-use \Peneus\Model\AccountView;
 use \Peneus\Services\AccountService;
 
 /**
@@ -25,6 +25,8 @@ use \Peneus\Services\AccountService;
  */
 class DeleteAction extends Action
 {
+    use LoggedInEnsurer;
+
     private readonly Database $database;
     private readonly AccountService $accountService;
 
@@ -63,22 +65,6 @@ class DeleteAction extends Action
         // 4
         $this->logOut();
         return null;
-    }
-
-    /**
-     * @return AccountView
-     * @throws \RuntimeException
-     */
-    protected function ensureLoggedIn(): AccountView
-    {
-        $accountView = $this->accountService->SessionAccount();
-        if ($accountView === null) {
-            throw new \RuntimeException(
-                "You do not have permission to perform this action.",
-                StatusCode::Unauthorized->value
-            );
-        }
-        return $accountView;
     }
 
     /**

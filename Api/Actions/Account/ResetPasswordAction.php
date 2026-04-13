@@ -22,6 +22,8 @@ use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
+use \Peneus\Model\Traits\AccountFinder;
+use \Peneus\Model\Traits\PasswordResetFinder;
 use \Peneus\Resource;
 
 /**
@@ -29,6 +31,9 @@ use \Peneus\Resource;
  */
 class ResetPasswordAction extends Action
 {
+    use AccountFinder;
+    use PasswordResetFinder;
+
     private readonly Request $request;
     private readonly Database $database;
     private readonly Resource $resource;
@@ -54,23 +59,15 @@ class ResetPasswordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         [$account, $pr] = $this->findAccountAndPasswordReset($payload->resetCode);
-        // 3
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doReset($account, $payload->newPassword, $pr)
             );
         } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Password reset failed.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Password reset failed.", 0, $e);
         }
-        // 4
         $this->cookieService->DeleteCsrfCookie();
         return [
             'redirectUrl' => $this->resource->LoginPageUrl('home')
@@ -115,9 +112,9 @@ class ResetPasswordAction extends Action
      */
     protected function findAccountAndPasswordReset(string $resetCode): array
     {
-        $pr = $this->findPasswordReset($resetCode);
+        $pr = $this->tryFindPasswordResetByCode($resetCode);
         if ($pr === null ||
-            ($account = $this->findAccount($pr->accountId)) === null
+            ($account = $this->tryFindAccountById($pr->accountId)) === null
         ) {
             throw new \RuntimeException(
                 "This password reset request is no longer valid.",
@@ -125,27 +122,6 @@ class ResetPasswordAction extends Action
             );
         }
         return [$account, $pr];
-    }
-
-    /**
-     * @param string $resetCode
-     * @return ?PasswordReset
-     */
-    protected function findPasswordReset(string $resetCode): ?PasswordReset
-    {
-        return PasswordReset::FindFirst(
-            'resetCode = :resetCode',
-            ['resetCode' => $resetCode]
-        );
-    }
-
-    /**
-     * @param int $accountId
-     * @return ?Account
-     */
-    protected function findAccount(int $accountId): ?Account
-    {
-        return Account::FindById($accountId);
     }
 
     /**

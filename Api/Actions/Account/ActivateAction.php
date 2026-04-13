@@ -15,11 +15,12 @@ namespace Peneus\Api\Actions\Account;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
-use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\NotRegisteredEnsurer;
+use \Peneus\Api\Traits\PendingAccountFinder;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
@@ -29,6 +30,9 @@ use \Peneus\Resource;
  */
 class ActivateAction extends Action
 {
+    use PendingAccountFinder;
+    use NotRegisteredEnsurer;
+
     private readonly Request $request;
     private readonly Database $database;
     private readonly Resource $resource;
@@ -54,25 +58,16 @@ class ActivateAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         $pa = $this->findPendingAccount($payload->activationCode);
-        // 3
         $this->ensureNotRegistered($pa->email);
-        // 4
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doActivate($pa)
             );
         } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Account activation failed.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Account activation failed.", 0, $e);
         }
-        // 5
         $this->cookieService->DeleteCsrfCookie();
         return [
             'redirectUrl' => $this->resource->LoginPageUrl('home')
@@ -100,43 +95,6 @@ class ActivateAction extends Action
         return (object)[
             'activationCode' => $da->GetField('activationCode')
         ];
-    }
-
-    /**
-     * @param string $activationCode
-     * @return PendingAccount
-     * @throws \RuntimeException
-     */
-    protected function findPendingAccount(string $activationCode): PendingAccount
-    {
-        $pa = PendingAccount::FindFirst(
-            condition: 'activationCode = :activationCode',
-            bindings: ['activationCode' => $activationCode]
-        );
-        if ($pa === null) {
-            throw new \RuntimeException(
-                "No account is awaiting activation for the given code.",
-                StatusCode::NotFound->value
-            );
-        }
-        return $pa;
-    }
-
-    /**
-     * @param string $email
-     * @throws \RuntimeException
-     */
-    protected function ensureNotRegistered(string $email): void
-    {
-        if (0 !== Account::Count(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        )) {
-            throw new \RuntimeException(
-                "This account is already registered.",
-                StatusCode::Conflict->value
-            );
-        }
     }
 
     /**

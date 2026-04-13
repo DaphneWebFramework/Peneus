@@ -5,14 +5,17 @@
  * (C) 2025 by Eylem Ugurel
  *
  * Licensed under a Creative Commons Attribution 4.0 International License.
+ *
+ * You should have received a copy of the license along with this work. If not,
+ * see <http://creativecommons.org/licenses/by/4.0/>.
  */
 
 namespace Peneus\Api\Actions\Account;
 
 use \Peneus\Api\Actions\Action;
 
-use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\DatabaseSystem\Database;
+use \Peneus\Api\Traits\AccountFinder;
 use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
@@ -26,6 +29,7 @@ use \Peneus\Services\AccountService;
 class DeleteAction extends Action
 {
     use LoggedInEnsurer;
+    use AccountFinder;
 
     private readonly Database $database;
     private readonly AccountService $accountService;
@@ -46,42 +50,17 @@ class DeleteAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $accountView = $this->ensureLoggedIn();
-        // 2
         $account = $this->findAccount($accountView->id);
-        // 3
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doDelete($account)
             );
         } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Failed to delete account.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Failed to delete account.", 0, $e);
         }
-        // 4
         $this->logOut();
         return null;
-    }
-
-    /**
-     * @param int $id
-     * @return Account
-     * @throws \RuntimeException
-     */
-    protected function findAccount(int $id): Account
-    {
-        $account = Account::FindById($id);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "Account not found.",
-                StatusCode::NotFound->value
-            );
-        }
-        return $account;
     }
 
     /**

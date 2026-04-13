@@ -48,14 +48,11 @@ class CreateRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         $entity = $this->constructEntity($payload->entityClass, $payload->data);
         if (!$entity->Save()) {
             throw new \RuntimeException("Failed to create record.");
         }
-        // 3
         return [
             'id' => $entity->id
         ];

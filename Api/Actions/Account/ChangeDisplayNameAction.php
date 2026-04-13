@@ -15,8 +15,8 @@ namespace Peneus\Api\Actions\Account;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
-use \Harmonia\Http\StatusCode;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\AccountFinder;
 use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
 use \Peneus\Services\AccountService;
@@ -27,6 +27,7 @@ use \Peneus\Services\AccountService;
 class ChangeDisplayNameAction extends Action
 {
     use LoggedInEnsurer;
+    use AccountFinder;
 
     private readonly Request $request;
 
@@ -45,32 +46,11 @@ class ChangeDisplayNameAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $accountView = $this->ensureLoggedIn();
-        // 2
         $account = $this->findAccount($accountView->id);
-        // 3
         $payload = $this->validatePayload();
-        // 4
         $this->doChange($account, $payload->displayName);
         return null;
-    }
-
-    /**
-     * @param int $id
-     * @return Account
-     * @throws \RuntimeException
-     */
-    protected function findAccount(int $id): Account
-    {
-        $account = Account::FindById($id);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "Account not found.",
-                StatusCode::NotFound->value
-            );
-        }
-        return $account;
     }
 
     /**

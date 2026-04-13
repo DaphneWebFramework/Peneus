@@ -16,7 +16,6 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Config;
 use \Harmonia\Http\Request;
-use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
@@ -25,6 +24,8 @@ use \Peneus\Api\Hooks\ICaptchaHook;
 use \Peneus\Api\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
+use \Peneus\Model\Traits\AccountFinder;
+use \Peneus\Model\Traits\PasswordResetFinder;
 use \Peneus\Resource;
 
 /**
@@ -35,6 +36,8 @@ use \Peneus\Resource;
  */
 class SendPasswordResetAction extends Action
 {
+    use AccountFinder;
+    use PasswordResetFinder;
     use TransactionalEmailSender;
 
     private readonly ?ICaptchaHook $captchaHook;
@@ -69,25 +72,18 @@ class SendPasswordResetAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
-        $account = $this->findAccount($payload->email);
+        $account = $this->tryFindAccountByEmail($payload->email);
         if ($account !== null) {
-            // 3
             try {
                 $this->database->WithTransaction(fn() =>
                     $this->doSend($account)
                 );
             } catch (\Throwable $e) {
                 throw new \RuntimeException(
-                    "We couldn't send the email. Please try again later.",
-                    StatusCode::InternalServerError->value,
-                    $e
-                );
+                    "We couldn't send the email. Please try again later.", 0, $e);
             }
         }
-        // 4
         $this->cookieService->DeleteCsrfCookie();
         return [
             'message' =>
@@ -117,18 +113,6 @@ class SendPasswordResetAction extends Action
     }
 
     /**
-     * @param string $email
-     * @return ?Account
-     */
-    protected function findAccount(string $email): ?Account
-    {
-        return Account::FindFirst(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        );
-    }
-
-    /**
      * @param Account $account
      * @throws \RuntimeException
      */
@@ -155,23 +139,11 @@ class SendPasswordResetAction extends Action
      */
     protected function findOrConstructPasswordReset(int $accountId): PasswordReset
     {
-        $pr = $this->findPasswordReset($accountId);
+        $pr = $this->tryFindPasswordResetByAccountId($accountId);
         if ($pr === null) {
             $pr = $this->constructPasswordReset($accountId);
         }
         return $pr;
-    }
-
-    /**
-     * @param int $accountId
-     * @return ?PasswordReset
-     */
-    protected function findPasswordReset(int $accountId): ?PasswordReset
-    {
-        return PasswordReset::FindFirst(
-            condition: 'accountId = :accountId',
-            bindings: ['accountId' => $accountId]
-        );
     }
 
     /**

@@ -40,9 +40,7 @@ class CreateTableAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         if (!$payload->entityClass::CreateTable()) {
             throw new \RuntimeException(
                 "Failed to create table for: {$payload->entityClass}");

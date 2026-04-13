@@ -18,7 +18,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Traits\EntityClassResolver;
 use \Peneus\Api\Traits\EntityValidationRulesProvider;
-use \Peneus\Model\Entity;
+use \Peneus\Model\Traits\EntityFinder;
 
 /**
  * Deletes a specific record from a specified table.
@@ -27,6 +27,7 @@ class DeleteRecordAction extends Action
 {
     use EntityClassResolver;
     use EntityValidationRulesProvider;
+    use EntityFinder;
 
     private readonly Request $request;
 
@@ -46,14 +47,11 @@ class DeleteRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
-        $entity = $this->findEntity($payload->entityClass, $payload->data['id']);
+        $entity = $this->tryFindEntity($payload->entityClass, $payload->data['id']);
         if ($entity === null) {
             throw new \RuntimeException("Record not found.");
         }
-        // 3
         if (!$entity->Delete()) {
             throw new \RuntimeException("Failed to delete record.");
         }
@@ -85,15 +83,5 @@ class DeleteRecordAction extends Action
             'entityClass' => $entityClass,
             'data'        => $da->Data()
         ];
-    }
-
-    /**
-     * @param class-string $entityClass
-     * @param int $id
-     * @return ?Entity
-     */
-    protected function findEntity(string $entityClass, int $id): ?Entity
-    {
-        return $entityClass::FindById($id);
     }
 }

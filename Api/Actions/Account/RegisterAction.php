@@ -16,12 +16,13 @@ use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Config;
 use \Harmonia\Http\Request;
-use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Hooks\ICaptchaHook;
+use \Peneus\Api\Traits\NotPendingEnsurer;
+use \Peneus\Api\Traits\NotRegisteredEnsurer;
 use \Peneus\Api\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
@@ -33,6 +34,8 @@ use \Peneus\Services\AccountService;
  */
 class RegisterAction extends Action
 {
+    use NotRegisteredEnsurer;
+    use NotPendingEnsurer;
     use TransactionalEmailSender;
 
     private readonly ?ICaptchaHook $captchaHook;
@@ -67,24 +70,16 @@ class RegisterAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         $this->ensureNotRegistered($payload->email);
         $this->ensureNotPending($payload->email);
-        // 3
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doRegister($payload)
             );
         } catch (\Throwable $e) {
-            throw new \RuntimeException(
-                "Account registration failed.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Account registration failed.", 0, $e);
         }
-        // 4
         $this->cookieService->DeleteCsrfCookie();
         return [
             'message' =>
@@ -129,40 +124,6 @@ class RegisterAction extends Action
             'password' => $da->GetField('password'),
             'displayName' => $da->GetField('displayName')
         ];
-    }
-
-    /**
-     * @param string $email
-     * @throws \RuntimeException
-     */
-    protected function ensureNotRegistered(string $email): void
-    {
-        if (0 !== Account::Count(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        )) {
-            throw new \RuntimeException(
-                "This account is already registered.",
-                StatusCode::Conflict->value
-            );
-        }
-    }
-
-    /**
-     * @param string $email
-     * @throws \RuntimeException
-     */
-    protected function ensureNotPending(string $email): void
-    {
-        if (0 !== PendingAccount::Count(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        )) {
-            throw new \RuntimeException(
-                "This account is already awaiting activation.",
-                StatusCode::Conflict->value
-            );
-        }
     }
 
     /**

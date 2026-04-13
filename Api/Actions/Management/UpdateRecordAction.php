@@ -18,7 +18,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Traits\EntityClassResolver;
 use \Peneus\Api\Traits\EntityValidationRulesProvider;
-use \Peneus\Model\Entity;
+use \Peneus\Model\Traits\EntityFinder;
 
 /**
  * Updates an existing record in a specified table.
@@ -27,6 +27,7 @@ class UpdateRecordAction extends Action
 {
     use EntityClassResolver;
     use EntityValidationRulesProvider;
+    use EntityFinder;
 
     private readonly Request $request;
 
@@ -46,14 +47,11 @@ class UpdateRecordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
-        $entity = $this->findEntity($payload->entityClass, $payload->data['id']);
+        $entity = $this->tryFindEntity($payload->entityClass, $payload->data['id']);
         if ($entity === null) {
             throw new \RuntimeException("Record not found.");
         }
-        // 3
         $entity->Populate($payload->data);
         if (!$entity->Save()) {
             throw new \RuntimeException("Failed to update record.");
@@ -86,15 +84,5 @@ class UpdateRecordAction extends Action
             'entityClass' => $entityClass,
             'data'        => $da->Data()
         ];
-    }
-
-    /**
-     * @param class-string $entityClass
-     * @param int $id
-     * @return ?Entity
-     */
-    protected function findEntity(string $entityClass, int $id): ?Entity
-    {
-        return $entityClass::FindById($id);
     }
 }

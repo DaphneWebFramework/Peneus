@@ -84,16 +84,18 @@ class ListRecordsAction extends Action
         }
         // 5
         return [
-            'data' => $entityClass::Find(
-                condition: $condition,
-                bindings: $bindings,
-                orderBy: $orderBy,
-                limit: $payload->limit,
-                offset: $payload->offset
+            'data' => $this->findEntities(
+                $entityClass,
+                $condition,
+                $bindings,
+                $orderBy,
+                $payload->limit,
+                $payload->offset
             ),
-            'total' => $entityClass::Count(
-                condition: $condition,
-                bindings: $bindings
+            'total' => $this->countEntities(
+                $entityClass,
+                $condition,
+                $bindings
             )
         ];
     }
@@ -132,5 +134,48 @@ class ListRecordsAction extends Action
             'sortkey' => $da->GetFieldOrDefault('sortkey', null),
             'sortdir' => $da->GetFieldOrDefault('sortdir', null)
         ];
+    }
+
+    /**
+     * @param class-string $entityClass
+     * @param ?string $condition
+     * @param ?array $bindings
+     * @param ?string $orderBy
+     * @param ?int $limit
+     * @param ?int $offset
+     * @return Entity[]
+     */
+    protected function findEntities(
+        string $entityClass,
+        ?string $condition,
+        ?array $bindings,
+        ?string $orderBy,
+        ?int $limit,
+        ?int $offset
+    ): array {
+        return $entityClass::Find(
+            $condition,
+            $bindings,
+            $orderBy,
+            $limit,
+            $offset
+        );
+    }
+
+    /**
+     * @param class-string $entityClass
+     * @param ?string $condition
+     * @param ?array $bindings
+     * @return int
+     */
+    protected function countEntities(
+        string $entityClass,
+        ?string $condition,
+        ?array $bindings
+    ): int {
+        return $entityClass::Count(
+            $condition,
+            $bindings
+        );
     }
 }

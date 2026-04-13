@@ -40,9 +40,7 @@ class DropTableAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $payload = $this->validatePayload();
-        // 2
         if (!$payload->entityClass::DropTable()) {
             throw new \RuntimeException(
                 "Failed to drop table for: {$payload->entityClass}");

@@ -22,6 +22,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Model\Account;
+use \Peneus\Model\Traits\AccountFinder;
 use \Peneus\Resource;
 use \Peneus\Services\AccountService;
 
@@ -34,6 +35,8 @@ use \Peneus\Services\AccountService;
  */
 class SignInWithGoogleAction extends Action
 {
+    use AccountFinder;
+
     private const GOOGLE_OAUTH2_CLIENT_ID_PATTERN =
         '/^[0-9a-zA-Z\-]+\.apps\.googleusercontent\.com$/';
     private const GOOGLE_OAUTH2_TOKENINFO_URL =
@@ -72,28 +75,18 @@ class SignInWithGoogleAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $this->ensureNotLoggedIn();
-        // 2
         $payload = $this->validatePayload();
-        // 3
         $profile = $this->decodeProfile($payload->credential);
-        // 4
         $account = $this->findOrConstructAccount($profile);
-        // 5
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doLogIn($account)
             );
         } catch (\Throwable $e) {
             $this->logOut();
-            throw new \RuntimeException(
-                "Login failed.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Login failed.", 0, $e);
         }
-        // 6
         $this->cookieService->DeleteCsrfCookie();
         return [
             'redirectUrl' => $this->resource->PageUrl('home')
@@ -263,23 +256,11 @@ class SignInWithGoogleAction extends Action
      */
     protected function findOrConstructAccount(\stdClass $profile): Account
     {
-        $account = $this->findAccount($profile->email);
+        $account = $this->tryFindAccountByEmail($profile->email);
         if ($account === null) {
             $account = $this->constructAccount($profile);
         }
         return $account;
-    }
-
-    /**
-     * @param string $email
-     * @return ?Account
-     */
-    protected function findAccount(string $email): ?Account
-    {
-        return Account::FindFirst(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        );
     }
 
     /**

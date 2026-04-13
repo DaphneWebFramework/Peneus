@@ -18,6 +18,7 @@ use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\AccountFinder;
 use \Peneus\Api\Traits\LoggedInEnsurer;
 use \Peneus\Model\Account;
 use \Peneus\Model\AccountView;
@@ -28,6 +29,7 @@ use \Peneus\Model\AccountView;
 class ChangePasswordAction extends Action
 {
     use LoggedInEnsurer;
+    use AccountFinder;
 
     private readonly Request $request;
     private readonly SecurityService $securityService;
@@ -48,20 +50,14 @@ class ChangePasswordAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $accountView = $this->ensureLoggedIn();
-        // 2
         $this->ensureLocalAccount($accountView);
-        // 3
         $account = $this->findAccount($accountView->id);
-        // 4
         $payload = $this->validatePayload();
-        // 5
         $this->verifyCurrentPassword(
             $payload->currentPassword,
             $account->passwordHash
         );
-        // 6
         $this->doChange($account, $payload->newPassword);
         return null;
     }
@@ -78,23 +74,6 @@ class ChangePasswordAction extends Action
                 StatusCode::Forbidden->value
             );
         }
-    }
-
-    /**
-     * @param int $id
-     * @return Account
-     * @throws \RuntimeException
-     */
-    protected function findAccount(int $id): Account
-    {
-        $account = Account::FindById($id);
-        if ($account === null) {
-            throw new \RuntimeException(
-                "Account not found.",
-                StatusCode::NotFound->value
-            );
-        }
-        return $account;
     }
 
     /**

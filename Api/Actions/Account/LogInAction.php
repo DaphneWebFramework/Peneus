@@ -22,6 +22,7 @@ use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Hooks\ICaptchaHook;
 use \Peneus\Model\Account;
+use \Peneus\Model\Traits\AccountFinder;
 use \Peneus\Services\AccountService;
 
 /**
@@ -29,6 +30,8 @@ use \Peneus\Services\AccountService;
  */
 class LogInAction extends Action
 {
+    use AccountFinder;
+
     private readonly ?ICaptchaHook $captchaHook;
     private readonly Request $request;
     private readonly Database $database;
@@ -59,29 +62,20 @@ class LogInAction extends Action
      */
     protected function onExecute(): mixed
     {
-        // 1
         $this->ensureNotLoggedIn();
-        // 2
         $payload = $this->validatePayload();
-        // 3
         $account = $this->findAndAuthenticateAccount(
             $payload->email,
             $payload->password
         );
-        // 4
         try {
             $this->database->WithTransaction(fn() =>
                 $this->doLogIn($account, $payload->keepLoggedIn)
             );
         } catch (\Throwable $e) {
             $this->logOut();
-            throw new \RuntimeException(
-                "Login failed.",
-                StatusCode::InternalServerError->value,
-                $e
-            );
+            throw new \RuntimeException("Login failed.", 0, $e);
         }
-        // 5
         $this->cookieService->DeleteCsrfCookie();
         return null;
     }
@@ -145,7 +139,7 @@ class LogInAction extends Action
         string $password
     ): Account
     {
-        $account = $this->findAccount($email);
+        $account = $this->tryFindAccountByEmail($email);
         if ($account === null ||
             !$this->securityService->VerifyPassword(
                 $password,
@@ -158,18 +152,6 @@ class LogInAction extends Action
             );
         }
         return $account;
-    }
-
-    /**
-     * @param string $email
-     * @return ?Account
-     */
-    protected function findAccount(string $email): ?Account
-    {
-        return Account::FindFirst(
-            condition: 'email = :email',
-            bindings: ['email' => $email]
-        );
     }
 
     /**

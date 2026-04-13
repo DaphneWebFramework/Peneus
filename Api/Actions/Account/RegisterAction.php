@@ -20,7 +20,6 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Hooks\ICaptchaHook;
 use \Peneus\Api\Traits\NotPendingEnsurer;
 use \Peneus\Api\Traits\NotRegisteredEnsurer;
 use \Peneus\Api\Traits\TransactionalEmailSender;
@@ -38,7 +37,6 @@ class RegisterAction extends Action
     use NotPendingEnsurer;
     use TransactionalEmailSender;
 
-    private readonly ?ICaptchaHook $captchaHook;
     private readonly Request $request;
     private readonly Database $database;
     private readonly Config $config;
@@ -48,14 +46,10 @@ class RegisterAction extends Action
 
     /**
      * Constructs a new instance by initializing dependencies.
-     *
-     * @param ICaptchaHook|null $captchaHook
-     *   (Optional) A hook for verifying captchas.
      */
-    public function __construct(?ICaptchaHook $captchaHook = null)
+    public function __construct()
     {
         parent::__construct();
-        $this->captchaHook = $captchaHook;
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->config = Config::Instance();
@@ -118,7 +112,6 @@ class RegisterAction extends Action
                 . " numbers, spaces, dots, hyphens, and apostrophes."
         ]);
         $da = $validator->Validate($this->request->FormParams());
-        $this->captchaHook?->OnVerifyCaptcha();
         return (object)[
             'email' => $da->GetField('email'),
             'password' => $da->GetField('password'),

@@ -26,6 +26,7 @@ use \Peneus\Api\Actions\Action;
 use \Peneus\Api\Guards\FormTokenGuard;
 use \Peneus\Api\Guards\HeaderTokenGuard;
 use \Peneus\Api\Guards\SessionGuard;
+use \Peneus\Api\Guards\TurnstileGuard;
 
 /**
  * Handles account-related API actions.
@@ -38,15 +39,18 @@ class AccountHandler extends Handler
             'sign-in-with-google' => (new SignInWithGoogleAction)
                 ->AddGuard(new HeaderTokenGuard),
             'register' => (new RegisterAction)
-                ->AddGuard(new FormTokenGuard),
+                ->AddGuard(new FormTokenGuard)
+                ->AddGuard(new TurnstileGuard),
             'activate' => (new ActivateAction)
                 ->AddGuard(new FormTokenGuard),
             'log-in' => (new LogInAction)
-                ->AddGuard(new FormTokenGuard),
+                ->AddGuard(new FormTokenGuard)
+                ->AddGuard(new TurnstileGuard),
             'log-out' => (new LogOutAction)
                 ->AddGuard(new SessionGuard),
             'send-password-reset' => (new SendPasswordResetAction)
-                ->AddGuard(new FormTokenGuard),
+                ->AddGuard(new FormTokenGuard)
+                ->AddGuard(new TurnstileGuard),
             'reset-password' => (new ResetPasswordAction)
                 ->AddGuard(new FormTokenGuard),
             'change-display-name' => (new ChangeDisplayNameAction)

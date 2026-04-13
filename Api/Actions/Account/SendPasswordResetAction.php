@@ -20,7 +20,6 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
-use \Peneus\Api\Hooks\ICaptchaHook;
 use \Peneus\Api\Traits\TransactionalEmailSender;
 use \Peneus\Model\Account;
 use \Peneus\Model\PasswordReset;
@@ -40,7 +39,6 @@ class SendPasswordResetAction extends Action
     use PasswordResetFinder;
     use TransactionalEmailSender;
 
-    private readonly ?ICaptchaHook $captchaHook;
     private readonly Request $request;
     private readonly Database $database;
     private readonly Config $config;
@@ -50,14 +48,10 @@ class SendPasswordResetAction extends Action
 
     /**
      * Constructs a new instance by initializing dependencies.
-     *
-     * @param ICaptchaHook|null $captchaHook
-     *   (Optional) A hook for verifying captchas.
      */
-    public function __construct(?ICaptchaHook $captchaHook = null)
+    public function __construct()
     {
         parent::__construct();
-        $this->captchaHook = $captchaHook;
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->config = Config::Instance();
@@ -106,7 +100,6 @@ class SendPasswordResetAction extends Action
             ],
         ]);
         $da = $validator->Validate($this->request->FormParams());
-        $this->captchaHook?->OnVerifyCaptcha();
         return (object)[
             'email' => $da->GetField('email')
         ];

@@ -24,6 +24,7 @@ use \Peneus\Api\Traits\PendingAccountFinder;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
+use \Peneus\Services\AccountService;
 
 /**
  * Handles account activation via activation code.
@@ -36,6 +37,7 @@ class ActivateAction extends Action
     private readonly Request $request;
     private readonly Database $database;
     private readonly Resource $resource;
+    private readonly AccountService $accountService;
     private readonly SecurityService $securityService;
     private readonly CookieService $cookieService;
 
@@ -48,6 +50,7 @@ class ActivateAction extends Action
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->resource = Resource::Instance();
+        $this->accountService = AccountService::Instance();
         $this->securityService = SecurityService::Instance();
         $this->cookieService = CookieService::Instance();
     }
@@ -109,6 +112,9 @@ class ActivateAction extends Action
         }
         if (!$pa->Delete()) {
             throw new \RuntimeException("Failed to delete pending account.");
+        }
+        foreach ($this->accountService->ActivationHooks() as $hook) {
+            $hook->OnActivateAccount($account);
         }
     }
 

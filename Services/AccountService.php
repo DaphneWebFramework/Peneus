@@ -19,6 +19,7 @@ use \Harmonia\Patterns\CachedValue;
 use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Session;
+use \Peneus\Api\Hooks\IAccountActivationHook;
 use \Peneus\Api\Hooks\IAccountDeletionHook;
 use \Peneus\Model\AccountView;
 
@@ -27,6 +28,8 @@ use \Peneus\Model\AccountView;
  */
 class AccountService extends Singleton
 {
+    /** @var IAccountActivationHook[] */
+    private array $activationHooks;
     /** @var IAccountDeletionHook[] */
     private array $deletionHooks;
 
@@ -42,6 +45,7 @@ class AccountService extends Singleton
      */
     protected function __construct(?PersistentLoginManager $plm = null)
     {
+        $this->activationHooks = [];
         $this->deletionHooks = [];
         $this->plm = $plm ?? new PersistentLoginManager();
         $this->cachedSessionAccount = new CachedValue();
@@ -145,6 +149,28 @@ class AccountService extends Singleton
             }
             return $this->tryPersistentLogin();
         });
+    }
+
+    /**
+     * Registers a hook to be triggered during account activation.
+     *
+     * @param IAccountActivationHook $hook
+     *   The hook implementation to be registered.
+     */
+    public function RegisterActivationHook(IAccountActivationHook $hook): void
+    {
+        $this->activationHooks[] = $hook;
+    }
+
+    /**
+     * Returns all registered account activation hooks.
+     *
+     * @return IAccountActivationHook[]
+     *   An array of registered activation hook instances.
+     */
+    public function ActivationHooks(): array
+    {
+        return $this->activationHooks;
     }
 
     /**

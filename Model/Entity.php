@@ -77,8 +77,11 @@ abstract class Entity implements \JsonSerializable
      * Populates the entity's properties with the given data.
      *
      * If a corresponding property is a `DateTime` instance, it will be updated
-     * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
-     * `'2025-03-15'`).
+     * using either a `DateTime` instance or a string in format "2025-03-15" or
+     * "2025-03-15 12:45:00".
+     *
+     * Backed enum properties accept either an enum case or a scalar value of
+     * the same backing type (int or string).
      *
      * @param array|object $data
      *   An associative array or an object containing values for the entity's
@@ -100,26 +103,33 @@ abstract class Entity implements \JsonSerializable
             $value = $data[$key];
             try {
                 if ($value === null) {
-                    if ($metadata['nullable']) {
-                        $this->$key = null;
-                        continue;
-                    }
-                    throw new \InvalidArgumentException(
-                        "Cannot assign null to non-nullable property '{$key}'.");
+                    $this->$key = null;
+                    continue;
                 }
-                switch ($metadata['type']) {
+                $type = $metadata['type'];
+                switch ($type) {
                 case 'bool':
                     $this->$key = (bool)$value;
                     break;
                 case 'DateTime':
-                    $this->$key = new \DateTime($value);
+                    if ($value instanceof \DateTime) {
+                        $this->$key = $value;
+                    } else {
+                        $this->$key = new \DateTime($value);
+                    }
                     break;
                 default:
-                    $this->$key = $value;
+                    if (\is_subclass_of($type, \BackedEnum::class) &&
+                        !($value instanceof $type)
+                    ) {
+                        $this->$key = $type::from($value);
+                    } else {
+                        $this->$key = $value;
+                    }
                 }
             } catch (\Throwable $e) {
                 throw new \InvalidArgumentException(
-                    "Failed to assign value to property '{$key}'.", 0, $e);
+                    "Failed to assign value to property '{$key}'.");
             }
         }
     }
@@ -175,10 +185,6 @@ abstract class Entity implements \JsonSerializable
     /**
      * Specifies how the entity should be serialized to JSON.
      *
-     * Converts `DateTime` properties to strings using the standard
-     * date-time format. Preserves `null` for nullable date-time fields.
-     * Only properties with supported types are included in the output.
-     *
      * @return array
      *   An associative array of property names and their serialized values.
      */
@@ -186,12 +192,7 @@ abstract class Entity implements \JsonSerializable
     {
         $serialized = [];
         foreach ($this->properties() as $key => $metadata) {
-            $value = $this->$key;
-            if ($value instanceof \DateTime) {
-                $serialized[$key] = $value->format(self::DATETIME_FORMAT);
-            } else {
-                $serialized[$key] = $value;
-            }
+            $serialized[$key] = self::scalarize($this->$key);
         }
         // Ensure 'id' is always the first key in the serialized output.
         if (\array_key_exists('id', $serialized)) {
@@ -247,8 +248,9 @@ abstract class Entity implements \JsonSerializable
      * Returns the table name of the entity.
      *
      * By default, the table name is derived from the entity's class name,
-     * converted to lowercase. Subclasses can override this method to specify
-     * a custom table name.
+     * converted to lowercase.
+     *
+     * Subclasses can override this method to specify a custom table name.
      *
      * #### Example
      * ```php
@@ -262,7 +264,7 @@ abstract class Entity implements \JsonSerializable
      * ```
      *
      * @return string
-     *   The table name associated with the entity.
+     *   The table name for the entity.
      */
     public static function TableName(): string
     {
@@ -273,10 +275,10 @@ abstract class Entity implements \JsonSerializable
     /**
      * Returns metadata for all supported properties of the entity.
      *
-     * The `id` column is always placed first, followed by all other public,
-     * non-static, non-readonly properties with supported types. Each entry
-     * contains the property's name, corresponding SQL type, and nullability
-     * information.
+     * The `id` column is always placed first, followed by other properties.
+     * Each entry contains the property's name, its SQL type ("BIT", "INT",
+     * "DOUBLE", "TEXT", or "DATETIME"), and its nullability flag. Backed enums
+     * are mapped to "INT" or "TEXT" based on their backing type.
      *
      * @return array<int, array<string, mixed>>
      *   An ordered array of metadata entries for each property. Each entry
@@ -294,7 +296,12 @@ abstract class Entity implements \JsonSerializable
                     'int'      => 'INT',
                     'float'    => 'DOUBLE',
                     'string'   => 'TEXT',
-                    'DateTime' => 'DATETIME'
+                    'DateTime' => 'DATETIME',
+                    default    =>
+                        match (self::backingTypeForEnum($metadata['type'])) {
+                            'int'    => 'INT',
+                            'string' => 'TEXT'
+                        }
                 },
                 'nullable' => $metadata['nullable']
             ];
@@ -591,12 +598,7 @@ abstract class Entity implements \JsonSerializable
             }
             $columns[] = "`$key`";
             $placeholders[] = ":{$key}";
-            $value = $this->$key;
-            if ($value instanceof \DateTime) {
-                $bindings[$key] = $value->format(self::DATETIME_FORMAT);
-            } else {
-                $bindings[$key] = $value;
-            }
+            $bindings[$key] = self::scalarize($this->$key);
         }
         if (empty($columns)) {
             return false;
@@ -632,12 +634,7 @@ abstract class Entity implements \JsonSerializable
             }
             $columns[] = "`$key`";
             $placeholders[] = ":{$key}";
-            $value = $this->$key;
-            if ($value instanceof \DateTime) {
-                $bindings[$key] = $value->format(self::DATETIME_FORMAT);
-            } else {
-                $bindings[$key] = $value;
-            }
+            $bindings[$key] = self::scalarize($this->$key);
         }
         if (empty($columns)) {
             return false;
@@ -668,10 +665,16 @@ abstract class Entity implements \JsonSerializable
      * metadata.
      *
      * Only properties declared as public, non-static, and non-readonly are
-     * included. The supported types are `bool`, `int`, `float`, `string`, and
-     * `DateTime`. Nullable types are supported and indicated in the returned
-     * metadata. If a supported property is uninitialized, it is assigned a safe
-     * default before being yielded.
+     * included. Supported types are `bool`, `int`, `float`, `string`,
+     * `DateTime`, and backed enums with at least one case.
+     *
+     * Nullable types are supported. Nullability is reflected in the returned
+     * metadata.
+     *
+     * If a supported property is uninitialized, it is assigned a safe default
+     * before being yielded. Nullable properties receive null. Non-nullable
+     * scalars receive a type-specific default. Non-nullable backed enums
+     * receive their first case.
      *
      * @return \Generator
      *   Yields a key-value pair where the key is the property name and the
@@ -679,7 +682,6 @@ abstract class Entity implements \JsonSerializable
      */
     private function properties(): \Generator
     {
-        static $supportedTypes = ['bool', 'int', 'float', 'string', 'DateTime'];
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
             // 1
@@ -696,20 +698,17 @@ abstract class Entity implements \JsonSerializable
             }
             // 3
             $type = $reflectionType->getName();
-            if (!\in_array($type, $supportedTypes, true)) {
+            if (!self::isSupportedPropertyType($type)) {
                 continue;
             }
-            // 4
             $key = $reflectionProperty->getName();
+            // 4. Assign a default value to avoid "Typed property must not be
+            //    accessed before initialization" errors.
             if (!$reflectionProperty->isInitialized($this)) {
-                // Assign safe defaults to prevent "Typed property must not be
-                // accessed before initialization" errors.
-                switch ($type) {
-                case 'bool'    : $this->$key = false; break;
-                case 'int'     : $this->$key = 0; break;
-                case 'float'   : $this->$key = 0.0; break;
-                case 'string'  : $this->$key = ''; break;
-                case 'DateTime': $this->$key = new \DateTime(); break;
+                if ($reflectionType->allowsNull()) {
+                    $this->$key = null;
+                } else {
+                    $this->$key = self::defaultValueForSupportedPropertyType($type);
                 }
             }
             // 5
@@ -718,6 +717,92 @@ abstract class Entity implements \JsonSerializable
                 'nullable' => $reflectionType->allowsNull()
             ];
         }
+    }
+
+    /**
+     * Determines whether the given type name is supported as a property type.
+     *
+     * Supported types are `bool`, `int`, `float`, `string`, `DateTime`, and
+     * backed enums that define at least one case.
+     *
+     * @param string $type
+     *   The type name to check.
+     * @return bool
+     *   Returns `true` if the type is supported, `false` otherwise.
+     */
+    private static function isSupportedPropertyType(string $type): bool
+    {
+        static $supportedTypes = ['bool', 'int', 'float', 'string', 'DateTime'];
+        if (\in_array($type, $supportedTypes, true)) {
+            return true;
+        }
+        if (\is_subclass_of($type, \BackedEnum::class) && !empty($type::cases())) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the default value for the given supported property type.
+     *
+     * Scalar types receive their natural defaults, `DateTime` receives a new
+     * instance, and backed enums receive their first case.
+     *
+     * @param string $type
+     *   A supported property type name.
+     * @return mixed
+     *   The default value for the given type.
+     */
+    private static function defaultValueForSupportedPropertyType(string $type): mixed
+    {
+        return match ($type) {
+            'bool'     => false,
+            'int'      => 0,
+            'float'    => 0.0,
+            'string'   => '',
+            'DateTime' => new \DateTime(),
+            default    => $type::cases()[0],
+        };
+    }
+
+    /**
+     * Returns the backing type name of a backed enum.
+     *
+     * @param class-string<\BackedEnum> $class
+     *   The fully-qualified class name of a backed enum.
+     * @return string
+     *   The name of the backing type ('int' or 'string').
+     * @throws \ReflectionException
+     *   If the class does not exist, is not an enum, or has no backing type.
+     */
+    private static function backingTypeForEnum(string $class): string
+    {
+        $reflectionEnum = new \ReflectionEnum($class);
+        $reflectionNamedType = $reflectionEnum->getBackingType();
+        if (!$reflectionNamedType instanceof \ReflectionNamedType) {
+            throw new \ReflectionException("Enum has no backing type: $class");
+        }
+        return $reflectionNamedType->getName();
+    }
+
+    /**
+     * Converts a property value into a scalar representation suitable for
+     * database storage or serialization.
+     *
+     * @param mixed $value
+     *   The value to scalarize.
+     * @return mixed
+     *   The scalarized value.
+     */
+    private static function scalarize(mixed $value): mixed
+    {
+        if ($value instanceof \DateTime) {
+            return $value->format(self::DATETIME_FORMAT);
+        }
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        return $value;
     }
 
     #endregion private

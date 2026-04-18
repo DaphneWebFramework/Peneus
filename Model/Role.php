@@ -21,14 +21,6 @@ enum Role: int
     case Editor = 10;
     case Admin  = 20;
 
-    public static function Parse(?int $value): self
-    {
-        if ($value === null) {
-            return self::None;
-        }
-        return self::tryFrom($value) ?? self::None;
-    }
-
     public function AtLeast(self $minimum): bool
     {
         return $this->value >= $minimum->value;

@@ -18,5 +18,5 @@ namespace Peneus\Model;
 class AccountRole extends Entity
 {
     public int $accountId;
-    public int $role;
+    public Role $role;
 }

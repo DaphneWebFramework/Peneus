@@ -19,10 +19,12 @@ class AccountView extends ViewEntity
     public string $displayName;
     public \DateTime $timeActivated;
     public ?\DateTime $timeLastLogin;
-    public ?int $role;
+    public Role $role;
 
     public static function ViewDefinition(): string
     {
+        $defaultRole = Role::None->value;
+
         return <<<SQL
         SELECT
             account.id,
@@ -32,7 +34,7 @@ class AccountView extends ViewEntity
             account.displayName,
             account.timeActivated,
             account.timeLastLogin,
-            accountrole.role
+            COALESCE(accountrole.role, {$defaultRole}) AS role
         FROM
             account
         LEFT JOIN

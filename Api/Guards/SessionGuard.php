@@ -29,8 +29,7 @@ class SessionGuard implements IGuard
      *
      * @param Role $minimumRole
      *   (Optional) The minimum role required for the request. Defaults to
-     *   `Role::None`. When `Role::None` is specified, only login status is
-     *   enforced.
+     *   `Role::None`.
      */
     public function __construct(Role $minimumRole = Role::None)
     {
@@ -52,6 +51,6 @@ class SessionGuard implements IGuard
         if ($accountView === null) {
             return false;
         }
-        return Role::Parse($accountView->role)->AtLeast($this->minimumRole);
+        return $accountView->role->AtLeast($this->minimumRole);
     }
 }

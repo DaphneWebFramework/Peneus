@@ -416,8 +416,8 @@ abstract class Entity implements \JsonSerializable
      * @param int $id
      *   The primary key of the entity to retrieve.
      * @return static|null
-     *   An instance of the called class if a matching record is found,
-     *   `null` otherwise.
+     *   Returns an instance of the called class if a matching record is found
+     *   and the entity can be populated from it; `null` otherwise.
      */
     public static function FindById(int $id): ?static
     {
@@ -435,7 +435,11 @@ abstract class Entity implements \JsonSerializable
         if ($row === null) {
             return null;
         }
-        return new static($row);
+        try {
+            return new static($row);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -454,8 +458,8 @@ abstract class Entity implements \JsonSerializable
      *   is returned first (e.g., `"createdAt DESC"`). If `null` (default), no
      *   ordering is applied.
      * @return ?static
-     *   An instance of the called class if a matching record is found,
-     *   `null` otherwise.
+     *   Returns an instance of the called class if a matching record is found
+     *   and the entity can be populated from it; `null` otherwise.
      */
     public static function FindFirst(
         ?string $condition = null,
@@ -484,7 +488,11 @@ abstract class Entity implements \JsonSerializable
         if ($row === null) {
             return null;
         }
-        return new static($row);
+        try {
+            return new static($row);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     /**
@@ -508,9 +516,11 @@ abstract class Entity implements \JsonSerializable
      * @param ?int $offset
      *   (Optional) The number of entities to skip before returning results. If
      *   `null` (default), no offset is applied.
-     * @return array
-     *   An array of instances of the called class. Returns an empty array if
-     *   no matching rows are found or if the query fails.
+     * @return static[]
+     *   Returns an array of instances of the called class for all matching
+     *   records. Only entities that can be populated from these records are
+     *   included. Returns an empty array if no matching rows are found, the
+     *   query fails, or no entities can be populated.
      */
     public static function Find(
         ?string $condition = null,
@@ -541,7 +551,11 @@ abstract class Entity implements \JsonSerializable
         }
         $entities = [];
         while ($row = $resultSet->Row()) {
-            $entities[] = new static($row);
+            try {
+                $entities[] = new static($row);
+            } catch (\Throwable $e) {
+                continue;
+            }
         }
         return $entities;
     }

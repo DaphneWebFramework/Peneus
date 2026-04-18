@@ -20,6 +20,8 @@ use \Harmonia\Systems\DatabaseSystem\Queries\RawQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\SelectQuery;
 use \Harmonia\Systems\DatabaseSystem\Queries\UpdateQuery;
 use \Harmonia\Systems\DatabaseSystem\ResultSet;
+use \Peneus\Model\Core\EntityPropertyInfo;
+use \Peneus\Model\Core\EntityPropertyType;
 
 /**
  * Base class for Active Record entities.
@@ -51,10 +53,6 @@ abstract class Entity implements \JsonSerializable
     /**
      * Constructs an entity with the given data.
      *
-     * If a corresponding property is a `DateTime` instance, it will be updated
-     * using a provided value in string format (e.g., `'2025-03-15 12:45:00'`,
-     * `'2025-03-15'`).
-     *
      * @param array|object|null $data
      *   (Optional) An associative array or an object containing values for the
      *   entity's public properties. Keys (for arrays) or property names (for
@@ -62,6 +60,8 @@ abstract class Entity implements \JsonSerializable
      *   it is also assigned.
      * @throws \InvalidArgumentException
      *   If a property assignment fails due to an invalid value or type mismatch.
+     *
+     * @see Populate
      */
     public function __construct(array|object|null $data = null)
     {
@@ -76,9 +76,11 @@ abstract class Entity implements \JsonSerializable
     /**
      * Populates the entity's properties with the given data.
      *
-     * If a corresponding property is a `DateTime` instance, it will be updated
-     * using either a `DateTime` instance or a string in format "2025-03-15" or
-     * "2025-03-15 12:45:00".
+     * If a property is a scalar (`bool`, `int`, `float`, `string`), the value
+     * is cast to that scalar type.
+     *
+     * If a property is a `DateTime`, the value may be a `DateTime` instance or
+     * a string in "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS" format.
      *
      * Backed enum properties accept either an enum case or a scalar value of
      * the same backing type (int or string).
@@ -96,40 +98,50 @@ abstract class Entity implements \JsonSerializable
         if (\is_object($data)) {
             $data = \get_object_vars($data);
         }
-        foreach ($this->properties() as $key => $metadata) {
-            if (!\array_key_exists($key, $data)) {
+        foreach ($this->properties() as $propName => $propInfo) {
+            if (!\array_key_exists($propName, $data)) {
                 continue;
             }
-            $value = $data[$key];
+            $value = $data[$propName];
             try {
                 if ($value === null) {
-                    $this->$key = null;
+                    if (!$propInfo->IsNullable()) {
+                        throw new \InvalidArgumentException(
+                            "Cannot assign null to non-nullable property.");
+                    }
+                    $this->$propName = null;
                     continue;
                 }
-                $type = $metadata['type'];
-                switch ($type) {
-                case 'bool':
-                    $this->$key = (bool)$value;
+                switch ($propInfo->Type()) {
+                case EntityPropertyType::Boolean:
+                    $this->$propName = (bool)$value;
                     break;
-                case 'DateTime':
-                    if ($value instanceof \DateTime) {
-                        $this->$key = $value;
-                    } else {
-                        $this->$key = new \DateTime($value);
-                    }
+                case EntityPropertyType::Integer:
+                    $this->$propName = (int)$value;
+                    break;
+                case EntityPropertyType::Float:
+                    $this->$propName = (float)$value;
+                    break;
+                case EntityPropertyType::String:
+                    $this->$propName = (string)$value;
+                    break;
+                case EntityPropertyType::DateTime:
+                    $this->$propName = ($value instanceof \DateTime)
+                        ? $value
+                        : new \DateTime($value);
+                    break;
+                case EntityPropertyType::Enumeration:
+                    $class = $propInfo->Class();
+                    $this->$propName = ($value instanceof $class)
+                        ? $value
+                        : $class::from($value);
                     break;
                 default:
-                    if (\is_subclass_of($type, \BackedEnum::class) &&
-                        !($value instanceof $type)
-                    ) {
-                        $this->$key = $type::from($value);
-                    } else {
-                        $this->$key = $value;
-                    }
+                    $this->$propName = $value;
                 }
             } catch (\Throwable $e) {
                 throw new \InvalidArgumentException(
-                    "Failed to assign value to property '{$key}'.");
+                    "Failed to set property '{$propName}': {$e->getMessage()}");
             }
         }
     }
@@ -191,8 +203,8 @@ abstract class Entity implements \JsonSerializable
     public function jsonSerialize(): mixed
     {
         $serialized = [];
-        foreach ($this->properties() as $key => $metadata) {
-            $serialized[$key] = self::scalarize($this->$key);
+        foreach ($this->properties() as $propName => $propInfo) {
+            $serialized[$propName] = self::scalarize($this->$propName, $propInfo);
         }
         // Ensure 'id' is always the first key in the serialized output.
         if (\array_key_exists('id', $serialized)) {
@@ -207,20 +219,22 @@ abstract class Entity implements \JsonSerializable
      * Serializes the entity to an associative array, excluding specified
      * properties.
      *
-     * Uses the same logic as `jsonSerialize` (e.g., DateTime formatting),
-     * but allows certain fields to be omitted dynamically.
+     * Uses the same logic as `jsonSerialize`, but allows certain fields to be
+     * omitted dynamically.
      *
      * @param string ...$excludes
      *   Property names to exclude from the result.
      * @return array
      *   An associative array of property names and their serialized values,
      *   excluding any specified properties.
+     *
+     * @see jsonSerialize
      */
     public function Without(string ...$excludes): array
     {
         $serialized = $this->jsonSerialize();
-        foreach ($excludes as $key) {
-            unset($serialized[$key]);
+        foreach ($excludes as $propName) {
+            unset($serialized[$propName]);
         }
         return $serialized;
     }
@@ -288,24 +302,24 @@ abstract class Entity implements \JsonSerializable
     {
         $result = [];
         $instance = new static();
-        foreach ($instance->properties() as $key => $metadata) {
+        foreach ($instance->properties() as $propName => $propInfo) {
             $entry = [
-                'name' => $key,
-                'type' => match ($metadata['type']) {
-                    'bool'     => 'BIT',
-                    'int'      => 'INT',
-                    'float'    => 'DOUBLE',
-                    'string'   => 'TEXT',
-                    'DateTime' => 'DATETIME',
-                    default    =>
-                        match (self::backingTypeForEnum($metadata['type'])) {
+                'name' => $propName,
+                'type' => match ($propInfo->Type()) {
+                    EntityPropertyType::Boolean     => 'BIT',
+                    EntityPropertyType::Integer     => 'INT',
+                    EntityPropertyType::Float       => 'DOUBLE',
+                    EntityPropertyType::String      => 'TEXT',
+                    EntityPropertyType::DateTime    => 'DATETIME',
+                    EntityPropertyType::Enumeration =>
+                        match ($propInfo->EnumBackingType()) {
                             'int'    => 'INT',
                             'string' => 'TEXT'
                         }
                 },
-                'nullable' => $metadata['nullable']
+                'nullable' => $propInfo->IsNullable()
             ];
-            if ($key === 'id') {
+            if ($propName === 'id') {
                 \array_unshift($result, $entry);
             } else {
                 $result[] = $entry;
@@ -592,13 +606,13 @@ abstract class Entity implements \JsonSerializable
         $columns = [];
         $placeholders = [];
         $bindings = [];
-        foreach ($this->properties() as $key => $metadata) {
-            if ($key === 'id') {
+        foreach ($this->properties() as $propName => $propInfo) {
+            if ($propName === 'id') {
                 continue;
             }
-            $columns[] = "`$key`";
-            $placeholders[] = ":{$key}";
-            $bindings[$key] = self::scalarize($this->$key);
+            $columns[] = "`$propName`";
+            $placeholders[] = ":{$propName}";
+            $bindings[$propName] = self::scalarize($this->$propName, $propInfo);
         }
         if (empty($columns)) {
             return false;
@@ -628,13 +642,13 @@ abstract class Entity implements \JsonSerializable
         $columns = [];
         $placeholders = [];
         $bindings = ['id' => $this->id];
-        foreach ($this->properties() as $key => $metadata) {
-            if ($key === 'id') {
+        foreach ($this->properties() as $propName => $propInfo) {
+            if ($propName === 'id') {
                 continue;
             }
-            $columns[] = "`$key`";
-            $placeholders[] = ":{$key}";
-            $bindings[$key] = self::scalarize($this->$key);
+            $columns[] = "`$propName`";
+            $placeholders[] = ":{$propName}";
+            $bindings[$propName] = self::scalarize($this->$propName, $propInfo);
         }
         if (empty($columns)) {
             return false;
@@ -661,128 +675,55 @@ abstract class Entity implements \JsonSerializable
     #region private ------------------------------------------------------------
 
     /**
-     * Iterates over public properties with supported types and yields their
-     * metadata.
+     * Iterates over the properties of this Entity and yields their name and
+     * information.
      *
-     * Only properties declared as public, non-static, and non-readonly are
-     * included. Supported types are `bool`, `int`, `float`, `string`,
-     * `DateTime`, and backed enums with at least one case.
+     * Only public, non-static, and non-readonly properties are included.
+     * Supported types are `bool`, `int`, `float`, `string`, `DateTime`, and
+     * backed enums with at least one case.
      *
-     * Nullable types are supported. Nullability is reflected in the returned
-     * metadata.
+     * Nullable properties are supported. Nullability is reflected in the
+     * returned information.
      *
-     * If a supported property is uninitialized, it is assigned a safe default
-     * before being yielded. Nullable properties receive null. Non-nullable
-     * scalars receive a type-specific default. Non-nullable backed enums
-     * receive their first case.
+     * If a property is uninitialized, it is assigned a safe default before
+     * being yielded. Nullable properties receive null. Non-nullable properties
+     * receive a type-specific default.
      *
-     * @return \Generator
+     * @return \Generator<string, EntityPropertyInfo>
      *   Yields a key-value pair where the key is the property name and the
-     *   value is an array containing its type name and nullability flag.
+     *   value is an EntityPropertyInfo instance.
      */
     private function properties(): \Generator
     {
         $reflectionClass = new \ReflectionClass($this);
         foreach ($reflectionClass->getProperties() as $reflectionProperty) {
-            // 1
             if (!$reflectionProperty->isPublic() ||
                 $reflectionProperty->isStatic() ||
                 $reflectionProperty->isReadOnly()
             ) {
                 continue;
             }
-            // 2
             $reflectionType = $reflectionProperty->getType();
-            if (!$reflectionType instanceof \ReflectionNamedType) {
+            if ($reflectionType === null) {
                 continue;
             }
-            // 3
-            $type = $reflectionType->getName();
-            if (!self::isSupportedPropertyType($type)) {
+            $propInfo = EntityPropertyInfo::From($reflectionType);
+            if ($propInfo === null) {
                 continue;
             }
-            $key = $reflectionProperty->getName();
-            // 4. Assign a default value to avoid "Typed property must not be
-            //    accessed before initialization" errors.
+            $propName = $reflectionProperty->getName();
+            // Assign a default value to avoid "Typed property must not be
+            // accessed before initialization" errors.
             if (!$reflectionProperty->isInitialized($this)) {
-                if ($reflectionType->allowsNull()) {
-                    $this->$key = null;
+                if ($propInfo->IsNullable()) {
+                    $this->$propName = null;
                 } else {
-                    $this->$key = self::defaultValueForSupportedPropertyType($type);
+                    $this->$propName = $propInfo->DefaultValue();
                 }
             }
             // 5
-            yield $key => [
-                'type' => $type,
-                'nullable' => $reflectionType->allowsNull()
-            ];
+            yield $propName => $propInfo;
         }
-    }
-
-    /**
-     * Determines whether the given type name is supported as a property type.
-     *
-     * Supported types are `bool`, `int`, `float`, `string`, `DateTime`, and
-     * backed enums that define at least one case.
-     *
-     * @param string $type
-     *   The type name to check.
-     * @return bool
-     *   Returns `true` if the type is supported, `false` otherwise.
-     */
-    private static function isSupportedPropertyType(string $type): bool
-    {
-        static $supportedTypes = ['bool', 'int', 'float', 'string', 'DateTime'];
-        if (\in_array($type, $supportedTypes, true)) {
-            return true;
-        }
-        if (\is_subclass_of($type, \BackedEnum::class) && !empty($type::cases())) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Returns the default value for the given supported property type.
-     *
-     * Scalar types receive their natural defaults, `DateTime` receives a new
-     * instance, and backed enums receive their first case.
-     *
-     * @param string $type
-     *   A supported property type name.
-     * @return mixed
-     *   The default value for the given type.
-     */
-    private static function defaultValueForSupportedPropertyType(string $type): mixed
-    {
-        return match ($type) {
-            'bool'     => false,
-            'int'      => 0,
-            'float'    => 0.0,
-            'string'   => '',
-            'DateTime' => new \DateTime(),
-            default    => $type::cases()[0],
-        };
-    }
-
-    /**
-     * Returns the backing type name of a backed enum.
-     *
-     * @param class-string<\BackedEnum> $class
-     *   The fully-qualified class name of a backed enum.
-     * @return string
-     *   The name of the backing type ('int' or 'string').
-     * @throws \ReflectionException
-     *   If the class does not exist, is not an enum, or has no backing type.
-     */
-    private static function backingTypeForEnum(string $class): string
-    {
-        $reflectionEnum = new \ReflectionEnum($class);
-        $reflectionNamedType = $reflectionEnum->getBackingType();
-        if (!$reflectionNamedType instanceof \ReflectionNamedType) {
-            throw new \ReflectionException("Enum has no backing type: $class");
-        }
-        return $reflectionNamedType->getName();
     }
 
     /**
@@ -790,19 +731,28 @@ abstract class Entity implements \JsonSerializable
      * database storage or serialization.
      *
      * @param mixed $value
-     *   The value to scalarize.
+     *   The property value to scalarize.
+     * @param EntityPropertyInfo $propInfo
+     *   Information about the property's type.
      * @return mixed
      *   The scalarized value.
      */
-    private static function scalarize(mixed $value): mixed
+    private static function scalarize(
+        mixed $value,
+        EntityPropertyInfo $propInfo
+    ): mixed
     {
-        if ($value instanceof \DateTime) {
-            return $value->format(self::DATETIME_FORMAT);
+        if ($value === null) {
+            return null;
         }
-        if ($value instanceof \BackedEnum) {
-            return $value->value;
-        }
-        return $value;
+        return match ($propInfo->Type()) {
+            EntityPropertyType::DateTime =>
+                $value->format(self::DATETIME_FORMAT),
+            EntityPropertyType::Enumeration =>
+                $value->value,
+            default =>
+                $value
+        };
     }
 
     #endregion private

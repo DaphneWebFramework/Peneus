@@ -37,15 +37,12 @@ class EntityPropertyInfo
             return null;
         }
         $class = $reflectionType->getName();
-        $type = self::resolveType($class);
-        if ($type === null && !self::isSupportedEnum($class)) {
+        $type = self::resolveType($class)
+             ?? self::resolveEnum($class);
+        if ($type === null) {
             return null;
         }
-        return new self(
-            $type ?? EntityPropertyType::Enumeration,
-            $class,
-            $reflectionType->allowsNull()
-        );
+        return new self($type, $class, $reflectionType->allowsNull());
     }
 
     public function Type(): EntityPropertyType
@@ -98,10 +95,12 @@ class EntityPropertyInfo
         };
     }
 
-    private static function isSupportedEnum(string $class): bool
+    private static function resolveEnum(string $class): ?EntityPropertyType
     {
-        return \is_subclass_of($class, \BackedEnum::class) &&
-               !empty($class::cases());
+        if (\is_subclass_of($class, \BackedEnum::class) && !empty($class::cases())) {
+            return EntityPropertyType::Enumeration;
+        }
+        return null;
     }
 
     #endregion private

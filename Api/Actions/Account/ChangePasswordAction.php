@@ -17,6 +17,7 @@ use \Peneus\Api\Actions\Action;
 use \Harmonia\Http\Request;
 use \Harmonia\Http\StatusCode;
 use \Harmonia\Services\SecurityService;
+use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Traits\AccountFinder;
 use \Peneus\Api\Traits\LoggedInEnsurer;
@@ -32,6 +33,7 @@ class ChangePasswordAction extends Action
     use AccountFinder;
 
     private readonly Request $request;
+    private readonly Database $database;
     private readonly SecurityService $securityService;
 
     /**
@@ -41,6 +43,7 @@ class ChangePasswordAction extends Action
     {
         parent::__construct();
         $this->request = Request::Instance();
+        $this->database = Database::Instance();
         $this->securityService = SecurityService::Instance();
     }
 
@@ -54,11 +57,8 @@ class ChangePasswordAction extends Action
         $this->ensureLocalAccount($accountView);
         $account = $this->findAccount($accountView->id);
         $payload = $this->validatePayload();
-        $this->verifyCurrentPassword(
-            $payload->currentPassword,
-            $account->passwordHash
-        );
-        $this->doChange($account, $payload->newPassword);
+        $this->verifyCurrentPassword($payload->currentPassword, $account->passwordHash);
+        $this->doTransaction($account, $payload->newPassword);
         return null;
     }
 
@@ -132,12 +132,13 @@ class ChangePasswordAction extends Action
      * @param string $newPassword
      * @throws \RuntimeException
      */
-    protected function doChange(Account $account, string $newPassword): void
+    protected function doTransaction(Account $account, string $newPassword): void
     {
-        $account->passwordHash =
-            $this->securityService->HashPassword($newPassword);
-        if (!$account->Save()) {
-            throw new \RuntimeException("Failed to change password.");
-        }
+        $this->database->WithTransaction(function() use($account, $newPassword) {
+            $account->passwordHash = $this->securityService->HashPassword($newPassword);
+            if (!$account->Save()) {
+                throw new \RuntimeException("Failed to save account.");
+            }
+        });
     }
 }

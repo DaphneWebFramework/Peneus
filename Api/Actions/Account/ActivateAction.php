@@ -19,12 +19,12 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\ActivationHooksTriggerer;
 use \Peneus\Api\Traits\NotRegisteredEnsurer;
 use \Peneus\Api\Traits\PendingAccountFinder;
 use \Peneus\Model\Account;
 use \Peneus\Model\PendingAccount;
 use \Peneus\Resource;
-use \Peneus\Services\AccountService;
 
 /**
  * Handles account activation via activation code.
@@ -33,12 +33,11 @@ class ActivateAction extends Action
 {
     use PendingAccountFinder;
     use NotRegisteredEnsurer;
+    use ActivationHooksTriggerer;
 
     private readonly Request $request;
     private readonly Database $database;
     private readonly Resource $resource;
-    private readonly AccountService $accountService;
-    private readonly SecurityService $securityService;
     private readonly CookieService $cookieService;
 
     /**
@@ -50,31 +49,23 @@ class ActivateAction extends Action
         $this->request = Request::Instance();
         $this->database = Database::Instance();
         $this->resource = Resource::Instance();
-        $this->accountService = AccountService::Instance();
-        $this->securityService = SecurityService::Instance();
         $this->cookieService = CookieService::Instance();
     }
 
     /**
-     * @return array{redirectUrl: string}
+     * @return array{
+     *   redirectUrl: CUrl
+     * }
      * @throws \RuntimeException
      */
     protected function onExecute(): mixed
     {
         $payload = $this->validatePayload();
-        $pa = $this->findPendingAccount($payload->activationCode);
-        $this->ensureNotRegistered($pa->email);
-        try {
-            $this->database->WithTransaction(fn() =>
-                $this->doActivate($pa)
-            );
-        } catch (\Throwable $e) {
-            throw new \RuntimeException("Account activation failed.", 0, $e);
-        }
+        $pendingAccount = $this->findPendingAccount($payload->activationCode);
+        $this->ensureNotRegistered($pendingAccount->email);
+        $this->doTransaction($pendingAccount);
         $this->cookieService->DeleteCsrfCookie();
-        return [
-            'redirectUrl' => $this->resource->LoginPageUrl('home')
-        ];
+        return $this->composeResult();
     }
 
     /**
@@ -92,7 +83,7 @@ class ActivateAction extends Action
             ]
         ], [
             'activationCode.required' => "Activation code is required.",
-            'activationCode.regex' => "Activation code format is invalid."
+            'activationCode.regex'    => "Activation code format is invalid."
         ]);
         $da = $validator->Validate($this->request->FormParams());
         return (object)[
@@ -101,33 +92,45 @@ class ActivateAction extends Action
     }
 
     /**
-     * @param PendingAccount $pa
+     * @param PendingAccount $pendingAccount
      * @throws \RuntimeException
      */
-    protected function doActivate(PendingAccount $pa): void
+    protected function doTransaction(PendingAccount $pendingAccount): void
     {
-        $account = $this->constructAccount($pa);
-        if (!$account->Save()) {
-            throw new \RuntimeException("Failed to save account.");
-        }
-        if (!$pa->Delete()) {
-            throw new \RuntimeException("Failed to delete pending account.");
-        }
-        foreach ($this->accountService->ActivationHooks() as $hook) {
-            $hook->OnActivateAccount($account);
-        }
+        $this->database->WithTransaction(function() use($pendingAccount) {
+            $account = $this->makeAccount($pendingAccount);
+            if (!$account->Save()) {
+                throw new \RuntimeException("Failed to save account.");
+            }
+            if (!$pendingAccount->Delete()) {
+                throw new \RuntimeException("Failed to delete pending account.");
+            }
+            $this->triggerActivationHooks($account);
+        });
     }
 
     /**
-     * @param PendingAccount $pa
+     * @param PendingAccount $pendingAccount
      * @return Account
      */
-    protected function constructAccount(PendingAccount $pa): Account
+    protected function makeAccount(PendingAccount $pendingAccount): Account
     {
-        $account = new Account($pa);
-        $account->id = 0; // reset the id hydrated from pending account
-        $account->timeActivated = new \DateTime(); // now
-        $account->timeLastLogin = null;
-        return $account;
+        return new Account([
+            'email'        => $pendingAccount->email,
+            'passwordHash' => $pendingAccount->passwordHash,
+            'displayName'  => $pendingAccount->displayName
+        ]);
+    }
+
+    /**
+     * @return array{
+     *   redirectUrl: CUrl
+     * }
+     */
+    protected function composeResult(): array
+    {
+        return [
+            'redirectUrl' => $this->resource->LoginPageUrl('home')
+        ];
     }
 }

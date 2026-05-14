@@ -30,8 +30,9 @@ use \Peneus\Resource;
 /**
  * Handles password reset requests for accounts.
  *
- * The action mitigates account enumeration by always returning the same generic
- * success message, even if no account exists for the given email.
+ * Mitigates account enumeration by always returning the same generic success
+ * message, even if no account exists for the given email or if the account is
+ * third-party and therefore has an empty password hash.
  */
 class SendPasswordResetAction extends Action
 {
@@ -61,28 +62,17 @@ class SendPasswordResetAction extends Action
     }
 
     /**
-     * @return array{message: string}
+     * @return array{
+     *   message: string
+     * }
      * @throws \RuntimeException
      */
     protected function onExecute(): mixed
     {
         $payload = $this->validatePayload();
-        $account = $this->tryFindAccountByEmail($payload->email);
-        if ($account !== null) {
-            try {
-                $this->database->WithTransaction(fn() =>
-                    $this->doSend($account)
-                );
-            } catch (\Throwable $e) {
-                throw new \RuntimeException(
-                    "We couldn't send the email. Please try again later.", 0, $e);
-            }
-        }
+        $this->doTransaction($payload);
         $this->cookieService->DeleteCsrfCookie();
-        return [
-            'message' =>
-                "A password reset link has been sent to your email address."
-        ];
+        return $this->composeResult();
     }
 
     /**
@@ -97,7 +87,7 @@ class SendPasswordResetAction extends Action
             'email' => [
                 'required',
                 'email'
-            ],
+            ]
         ]);
         $da = $validator->Validate($this->request->FormParams());
         return (object)[
@@ -106,67 +96,77 @@ class SendPasswordResetAction extends Action
     }
 
     /**
-     * @param Account $account
+     * @param object{
+     *   email: string
+     * } $payload
      * @throws \RuntimeException
      */
-    protected function doSend(Account $account): void
+    protected function doTransaction(\stdClass $payload): void
     {
-        // 1
-        $resetCode = $this->securityService->GenerateToken();
-        // 2
-        $pr = $this->findOrConstructPasswordReset($account->id);
-        $pr->resetCode = $resetCode;
-        $pr->timeRequested = new \DateTime(); // now
-        if (!$pr->Save()) {
-            throw new \RuntimeException("Failed to save password reset.");
+        $account = $this->tryFindAccountByEmail($payload->email);
+        if ($account === null || $this->isThirdPartyAccount($account)) {
+            return;
         }
-        // 3
-        if (!$this->sendEmail($account->email, $account->displayName, $resetCode)) {
-            throw new \RuntimeException("Failed to send email.");
-        }
+        $this->database->WithTransaction(function() use($account) {
+            $resetCode = $this->securityService->GenerateToken();
+            $passwordReset = $this->findOrMakePasswordReset($account->id);
+            $passwordReset->resetCode = $resetCode;
+            $passwordReset->timeRequested = new \DateTime(); // now
+            if (!$passwordReset->Save()) {
+                throw new \RuntimeException("Failed to save password reset.");
+            }
+            $this->sendEmail($account->email, $account->displayName, $resetCode);
+        });
+    }
+
+    /**
+     * @param Account $account
+     * @return bool
+     */
+    protected function isThirdPartyAccount(Account $account): bool
+    {
+        return $account->passwordHash === '';
     }
 
     /**
      * @param int $accountId
      * @return PasswordReset
      */
-    protected function findOrConstructPasswordReset(int $accountId): PasswordReset
+    protected function findOrMakePasswordReset(int $accountId): PasswordReset
     {
-        $pr = $this->tryFindPasswordResetByAccountId($accountId);
-        if ($pr === null) {
-            $pr = $this->constructPasswordReset($accountId);
+        $passwordReset = $this->tryFindPasswordResetByAccountId($accountId);
+        if ($passwordReset === null) {
+            $passwordReset = $this->makePasswordReset($accountId);
         }
-        return $pr;
+        return $passwordReset;
     }
 
     /**
      * @param int $accountId
      * @return PasswordReset
      */
-    protected function constructPasswordReset(int $accountId): PasswordReset
+    protected function makePasswordReset(int $accountId): PasswordReset
     {
-        $pr = new PasswordReset();
-        $pr->accountId = $accountId;
-        return $pr;
+        return new PasswordReset([
+            'accountId' => $accountId
+        ]);
     }
 
     /**
      * @param string $email
      * @param string $displayName
      * @param string $resetCode
-     * @return bool
+     * @throws \RuntimeException
      */
     protected function sendEmail(
         string $email,
         string $displayName,
         string $resetCode
-    ): bool
+    ): void
     {
-        $appName = $this->config->OptionOrDefault('AppName', '');
-        $actionUrl = $this->resource
-            ->PageUrl('reset-password')
-            ->Extend($resetCode)
-            ->__toString();
+        $appName = $this->config->Option('AppName');
+        $actionUrl = $this->resource->PageUrl('reset-password')
+                                    ->Extend($resetCode);
         $substitutions = [
             'heroText' =>
                 "Reset your password",
@@ -179,11 +179,26 @@ class SendPasswordResetAction extends Action
               . " requested for your account on {$appName}. If you did"
               . " not request this, you can safely ignore this email."
         ];
-        return $this->sendTransactionalEmail(
+        if (!$this->sendTransactionalEmail(
             $email,
             $displayName,
             $actionUrl,
             $substitutions
-        );
+        )) {
+            throw new \RuntimeException("Failed to send email.");
+        }
+    }
+
+    /**
+     * @return array{
+     *   message: string
+     * }
+     */
+    protected function composeResult(): array
+    {
+        return [
+            'message' =>
+                "A password reset link has been sent to your email address."
+        ];
     }
 }

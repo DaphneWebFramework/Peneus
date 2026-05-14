@@ -20,6 +20,7 @@ use \Harmonia\Services\CookieService;
 use \Harmonia\Services\SecurityService;
 use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
+use \Peneus\Api\Traits\NotLoggedInEnsurer;
 use \Peneus\Model\Account;
 use \Peneus\Model\Traits\AccountFinder;
 use \Peneus\Services\AccountService;
@@ -30,6 +31,7 @@ use \Peneus\Services\AccountService;
 class LogInAction extends Action
 {
     use AccountFinder;
+    use NotLoggedInEnsurer;
 
     private readonly Request $request;
     private readonly Database $database;
@@ -58,40 +60,17 @@ class LogInAction extends Action
     {
         $this->ensureNotLoggedIn();
         $payload = $this->validatePayload();
-        $account = $this->findAndAuthenticateAccount(
-            $payload->email,
-            $payload->password
-        );
-        try {
-            $this->database->WithTransaction(fn() =>
-                $this->doLogIn($account, $payload->keepLoggedIn)
-            );
-        } catch (\Throwable $e) {
-            $this->logOut();
-            throw new \RuntimeException("Login failed.", 0, $e);
-        }
+        $account = $this->authenticateAccount($payload->email, $payload->password);
+        $this->doTransaction($account, $payload->keepLoggedIn);
         $this->cookieService->DeleteCsrfCookie();
         return null;
     }
 
     /**
-     * @throws \RuntimeException
-     */
-    protected function ensureNotLoggedIn(): void
-    {
-        if (null !== $this->accountService->SessionAccount()) {
-            throw new \RuntimeException(
-                "You are already logged in.",
-                StatusCode::Conflict->value
-            );
-        }
-    }
-
-    /**
      * @return object{
-     *   email: string,
-     *   password: string,
-     *   keepLoggedIn: bool
+     *   email        : string,
+     *   password     : string,
+     *   keepLoggedIn : bool
      * }
      * @throws \RuntimeException
      */
@@ -115,8 +94,8 @@ class LogInAction extends Action
         ]);
         $da = $validator->Validate($this->request->FormParams());
         return (object)[
-            'email' => $da->GetField('email'),
-            'password' => $da->GetField('password'),
+            'email'        => $da->GetField('email'),
+            'password'     => $da->GetField('password'),
             'keepLoggedIn' => 'on' === $da->GetFieldOrDefault('keepLoggedIn')
         ];
     }
@@ -127,17 +106,11 @@ class LogInAction extends Action
      * @return Account
      * @throws \RuntimeException
      */
-    protected function findAndAuthenticateAccount(
-        string $email,
-        string $password
-    ): Account
+    protected function authenticateAccount(string $email, string $password): Account
     {
         $account = $this->tryFindAccountByEmail($email);
         if ($account === null ||
-            !$this->securityService->VerifyPassword(
-                $password,
-                $account->passwordHash
-            )
+            !$this->securityService->VerifyPassword($password, $account->passwordHash)
         ) {
             throw new \RuntimeException(
                 "Incorrect email address or password.",
@@ -152,20 +125,30 @@ class LogInAction extends Action
      * @param bool $keepLoggedIn
      * @throws \RuntimeException
      */
-    protected function doLogIn(Account $account, bool $keepLoggedIn): void
+    protected function doTransaction(Account $account, bool $keepLoggedIn): void
     {
-        $account->timeLastLogin = new \DateTime(); // now
-        if (!$account->Save()) {
-            throw new \RuntimeException("Failed to save account.");
+        try {
+            $this->database->WithTransaction(function() use($account, $keepLoggedIn) {
+                $account->timeLastLogin = new \DateTime(); // now
+                if (!$account->Save()) {
+                    throw new \RuntimeException("Failed to save account.");
+                }
+                $this->accountService->CreateSession($account->id, $keepLoggedIn);
+            });
+        } catch (\Throwable $e) {
+            $this->tryLogOut();
+            throw $e;
         }
-        $this->accountService->CreateSession($account->id, $keepLoggedIn);
     }
 
     /**
-     * @throws \RuntimeException
      */
-    protected function logOut(): void
+    protected function tryLogOut(): void
     {
-        $this->accountService->DeleteSession();
+        try {
+            $this->accountService->DeleteSession();
+        } catch (\Throwable) {
+            // Best effort: Suppress exceptions
+        }
     }
 }

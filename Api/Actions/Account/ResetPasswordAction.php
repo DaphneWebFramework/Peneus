@@ -54,30 +54,25 @@ class ResetPasswordAction extends Action
     }
 
     /**
-     * @return array{redirectUrl: string}
+     * @return array{
+     *   redirectUrl: CUrl
+     * }
      * @throws \RuntimeException
      */
     protected function onExecute(): mixed
     {
         $payload = $this->validatePayload();
-        [$account, $pr] = $this->findAccountAndPasswordReset($payload->resetCode);
-        try {
-            $this->database->WithTransaction(fn() =>
-                $this->doReset($account, $payload->newPassword, $pr)
-            );
-        } catch (\Throwable $e) {
-            throw new \RuntimeException("Password reset failed.", 0, $e);
-        }
+        [$account, $passwordReset] =
+            $this->findAccountAndPasswordReset($payload->resetCode);
+        $this->doTransaction($payload->newPassword, $account, $passwordReset);
         $this->cookieService->DeleteCsrfCookie();
-        return [
-            'redirectUrl' => $this->resource->LoginPageUrl('home')
-        ];
+        return $this->composeResult();
     }
 
     /**
      * @return object{
-     *   resetCode: string,
-     *   newPassword: string
+     *   resetCode   : string,
+     *   newPassword : string
      * }
      * @throws \RuntimeException
      */
@@ -96,52 +91,69 @@ class ResetPasswordAction extends Action
             ]
         ], [
             'resetCode.required' => "Reset code is required.",
-            'resetCode.regex' => "Reset code format is invalid."
+            'resetCode.regex'    => "Reset code format is invalid."
         ]);
         $da = $validator->Validate($this->request->FormParams());
         return (object)[
-            'resetCode' => $da->GetField('resetCode'),
+            'resetCode'   => $da->GetField('resetCode'),
             'newPassword' => $da->GetField('newPassword')
         ];
     }
 
     /**
      * @param string $resetCode
-     * @return array{0: Account, 1: PasswordReset}
+     * @return array{
+     *   0 : Account,
+     *   1 : PasswordReset
+     * }
      * @throws \RuntimeException
      */
     protected function findAccountAndPasswordReset(string $resetCode): array
     {
-        $pr = $this->tryFindPasswordResetByCode($resetCode);
-        if ($pr === null ||
-            ($account = $this->tryFindAccountById($pr->accountId)) === null
+        $passwordReset = $this->tryFindPasswordResetByCode($resetCode);
+        if ($passwordReset === null ||
+            ($account = $this->tryFindAccountById($passwordReset->accountId)) === null
         ) {
             throw new \RuntimeException(
                 "This password reset request is no longer valid.",
                 StatusCode::BadRequest->value
             );
         }
-        return [$account, $pr];
+        return [$account, $passwordReset];
     }
 
     /**
-     * @param Account $account
      * @param string $newPassword
-     * @param PasswordReset $pr
+     * @param Account $account
+     * @param PasswordReset $passwordReset
      * @throws \RuntimeException
      */
-    protected function doReset(
-        Account $account,
+    protected function doTransaction(
         string $newPassword,
-        PasswordReset $pr
+        Account $account,
+        PasswordReset $passwordReset
     ): void
     {
-        $account->passwordHash = $this->securityService->HashPassword($newPassword);
-        if (!$account->Save()) {
-            throw new \RuntimeException("Failed to save account.");
-        }
-        if (!$pr->Delete()) {
-            throw new \RuntimeException("Failed to delete password reset.");
-        }
+        $this->database->WithTransaction(function() use($newPassword, $account, $passwordReset) {
+            $account->passwordHash = $this->securityService->HashPassword($newPassword);
+            if (!$account->Save()) {
+                throw new \RuntimeException("Failed to save account.");
+            }
+            if (!$passwordReset->Delete()) {
+                throw new \RuntimeException("Failed to delete password reset.");
+            }
+        });
+    }
+
+    /**
+     * @return array{
+     *   redirectUrl: CUrl
+     * }
+     */
+    protected function composeResult(): array
+    {
+        return [
+            'redirectUrl' => $this->resource->LoginPageUrl('home')
+        ];
     }
 }

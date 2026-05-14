@@ -59,7 +59,9 @@ class RegisterAction extends Action
     }
 
     /**
-     * @return array{message: string}
+     * @return array{
+     *   message: string
+     * }
      * @throws \RuntimeException
      */
     protected function onExecute(): mixed
@@ -67,25 +69,16 @@ class RegisterAction extends Action
         $payload = $this->validatePayload();
         $this->ensureNotRegistered($payload->email);
         $this->ensureNotPending($payload->email);
-        try {
-            $this->database->WithTransaction(fn() =>
-                $this->doRegister($payload)
-            );
-        } catch (\Throwable $e) {
-            throw new \RuntimeException("Account registration failed.", 0, $e);
-        }
+        $this->doTransaction($payload);
         $this->cookieService->DeleteCsrfCookie();
-        return [
-            'message' =>
-                "An account activation link has been sent to your email address."
-        ];
+        return $this->composeResult();
     }
 
     /**
      * @return object{
-     *   email: string,
-     *   password: string,
-     *   displayName: string
+     *   email       : string,
+     *   password    : string,
+     *   displayName : string
      * }
      * @throws \RuntimeException
      */
@@ -113,77 +106,69 @@ class RegisterAction extends Action
         ]);
         $da = $validator->Validate($this->request->FormParams());
         return (object)[
-            'email' => $da->GetField('email'),
-            'password' => $da->GetField('password'),
+            'email'       => $da->GetField('email'),
+            'password'    => $da->GetField('password'),
             'displayName' => $da->GetField('displayName')
         ];
     }
 
     /**
      * @param object{
-     *   email: string,
-     *   password: string,
-     *   displayName: string
+     *   email       : string,
+     *   password    : string,
+     *   displayName : string
      * }
      * @throws \RuntimeException
      */
-    protected function doRegister(\stdClass $payload): void
+    protected function doTransaction(\stdClass $payload): void
     {
-        // 1
-        $activationCode = $this->securityService->GenerateToken();
-        // 2
-        $pa = $this->constructPendingAccount($payload, $activationCode);
-        if (!$pa->Save()) {
-            throw new \RuntimeException("Failed to save pending account.");
-        }
-        // 3
-        if (!$this->sendEmail(
-            $payload->email,
-            $payload->displayName,
-            $activationCode
-        )) {
-            throw new \RuntimeException("Failed to send email.");
-        }
+        $this->database->WithTransaction(function() use($payload) {
+            $activationCode = $this->securityService->GenerateToken();
+            $pendingAccount = $this->makePendingAccount($payload, $activationCode);
+            if (!$pendingAccount->Save()) {
+                throw new \RuntimeException("Failed to save pending account.");
+            }
+            $this->sendEmail($payload->email, $payload->displayName, $activationCode);
+        });
     }
 
     /**
      * @param object{
-     *   email: string,
-     *   password: string,
-     *   displayName: string
+     *   email       : string,
+     *   password    : string,
+     *   displayName : string
      * }
      * @param string $activationCode
      * @return PendingAccount
      */
-    protected function constructPendingAccount(
+    protected function makePendingAccount(
         \stdClass $payload,
         string $activationCode
     ): PendingAccount
     {
-        $pa = new PendingAccount($payload);
-        $pa->passwordHash = $this->securityService->HashPassword($payload->password);
-        $pa->activationCode = $activationCode;
-        $pa->timeRegistered = new \DateTime(); // now
-        return $pa;
+        return new PendingAccount([
+            'email'          => $payload->email,
+            'passwordHash'   => $this->securityService->HashPassword($payload->password),
+            'displayName'    => $payload->displayName,
+            'activationCode' => $activationCode
+        ]);
     }
 
     /**
      * @param string $email
      * @param string $displayName
      * @param string $activationCode
-     * @return bool
+     * @throws \RuntimeException
      */
     protected function sendEmail(
         string $email,
         string $displayName,
         string $activationCode
-    ): bool
+    ): void
     {
-        $appName = $this->config->OptionOrDefault('AppName', '');
-        $actionUrl = $this->resource
-            ->PageUrl('activate-account')
-            ->Extend($activationCode)
-            ->__toString();
+        $appName = $this->config->Option('AppName');
+        $actionUrl = $this->resource->PageUrl('activate-account')
+                                    ->Extend($activationCode);
         $substitutions = [
             'heroText' =>
                 "Welcome to {$appName}!",
@@ -197,11 +182,26 @@ class RegisterAction extends Action
               . " used to register on {$appName}. If this wasn't you, you"
               . " can safely ignore this email."
         ];
-        return $this->sendTransactionalEmail(
+        if (!$this->sendTransactionalEmail(
             $email,
             $displayName,
             $actionUrl,
             $substitutions
-        );
+        )) {
+            throw new \RuntimeException("Failed to send email.");
+        }
+    }
+
+    /**
+     * @return array{
+     *   message: string
+     * }
+     */
+    protected function composeResult(): array
+    {
+        return [
+            'message' =>
+                "An account activation link has been sent to your email address."
+        ];
     }
 }

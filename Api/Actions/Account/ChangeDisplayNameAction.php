@@ -15,6 +15,7 @@ namespace Peneus\Api\Actions\Account;
 use \Peneus\Api\Actions\Action;
 
 use \Harmonia\Http\Request;
+use \Harmonia\Systems\DatabaseSystem\Database;
 use \Harmonia\Systems\ValidationSystem\Validator;
 use \Peneus\Api\Traits\AccountFinder;
 use \Peneus\Api\Traits\LoggedInEnsurer;
@@ -30,6 +31,7 @@ class ChangeDisplayNameAction extends Action
     use AccountFinder;
 
     private readonly Request $request;
+    private readonly Database $database;
 
     /**
      * Constructs a new instance by initializing dependencies.
@@ -38,6 +40,7 @@ class ChangeDisplayNameAction extends Action
     {
         parent::__construct();
         $this->request = Request::Instance();
+        $this->database = Database::Instance();
     }
 
     /**
@@ -49,7 +52,7 @@ class ChangeDisplayNameAction extends Action
         $accountView = $this->ensureLoggedIn();
         $account = $this->findAccount($accountView->id);
         $payload = $this->validatePayload();
-        $this->doChange($account, $payload->displayName);
+        $this->doTransaction($account, $payload->displayName);
         return null;
     }
 
@@ -82,11 +85,13 @@ class ChangeDisplayNameAction extends Action
      * @param string $displayName
      * @throws \RuntimeException
      */
-    protected function doChange(Account $account, string $displayName): void
+    protected function doTransaction(Account $account, string $displayName): void
     {
-        $account->displayName = $displayName;
-        if (!$account->Save()) {
-            throw new \RuntimeException("Failed to change display name.");
-        }
+        $this->database->WithTransaction(function() use($account, $displayName) {
+            $account->displayName = $displayName;
+            if (!$account->Save()) {
+                throw new \RuntimeException("Failed to save account.");
+            }
+        });
     }
 }

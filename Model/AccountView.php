@@ -21,6 +21,7 @@ class AccountView extends ViewEntity
     public ?\DateTime $timeLastLogin;
     public Role $role;
 
+    /** @codeCoverageIgnore */
     public static function ViewDefinition(): string
     {
         $defaultRole = Role::None->value;

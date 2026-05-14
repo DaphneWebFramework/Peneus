@@ -15,7 +15,8 @@ namespace Peneus\Api\Traits;
 use \Harmonia\Config;
 use \Harmonia\Core\CFile;
 use \Harmonia\Core\CPath;
-use \Harmonia\Logger;
+use \Harmonia\Core\CUrl;
+use \Harmonia\Traits\FileOpener;
 use \Peneus\Resource;
 use \Peneus\Systems\MailerSystem\Mailer;
 
@@ -24,12 +25,14 @@ use \Peneus\Systems\MailerSystem\Mailer;
  */
 trait TransactionalEmailSender
 {
+    use FileOpener;
+
     /**
      * @param string $emailAddress
      *   The recipient's email address.
      * @param string $displayName
      *   The recipient's display name.
-     * @param string $actionUrl
+     * @param CUrl $actionUrl
      *   The URL for the call-to-action (CTA) button in the email.
      * @param array<string, string> $substitutions
      *   The substitutions to replace placeholders in the email template.
@@ -41,58 +44,78 @@ trait TransactionalEmailSender
     protected function sendTransactionalEmail(
         string $emailAddress,
         string $displayName,
-        string $actionUrl,
+        CUrl $actionUrl,
         array $substitutions
     ): bool
     {
-        $resource = Resource::Instance();
-        $file = $this->openFile($resource->TemplateFilePath('transactional-email'));
-        if ($file === null) {
-            Logger::Instance()->Error('Email template not found.');
-            return false;
-        }
-        $template = $file->Read();
-        $file->Close();
+        $template = $this->readTransactionalEmailTemplate();
         if ($template === null) {
-            Logger::Instance()->Error('Email template could not be read.');
             return false;
         }
-        $config = Config::Instance();
-        $html = \strtr($template, [
-            '{{AppName}}' => $config->OptionOrDefault('AppName', ''),
-            '{{Language}}' => $config->OptionOrDefault('Language', 'en'),
-            '{{Title}}' => $substitutions['heroText'],
-            '{{HeroText}}' => $substitutions['heroText'],
-            '{{UserName}}' => $displayName,
-            '{{IntroText}}' => $substitutions['introText'],
-            '{{ActionUrl}}' => $actionUrl,
-            '{{ButtonText}}' => $substitutions['buttonText'],
-            '{{DisclaimerText}}' => $substitutions['disclaimerText'],
-            '{{SupportEmail}}' => $config->OptionOrDefault('SupportEmail', ''),
-            '{{CurrentYear}}' => $this->currentYear(),
-        ]);
-        return $this->newMailer()
+        $composed = $this->composeTransactionalEmail(
+            $template,
+            $displayName,
+            $actionUrl,
+            $substitutions
+        );
+        return $this->makeMailer()
             ->SetAddress($emailAddress)
             ->SetSubject($substitutions['heroText'])
-            ->SetBody($html)
+            ->SetBody($composed)
             ->Send();
     }
 
-    /** @codeCoverageIgnore */
-    protected function openFile(CPath $filePath): ?CFile
+    /**
+     * @return string|null
+     */
+    protected function readTransactionalEmailTemplate(): ?string
     {
-        return CFile::Open($filePath);
+        $template = null;
+        $resource = $this->resource ?? Resource::Instance();
+        $filePath = $resource->TemplateFilePath('transactional-email');
+        $file = $this->openFile($filePath);
+        if ($file !== null) {
+            $template = $file->Read();
+            $file->Close();
+        }
+        return $template;
     }
 
-    /** @codeCoverageIgnore */
-    protected function newMailer(): Mailer
+    /**
+     * @param string $template
+     * @param string $displayName
+     * @param CUrl $actionUrl
+     * @param array<string, string> $substitutions
+     * @return string
+     */
+    protected function composeTransactionalEmail(
+        string $template,
+        string $displayName,
+        CUrl $actionUrl,
+        array $substitutions
+    ): string
+    {
+        $config = $this->config ?? Config::Instance();
+        return \strtr($template, [
+            '{{AppName}}'        => $config->Option('AppName'),
+            '{{Language}}'       => $config->Option('Language'),
+            '{{Title}}'          => $substitutions['heroText'],
+            '{{HeroText}}'       => $substitutions['heroText'],
+            '{{UserName}}'       => $displayName,
+            '{{IntroText}}'      => $substitutions['introText'],
+            '{{ActionUrl}}'      => $actionUrl->__toString(),
+            '{{ButtonText}}'     => $substitutions['buttonText'],
+            '{{DisclaimerText}}' => $substitutions['disclaimerText'],
+            '{{SupportEmail}}'   => $config->Option('SupportEmail'),
+            '{{CurrentYear}}'    => \date('Y'),
+        ]);
+    }
+
+    /**
+     * @return Mailer
+     */
+    protected function makeMailer(): Mailer
     {
         return new Mailer();
-    }
-
-    /** @codeCoverageIgnore */
-    protected function currentYear(): string
-    {
-        return \date('Y');
     }
 }

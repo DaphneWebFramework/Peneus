@@ -52,14 +52,7 @@ class DeleteAction extends Action
     {
         $accountView = $this->ensureLoggedIn();
         $account = $this->findAccount($accountView->id);
-        try {
-            $this->database->WithTransaction(fn() =>
-                $this->doDelete($account)
-            );
-        } catch (\Throwable $e) {
-            throw new \RuntimeException("Failed to delete account.", 0, $e);
-        }
-        $this->logOut();
+        $this->doTransaction($account);
         return null;
     }
 
@@ -67,21 +60,25 @@ class DeleteAction extends Action
      * @param Account $account
      * @throws \RuntimeException
      */
-    protected function doDelete(Account $account): void
+    protected function doTransaction(Account $account): void
+    {
+        $this->database->WithTransaction(function() use($account) {
+            $this->triggerDeletionHooks($account);
+            if (!$account->Delete()) {
+                throw new \RuntimeException("Failed to delete account.");
+            }
+            $this->accountService->DeleteSession(); // log out
+        });
+    }
+
+    /**
+     * @param Account $account
+     * @throws \RuntimeException
+     */
+    protected function triggerDeletionHooks(Account $account): void
     {
         foreach ($this->accountService->DeletionHooks() as $hook) {
             $hook->OnDeleteAccount($account);
         }
-        if (!$account->Delete()) {
-            throw new \RuntimeException("Failed to delete account.");
-        }
-    }
-
-    /**
-     * @throws \RuntimeException
-     */
-    protected function logOut(): void
-    {
-        $this->accountService->DeleteSession();
     }
 }
